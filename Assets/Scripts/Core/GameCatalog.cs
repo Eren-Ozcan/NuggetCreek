@@ -51,6 +51,13 @@ namespace NuggetCreek.Core
         /// Dollars, starts idle collection and his level is the offline cap in hours.</summary>
         public const string AmosId = "amos";
 
+        /// <summary>Creek names in unlock order (design doc 6.2); the launch economy covers the first 6.</summary>
+        public static readonly IReadOnlyList<string> RegionNames = new[]
+        {
+            "Nugget Creek", "Pine Hollow", "Silver Fork", "Red Gulch", "Frost Basin", "Deep Canyon",
+            "Quartz Flats", "Glacier Run", "Sunken Mine", "Last Chance Lode",
+        };
+
         public static readonly IReadOnlyList<UpgradeDefinition> Upgrades = new[]
         {
             new UpgradeDefinition("sturdy_shovel", "Sturdy Shovel", 0, Stat.DustValue, 0.20, 10),

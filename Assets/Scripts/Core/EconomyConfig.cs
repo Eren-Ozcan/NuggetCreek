@@ -26,6 +26,12 @@ namespace NuggetCreek.Core
 
         public double NuggetChanceBase = 0.05;
 
+        /// <summary>The first spawns are always Gold Dust so the tutorial reads clearly (design doc 9).</summary>
+        public int OnboardingGuaranteedDust = 5;
+
+        /// <summary>Base swipe pick-up radius in reference-screen pixels; Wide Pan and Big Pan scale it.</summary>
+        public double CollectRadiusPixels = 70;
+
         // --- Mother Lode (3.4) ---
 
         /// <summary>Mother Lode triggers after this many collectibles or MotherLodeEverySeconds, whichever first.</summary>
@@ -93,6 +99,9 @@ namespace NuggetCreek.Core
 
         /// <summary>The Gem double is hidden for absences shorter than this.</summary>
         public double OfflineGemDoubleMinAwaySeconds = 30 * 60;
+
+        /// <summary>Shorter absences are credited quietly, without the welcome back modal.</summary>
+        public double OfflineModalMinAwaySeconds = 60;
 
         /// <summary>
         /// Allowed drift between wall-clock and monotonic deltas before an absence counts as
