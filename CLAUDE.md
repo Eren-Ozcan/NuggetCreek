@@ -8,12 +8,22 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
 - `Assets/Scripts/Core/` — engine-free game logic (`NuggetCreek.Core` asmdef,
   `noEngineReferences: true`): `BigNumber`, `NumberFormat`, `EconomyConfig`, `Economy`,
   `Stat`/`StatSheet`, `GameCatalog` (upgrades, 16 crew),
-  `OfflineEarnings`, `RewardedDoubleButton`, `SaveEnvelope`, `PacingModel`.
+  `OfflineEarnings`, `RewardedDoubleButton`, `SaveEnvelope`, `PacingModel`,
+  `PlayerProgress` (save data) and `GameSession` (rules: collect, idle, offline, purchases).
   No `UnityEngine` here — platform code (ads, Remote Config, Keystore, clocks) lives in
   other assemblies and feeds this one plain values.
+- `Assets/Scripts/Game/` — Unity layer (`NuggetCreek.Game`): `GameRoot` builds the whole
+  greybox UI in code (uGUI, `UI/`), `SaveStore` (signed PlayerPrefs), `GameClock`
+  (monotonic + trusted HTTPS time), `FakeRewardedAds` until the real ad SDK lands.
+- `Assets/Scenes/Creek.unity` — only camera, EventSystem and `GameRoot`. Regenerate with
+  menu *Nugget Creek > Rebuild Greybox Scene* or
+  `Unity.exe -batchmode -quit -projectPath . -executeMethod NuggetCreek.Editor.GreyboxSceneBuilder.Build`.
 - `tests/NuggetCreek.Core.Tests/` — NUnit tests that compile the core sources outside
   Unity. Run with `dotnet test tests/NuggetCreek.Core.Tests`. `LangVersion` is pinned to
   9.0 so the core stays compilable by Unity.
+- `Assets/Tests/PlayMode/` — greybox smoke tests that press real buttons. Run with
+  `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>`
+  (the editor must be closed); set `NC_SHOT_DIR` to also save 1080x1920 screenshots.
 
 ## Rules
 
