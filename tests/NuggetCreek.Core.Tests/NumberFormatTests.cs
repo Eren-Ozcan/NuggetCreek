@@ -28,6 +28,17 @@ namespace NuggetCreek.Core.Tests
             Assert.That(NumberFormat.Dollars(value), Is.EqualTo(expected));
         }
 
+        [TestCase(0.54, "$0.54/s")]
+        [TestCase(0.005, "$0/s")]
+        [TestCase(1.2, "$1.2/s")]
+        [TestCase(99.994, "$99.99/s")]
+        [TestCase(150.0, "$150/s")]
+        [TestCase(2.5e6, "$2.5M/s")]
+        public void DollarsPerSecond(double value, string expected)
+        {
+            Assert.That(NumberFormat.DollarsPerSecond(value), Is.EqualTo(expected));
+        }
+
         [Test]
         public void NeverUsesScientificNotation()
         {

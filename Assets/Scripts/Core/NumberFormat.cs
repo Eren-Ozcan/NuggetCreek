@@ -21,6 +21,20 @@ namespace NuggetCreek.Core
             return "$" + Abbreviate(value);
         }
 
+        /// <summary>
+        /// Income per second. Early rates sit below $1/s, so small values keep up to two
+        /// decimals ($0.54/s) instead of rounding to whole Dollars.
+        /// </summary>
+        public static string DollarsPerSecond(BigNumber value)
+        {
+            if (!value.IsNegative && value < 100)
+            {
+                double rounded = Math.Round(value.ToDouble(), 2, MidpointRounding.ToEven);
+                return "$" + rounded.ToString("0.##", CultureInfo.InvariantCulture) + "/s";
+            }
+            return Dollars(value) + "/s";
+        }
+
         /// <summary>Same notation as <see cref="Dollars"/> without the currency sign.</summary>
         public static string Abbreviate(BigNumber value)
         {
