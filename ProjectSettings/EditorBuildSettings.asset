@@ -4,6 +4,9 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/Creek.unity
+    guid: 42d4956e8b28afa498071351f7401fc4
   m_configObjects: {}
   m_UseUCBPForAssetBundles: 0
