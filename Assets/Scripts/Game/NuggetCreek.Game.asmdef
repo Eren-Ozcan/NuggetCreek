@@ -1,0 +1,17 @@
+{
+    "name": "NuggetCreek.Game",
+    "rootNamespace": "NuggetCreek.Game",
+    "references": [
+        "NuggetCreek.Core",
+        "UnityEngine.UI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
