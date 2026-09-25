@@ -95,6 +95,18 @@ namespace NuggetCreek.Core
         /// <summary>Manual catch bonus per vein level.</summary>
         public double VeinValuePerLevel = 0.10;
 
+        // --- Nugget collection (3.1.2) ---
+
+        /// <summary>Drop weight of each Nugget type by rarity (Common, Rare, Legendary). A creek's
+        /// five types (3 Common, 1 Rare, 1 Legendary) add up to 1.</summary>
+        public double[] NuggetRarityWeights = { 0.28, 0.13, 0.03 };
+
+        /// <summary>Manual catches of one type for each of its stars.</summary>
+        public int[] NuggetStarThresholds = { 1, 10, 40 };
+
+        /// <summary>Each collection star raises the prestige bonus by this fraction.</summary>
+        public double StarPrestigeBonus = 0.01;
+
         /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
         public double ActiveIdleRatio = 3.0;
 

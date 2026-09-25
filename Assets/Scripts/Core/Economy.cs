@@ -178,8 +178,34 @@ namespace NuggetCreek.Core
             return (long)Math.Floor(xp + 1e-9);
         }
 
-        /// <summary>Permanent multiplier = 1 + 0.02 * xp.</summary>
-        public double PrestigeMultiplier(long prospectingXp) => 1 + Config.PrestigeBonusPerXp * prospectingXp;
+        /// <summary>Permanent multiplier = 1 + 0.02 * xp * (1 + 0.01 * collection stars).</summary>
+        public double PrestigeMultiplier(long prospectingXp, int stars = 0) =>
+            1 + Config.PrestigeBonusPerXp * prospectingXp * (1 + Config.StarPrestigeBonus * Math.Max(0, stars));
+
+        // --- Nugget collection ---
+
+        /// <summary>Stars a Nugget type has after this many manual catches.</summary>
+        public int NuggetStars(int catches)
+        {
+            int stars = 0;
+            foreach (int threshold in Config.NuggetStarThresholds)
+                if (catches >= threshold)
+                    stars++;
+            return stars;
+        }
+
+        public int MaxStarsPerNugget => Config.NuggetStarThresholds.Length;
+
+        /// <summary>Catches needed for the next star, or null at max stars.</summary>
+        public int? NextStarAt(int catches)
+        {
+            foreach (int threshold in Config.NuggetStarThresholds)
+                if (catches < threshold)
+                    return threshold;
+            return null;
+        }
+
+        public double NuggetWeight(NuggetRarity rarity) => Config.NuggetRarityWeights[(int)rarity];
 
         // --- Amos and offline cap ---
 
