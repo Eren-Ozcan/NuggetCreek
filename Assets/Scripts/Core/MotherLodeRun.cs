@@ -10,6 +10,7 @@ namespace NuggetCreek.Core
     public sealed class MotherLodeRun
     {
         readonly EconomyConfig config;
+        readonly int maxCombo;
         int hitsTowardNext;
         double sinceHit;
 
@@ -22,9 +23,13 @@ namespace NuggetCreek.Core
 
         public bool IsOver => SecondsLeft <= 0;
 
-        public MotherLodeRun(EconomyConfig config, BigNumber incomePerSecond)
+        public int MaxCombo => maxCombo;
+
+        /// <param name="maxCombo">Combo ceiling; 0 uses the config default.</param>
+        public MotherLodeRun(EconomyConfig config, BigNumber incomePerSecond, int maxCombo = 0)
         {
             this.config = config ?? throw new ArgumentNullException(nameof(config));
+            this.maxCombo = maxCombo > 0 ? maxCombo : config.MotherLodeMaxCombo;
             IncomePerSecond = incomePerSecond;
             SecondsLeft = config.MotherLodeDurationSeconds;
         }
@@ -48,7 +53,7 @@ namespace NuggetCreek.Core
                 return;
             Hits++;
             sinceHit = 0;
-            if (Combo >= config.MotherLodeMaxCombo || ++hitsTowardNext < config.MotherLodeHitsPerCombo)
+            if (Combo >= maxCombo || ++hitsTowardNext < config.MotherLodeHitsPerCombo)
                 return;
             hitsTowardNext = 0;
             Combo++;

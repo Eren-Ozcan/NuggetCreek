@@ -123,6 +123,13 @@ namespace NuggetCreek.Core
         public double CollectibleLifetimeSeconds(StatSheet stats) =>
             Config.CollectibleLifetimeSeconds + stats[Stat.CollectibleLifetime];
 
+        /// <summary>Highest Mother Lode combo; the Guild's level 40 milestone raises it.</summary>
+        public int MotherLodeMaxCombo(StatSheet stats) =>
+            Config.MotherLodeMaxCombo + (int)Math.Round(stats[Stat.MotherLodeMaxCombo]);
+
+        /// <summary>Guild XP to go from level to level + 1.</summary>
+        public long GuildXpToNext(int level) => Config.GuildXpBase + (long)Config.GuildXpPerLevel * level;
+
         /// <summary>Collectibles between Mother Lodes after frequency bonuses.</summary>
         public int MotherLodeEveryCollectibles(StatSheet stats) =>
             (int)Math.Ceiling(Config.MotherLodeEveryCollectibles * stats.CostMultiplier(Stat.MotherLodeFrequency));
@@ -133,7 +140,7 @@ namespace NuggetCreek.Core
         /// </summary>
         public BigNumber MotherLodeReward(BigNumber incomePerSecond, int peakCombo, StatSheet stats)
         {
-            int maxCombo = Math.Max(2, Config.MotherLodeMaxCombo);
+            int maxCombo = Math.Max(2, MotherLodeMaxCombo(stats));
             double t = (Math.Max(1, Math.Min(peakCombo, maxCombo)) - 1) / (double)(maxCombo - 1);
             double seconds = Config.MotherLodeRewardMinSeconds + (Config.MotherLodeRewardMaxSeconds - Config.MotherLodeRewardMinSeconds) * t;
             return incomePerSecond * (seconds * stats.Multiplier(Stat.MotherLodeReward));
@@ -213,11 +220,17 @@ namespace NuggetCreek.Core
         public int AmosMaxLevel(int regionsUnlocked) =>
             Math.Min(Config.AmosMaxLevel, Config.AmosLevelsPerRegion * Math.Max(1, regionsUnlocked));
 
-        /// <summary>Offline cap in seconds. Level 0 means Amos has not joined: no idle, no offline.</summary>
-        public double OfflineCapSeconds(int amosLevel)
+        /// <summary>
+        /// Offline cap in seconds: Amos' hours plus Night Watch. Level 0 means Amos has not
+        /// joined: no idle, no offline.
+        /// </summary>
+        public double OfflineCapSeconds(int amosLevel, StatSheet stats = null)
         {
             int level = Math.Max(0, Math.Min(amosLevel, Config.AmosMaxLevel));
-            return level * Config.OfflineCapHoursPerAmosLevel * 3600;
+            if (level == 0)
+                return 0;
+            double extraHours = stats == null ? 0 : Math.Max(0, stats[Stat.OfflineCapHours]);
+            return (level * Config.OfflineCapHoursPerAmosLevel + extraHours) * 3600;
         }
 
         /// <summary>Dollar price to reach targetLevel (2..12); level 1 is the join cost.</summary>
