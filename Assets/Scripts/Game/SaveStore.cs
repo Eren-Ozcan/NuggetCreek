@@ -28,6 +28,11 @@ namespace NuggetCreek.Game
             public int amosLevel;
             public long manualCollected;
             public long prospectingXp;
+            public int gems;
+            public int[] crewLevels;
+            public int[] crewCandidates;
+            public double candidateSecondsLeft;
+            public int goalIndex;
             public double lastSeenUtc;
             public double lastDeviceUtc;
             public double lastMonotonicSeconds;
@@ -59,6 +64,11 @@ namespace NuggetCreek.Game
                 AmosLevel = data.amosLevel,
                 ManualCollected = data.manualCollected,
                 ProspectingXp = data.prospectingXp,
+                Gems = data.gems,
+                CrewLevels = data.crewLevels,
+                CrewCandidates = data.crewCandidates,
+                CandidateSecondsLeft = data.candidateSecondsLeft,
+                GoalIndex = data.goalIndex,
                 LastSeenUtc = data.lastSeenUtc,
                 LastDeviceUtc = data.lastDeviceUtc,
                 LastMonotonicSeconds = data.lastMonotonicSeconds,
@@ -81,6 +91,11 @@ namespace NuggetCreek.Game
                 amosLevel = progress.AmosLevel,
                 manualCollected = progress.ManualCollected,
                 prospectingXp = progress.ProspectingXp,
+                gems = progress.Gems,
+                crewLevels = progress.CrewLevels,
+                crewCandidates = progress.CrewCandidates,
+                candidateSecondsLeft = progress.CandidateSecondsLeft,
+                goalIndex = progress.GoalIndex,
                 lastSeenUtc = progress.LastSeenUtc,
                 lastDeviceUtc = progress.LastDeviceUtc,
                 lastMonotonicSeconds = progress.LastMonotonicSeconds,
