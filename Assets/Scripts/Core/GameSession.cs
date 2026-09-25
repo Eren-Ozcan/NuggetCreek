@@ -406,7 +406,6 @@ namespace NuggetCreek.Core
             Progress.PlaySeconds += deltaSeconds;
             Progress.SecondsSinceMotherLode += deltaSeconds;
             TickChest(deltaSeconds);
-            SampleIncome(deltaSeconds);
         }
 
         /// <summary>Dollars per second right now from swiping and the crew together.</summary>

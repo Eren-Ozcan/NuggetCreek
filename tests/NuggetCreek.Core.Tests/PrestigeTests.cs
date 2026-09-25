@@ -77,27 +77,52 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void SuggestionNeedsEnoughXpAndStalledIncome()
+        public void SuggestionWaitsForTheWall()
         {
-            GameSession session = NewSession(new PlayerProgress { TotalEarned = 1e10, AmosLevel = 1 });
-            Assert.That(session.ClaimXp, Is.GreaterThanOrEqualTo(25));
-            for (int minute = 0; minute < 5; minute++)
-                session.TickPlay(60);
-            Assert.That(session.RebirthSuggested, Is.False, "needs five minutes of samples");
-            session.TickPlay(60);
-            Assert.That(session.RebirthSuggested, Is.True, "flat income for five minutes");
+            // $10B lifetime in Nugget Creek: 63 XP would make x2.26, and Pine Hollow is cheap.
+            var progress = new PlayerProgress { TotalEarned = 1e10, AmosLevel = 1, ManualCollected = 100 };
+            GameSession session = NewSession(progress);
+            Assert.That(session.PrestigeMultiplierAfterRebirth, Is.GreaterThan(2));
+            Assert.That(session.HoursToNextTarget, Is.LessThan(48));
+            Assert.That(session.RebirthSuggested, Is.False, "the next creek is close");
 
-            session.Progress.UpgradeLevels[0] = 10; // income jumps
-            session.RebuildStats();
+            // Everything bought: nothing left but a new claim.
+            progress.RegionsUnlocked = config.RegionCount;
+            progress.RegionIndex = config.RegionCount - 1;
+            progress.TierIndex = config.TierCount - 1;
+            Assert.That(session.HoursToNextTarget, Is.EqualTo(double.PositiveInfinity));
+            Assert.That(session.RebirthSuggested, Is.True);
+        }
+
+        [Test]
+        public void SuggestionNeedsTheClaimToDoubleIncome()
+        {
+            var progress = new PlayerProgress { TotalEarned = 1e10, AmosLevel = 1, ProspectingXp = 100 };
+            progress.RegionsUnlocked = config.RegionCount;
+            progress.RegionIndex = config.RegionCount - 1;
+            progress.TierIndex = config.TierCount - 1;
+            GameSession session = NewSession(progress);
+            // x3 now, x4.26 after: not worth a restart yet.
+            Assert.That(session.PrestigeMultiplierAfterRebirth, Is.LessThan(2 * session.PrestigeMultiplier));
             Assert.That(session.RebirthSuggested, Is.False);
+        }
+
+        [Test]
+        public void HoursToNextTargetUseATypicalDay()
+        {
+            var progress = new PlayerProgress { AmosLevel = 1, ManualCollected = 100 };
+            GameSession session = NewSession(progress);
+            // 10 h away with a 1 h cap: 1 h at the full rate, 9 h at the trickle.
+            BigNumber perDay = session.IncomePerSecond * (28 * 60) + session.OfflineRate * (3600 + 0.17 * 9 * 3600);
+            double expected = (session.NextRegionCost.Value / perDay).ToDouble() * 24;
+            Assert.That(session.HoursToNextTarget, Is.EqualTo(expected).Within(1e-9));
         }
 
         [Test]
         public void NoSuggestionForASmallClaim()
         {
             GameSession session = NewSession(new PlayerProgress { TotalEarned = 1e8, AmosLevel = 1 });
-            for (int minute = 0; minute < 10; minute++)
-                session.TickPlay(60);
+            Assert.That(session.ClaimXp, Is.LessThan(25));
             Assert.That(session.RebirthSuggested, Is.False);
         }
 

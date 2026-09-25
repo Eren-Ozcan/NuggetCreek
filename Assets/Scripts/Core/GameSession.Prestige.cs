@@ -47,53 +47,43 @@ namespace NuggetCreek.Core
             Progress.RegionsUnlocked = 1;
             Progress.TierIndex = 0;
             Array.Clear(Progress.UpgradeLevels, 0, Progress.UpgradeLevels.Length);
-            incomeSamples = null;
             RebuildStats();
             return true;
         }
 
-        // Income once a minute over the suggestion window, oldest first. Not saved.
-        BigNumber[] incomeSamples;
-        int sampleCount;
-        double sinceSample;
-
-        const double SampleEverySeconds = 60;
-
-        void SampleIncome(double deltaSeconds)
-        {
-            int size = (int)Math.Round(Config.RebirthSuggestWindowSeconds / SampleEverySeconds) + 1;
-            if (incomeSamples == null || incomeSamples.Length != size)
-            {
-                incomeSamples = new BigNumber[size];
-                sampleCount = 0;
-                sinceSample = SampleEverySeconds;
-            }
-            sinceSample += deltaSeconds;
-            if (sinceSample < SampleEverySeconds)
-                return;
-            sinceSample = 0;
-            if (sampleCount == size)
-            {
-                Array.Copy(incomeSamples, 1, incomeSamples, 0, size - 1);
-                sampleCount--;
-            }
-            incomeSamples[sampleCount++] = IncomePerSecond;
-        }
-
         /// <summary>
-        /// True when a new claim pays enough and income has stalled: grew less than
-        /// RebirthSuggestGrowth over the last RebirthSuggestWindowSeconds of play.
+        /// Hours a typical day of play (design doc 5.0.4: 28 min active, 10 h away) needs to
+        /// afford the next creek, or the next tier once every creek is open. Infinity when
+        /// nothing is left to buy.
         /// </summary>
-        public bool RebirthSuggested
+        public double HoursToNextTarget
         {
             get
             {
-                if (ClaimXp < Config.RebirthSuggestMinXp || incomeSamples == null || sampleCount < incomeSamples.Length)
-                    return false;
-                BigNumber oldest = incomeSamples[0];
-                return IncomePerSecond < oldest * (1 + Config.RebirthSuggestGrowth);
+                BigNumber? cost = HasNextRegion ? NextRegionCost : HasNextTier ? NextTierCost : null;
+                if (!cost.HasValue)
+                    return double.PositiveInfinity;
+                if (Progress.Dollars >= cost.Value)
+                    return 0;
+                double away = Config.WallAwaySecondsPerDay;
+                double cap = OfflineCapSeconds;
+                double paidAway = Math.Min(away, cap) + Math.Max(0, away - cap) * Config.OfflinePastCapRate;
+                BigNumber perDay = IncomePerSecond * Config.WallActiveSecondsPerDay + OfflineRate * paidAway;
+                if (perDay.IsZero)
+                    return double.PositiveInfinity;
+                return ((cost.Value - Progress.Dollars) / perDay).ToDouble() * 24;
             }
         }
+
+        /// <summary>
+        /// The wall of design doc 5.0.5: the next target is more than RebirthWallHours of
+        /// typical play away and a new claim would at least multiply income by
+        /// RebirthSuggestGain.
+        /// </summary>
+        public bool RebirthSuggested =>
+            ClaimXp >= Config.RebirthSuggestMinXp
+            && PrestigeMultiplierAfterRebirth >= PrestigeMultiplier * Config.RebirthSuggestGain
+            && HoursToNextTarget > Config.RebirthWallHours;
 
         // --- Guild ---
 

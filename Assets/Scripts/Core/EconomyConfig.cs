@@ -161,10 +161,16 @@ namespace NuggetCreek.Core
         /// <summary>The game suggests a new claim once it would pay at least this much Prospecting XP ...</summary>
         public long RebirthSuggestMinXp = 25;
 
-        /// <summary>... and income grew less than this over the last RebirthSuggestWindowSeconds of play.</summary>
-        public double RebirthSuggestGrowth = 0.10;
+        /// <summary>... the claim at least multiplies income by this much ...</summary>
+        public double RebirthSuggestGain = 2;
 
-        public double RebirthSuggestWindowSeconds = 5 * 60;
+        /// <summary>... and the next target is more than this many hours of typical play away (5.0.5 wall).</summary>
+        public double RebirthWallHours = 48;
+
+        /// <summary>A typical day for the wall estimate: seconds of active play and seconds away (5.0.4).</summary>
+        public double WallActiveSecondsPerDay = 28 * 60;
+
+        public double WallAwaySecondsPerDay = 10 * 3600;
 
         public int GuildMaxLevel = 100;
 
