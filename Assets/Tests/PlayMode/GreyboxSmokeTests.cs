@@ -26,6 +26,9 @@ namespace NuggetCreek.PlayModeTests
             SaveStore.Delete();
             yield return SceneManager.LoadSceneAsync("Creek");
             yield return null;
+            // Most tests drive later systems; the onboarding locks have their own test.
+            Click("Skip intro");
+            yield return null;
         }
 
         [UnityTearDown]
@@ -33,6 +36,32 @@ namespace NuggetCreek.PlayModeTests
         {
             SaveStore.Delete();
             yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator FreshGameLocksFeaturesAndPeteTalks()
+        {
+            // A reload drops the setup's skip (it is not saved).
+            yield return SceneManager.LoadSceneAsync("Creek");
+            yield return null;
+            yield return null;
+
+            Assert.That(Find("UpgradesButton").GetComponent<Button>().interactable, Is.False);
+            Assert.That(LabelIn("UpgradesButton", "Label").text, Is.EqualTo("Upgrades\nswipe 15 by hand"));
+            Assert.That(LabelIn("MapButton", "Label").text, Is.EqualTo("Map\nhire Amos first"));
+            Assert.That(LabelIn("ShopButton", "Label").text, Is.EqualTo("Shop\nreach Pine Hollow"));
+            Assert.That(Find("GuildButton").GetComponent<Button>().interactable, Is.False);
+            StringAssert.StartsWith("Old Pete: Something's glinting", LabelIn("Pete", "Label").text);
+            yield return Shot("0_onboarding");
+
+            Click("Pete");
+            yield return null;
+            Assert.That(IsActive("Pete"), Is.False, "each line shows once");
+
+            Click("+$1K");
+            yield return null;
+            yield return null;
+            StringAssert.StartsWith("Old Pete: Amos is looking for work", LabelIn("Pete", "Label").text);
         }
 
         [UnityTest]
@@ -100,7 +129,8 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(IsActive("CandidateModal"), Is.True);
             StringAssert.StartsWith("Pick one. The offer ends in 10:00", LabelIn("CandidateModal", "Timer").text);
             Button hire = Find("CandidateModal").GetComponentsInChildren<Button>().First(b => b.name == "Hire");
-            Assert.That(hire.interactable, Is.False, "no Gems yet");
+            Assert.That(hire.interactable, Is.True, "the tutorial pays for the first hire");
+            Assert.That(hire.GetComponentInChildren<Text>().text, Is.EqualTo("Hire  Free"));
 
             Click("Later");
             yield return null;
@@ -115,7 +145,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             Assert.That(IsActive("CandidateModal"), Is.False);
             Assert.That(IsActive("CrewChip"), Is.False);
-            Assert.That(Label("Gems").text, Is.EqualTo("40 Gems"));
+            Assert.That(Label("Gems").text, Is.EqualTo("50 Gems"), "the free hire costs nothing");
 
             Click("UpgradesButton");
             yield return null;
