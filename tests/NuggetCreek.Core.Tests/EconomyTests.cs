@@ -45,7 +45,25 @@ namespace NuggetCreek.Core.Tests
         {
             StatSheet stats = Sheet((Stat.DustValue, 0.5), (Stat.NuggetChance, 0.02), (Stat.NuggetValue, 0.4),
                 (Stat.DoubleCatch, 0.03), (Stat.AllIncome, 0.1));
-            AssertClose(1572.98922, economy.CollectValue(2, 1, stats, 1.5));
+            AssertClose(1716.8892840000003, economy.CollectValue(2, 1, stats, 1.5));
+        }
+
+        [Test]
+        public void CollectValue_WithCollectionLayers_MatchesPython()
+        {
+            StatSheet stats = Sheet((Stat.DustValue, 0.5), (Stat.NuggetChance, 0.02), (Stat.NuggetValue, 0.4),
+                (Stat.DoubleCatch, 0.03), (Stat.AllIncome, 0.1), (Stat.RichNuggetChance, 0.05),
+                (Stat.RichNuggetValue, 0.5), (Stat.GiantNuggetChance, 0.02), (Stat.GiantNuggetValue, 0.8),
+                (Stat.CritChance, 0.1), (Stat.CritValue, 0.5));
+            AssertClose(2576.3324162400004, economy.CollectValue(2, 1, stats, 1.5));
+        }
+
+        [Test]
+        public void ActiveRate_WithCriticalCatches_MatchesPython()
+        {
+            StatSheet stats = Sheet((Stat.DustValue, 0.5), (Stat.NuggetChance, 0.02), (Stat.CritChance, 0.1),
+                (Stat.CritValue, 0.5), (Stat.GiantNuggetChance, 0.02));
+            AssertClose(1634.6162880000002, economy.ActiveRate(2, 1, stats, 1.5, 0.8));
         }
 
         [Test]
@@ -64,32 +82,32 @@ namespace NuggetCreek.Core.Tests
         public void ActiveAndIdleRate_MatchPython()
         {
             StatSheet s = PacingModel.TypicalStats(3, 4);
-            AssertClose(436233.6000000002, economy.ActiveRate(3, 3, s, 2.5, 0.8));
-            AssertClose(290822.40000000014, economy.IdleRate(3, 3, s, 2.5, 0.8));
+            AssertClose(477290.88000000006, economy.ActiveRate(3, 3, s, 2.5, 0.8));
+            AssertClose(318193.92000000004, economy.IdleRate(3, 3, s, 2.5, 0.8));
         }
 
         [Test]
         public void FirstSessionIncome_MatchesPython()
         {
-            AssertClose(1518.75, pacing.FirstSessionIncome());
+            AssertClose(1608.7499999999995, pacing.FirstSessionIncome());
         }
 
-        [TestCase(0, 44323.20000000001)]
-        [TestCase(1, 2678054.4)]
-        [TestCase(2, 117940536.00000004)]
-        [TestCase(3, 11202478848.000006)]
-        [TestCase(4, 1644787482624.001)]
-        [TestCase(5, 211133777817600.1)]
+        [TestCase(0, 46949.76000000001)]
+        [TestCase(1, 2836753.92)]
+        [TestCase(2, 124929604.80000001)]
+        [TestCase(3, 12256829798.400002)]
+        [TestCase(4, 1887709941596.161)]
+        [TestCase(5, 245294748610560.1)]
         public void DayIncome_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.DayIncome(region));
         }
 
-        [TestCase(1, 911.25)]
-        [TestCase(2, 948031.2575999999)]
-        [TestCase(3, 169834371.84000006)]
-        [TestCase(4, 33607436544.000015)]
-        [TestCase(5, 11842469874892.807)]
+        [TestCase(1, 965.2499999999997)]
+        [TestCase(2, 1004210.8876799999)]
+        [TestCase(3, 179898630.91200003)]
+        [TestCase(4, 36770489395.200005)]
+        [TestCase(5, 13591511579492.357)]
         public void SolvedRegionCost_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.SolveRegionCost(region));
