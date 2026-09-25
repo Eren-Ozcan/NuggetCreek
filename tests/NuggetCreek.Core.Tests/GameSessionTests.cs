@@ -56,8 +56,69 @@ namespace NuggetCreek.Core.Tests
                 Assert.That(session.RollKind(0), Is.EqualTo(CollectibleKind.GoldDust));
                 session.Collect(CollectibleKind.GoldDust, false);
             }
-            Assert.That(session.RollKind(0), Is.EqualTo(CollectibleKind.Nugget));
+            Assert.That(session.RollKind(0.01), Is.EqualTo(CollectibleKind.Nugget));
             Assert.That(session.RollKind(0.05), Is.EqualTo(CollectibleKind.GoldDust));
+        }
+
+        [Test]
+        public void OneRollSplitsNuggetsIntoGiantRichAndPlain()
+        {
+            GameSession session = NewSession();
+            session.Progress.ManualCollected = 100;
+            session.Stats.Add(Stat.GiantNuggetChance, 0.2);
+
+            // Nugget 5%: Giant takes the first 20% of it, Rich 10% of the rest.
+            Assert.That(session.RollKind(0.0099), Is.EqualTo(CollectibleKind.GiantNugget));
+            Assert.That(session.RollKind(0.0101), Is.EqualTo(CollectibleKind.RichNugget));
+            Assert.That(session.RollKind(0.0139), Is.EqualTo(CollectibleKind.RichNugget));
+            Assert.That(session.RollKind(0.0141), Is.EqualTo(CollectibleKind.Nugget));
+            Assert.That(session.RollKind(0.0501), Is.EqualTo(CollectibleKind.GoldDust));
+        }
+
+        [Test]
+        public void NuggetLayersPayTheirMultiples()
+        {
+            GameSession session = NewSession();
+            Assert.That(session.CatchValue(CollectibleKind.Nugget, false).ToDouble(), Is.EqualTo(8).Within(1e-12));
+            Assert.That(session.CatchValue(CollectibleKind.RichNugget, false).ToDouble(), Is.EqualTo(24).Within(1e-12));
+            Assert.That(session.CatchValue(CollectibleKind.GiantNugget, false).ToDouble(), Is.EqualTo(200).Within(1e-12));
+            Assert.That(session.CatchValue(CollectibleKind.GoldDust, true, true).ToDouble(), Is.EqualTo(6).Within(1e-12));
+        }
+
+        [Test]
+        public void LaunchDefaultsKeepCriticalGiantAndVeinClosed()
+        {
+            GameSession session = NewSession();
+            Assert.That(session.RollCritical(0), Is.False);
+            Assert.That(session.VeinOpen, Is.False);
+            session.Progress.ManualCollected = 100;
+            Assert.That(session.RollKind(0), Is.EqualTo(CollectibleKind.RichNugget));
+            for (int i = 0; i < 50; i++)
+                session.Collect(CollectibleKind.GoldDust, false);
+            Assert.That(session.VeinLevel, Is.EqualTo(0));
+            Assert.That(session.VeinStreak, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void VeinClimbsWithCatchesInARowAndBreaksOnALostCollectible()
+        {
+            GameSession session = NewSession();
+            session.Stats.Add(Stat.VeinMaxLevel, 2);
+            session.Stats.Add(Stat.VeinCatchesPerLevel, -4);
+            Assert.That(session.VeinCatchesPerLevel, Is.EqualTo(16));
+
+            for (int i = 0; i < 16; i++)
+                session.Collect(CollectibleKind.GoldDust, false);
+            Assert.That(session.VeinLevel, Is.EqualTo(1));
+            Assert.That(session.CatchValue(CollectibleKind.GoldDust, false).ToDouble(), Is.EqualTo(1.1).Within(1e-12));
+
+            for (int i = 0; i < 40; i++)
+                session.Collect(CollectibleKind.GoldDust, false);
+            Assert.That(session.VeinLevel, Is.EqualTo(2), "capped at the max level");
+
+            Assert.That(session.LoseCollectible(), Is.True);
+            Assert.That(session.VeinLevel, Is.EqualTo(0));
+            Assert.That(session.LoseCollectible(), Is.False);
         }
 
         [Test]
@@ -71,12 +132,28 @@ namespace NuggetCreek.Core.Tests
             progress.ManualCollected = 100;
             var session = new GameSession(economy, progress);
 
+            session.Stats.Add(Stat.GiantNuggetChance, 0.1);
+            session.Stats.Add(Stat.CritChance, 0.1);
+            session.Stats.Add(Stat.CritValue, 0.5);
+
             double p = economy.NuggetChance(session.Stats);
+            double g = economy.GiantNuggetChance(session.Stats);
+            double r = economy.RichNuggetChance(session.Stats);
             double d = session.Stats[Stat.DoubleCatch];
-            BigNumber average = session.CatchValue(CollectibleKind.GoldDust, false) * ((1 - p) * (1 - d))
-                + session.CatchValue(CollectibleKind.GoldDust, true) * ((1 - p) * d)
-                + session.CatchValue(CollectibleKind.Nugget, false) * (p * (1 - d))
-                + session.CatchValue(CollectibleKind.Nugget, true) * (p * d);
+            double c = economy.CritChance(session.Stats);
+            var kinds = new[]
+            {
+                (CollectibleKind.GoldDust, 1 - p),
+                (CollectibleKind.GiantNugget, p * g),
+                (CollectibleKind.RichNugget, p * (1 - g) * r),
+                (CollectibleKind.Nugget, p * (1 - g) * (1 - r)),
+            };
+            BigNumber average = BigNumber.Zero;
+            foreach (var (kind, chance) in kinds)
+                foreach (bool doubleCatch in new[] { false, true })
+                    foreach (bool critical in new[] { false, true })
+                        average += session.CatchValue(kind, doubleCatch, critical)
+                            * (chance * (doubleCatch ? d : 1 - d) * (critical ? c : 1 - c));
 
             AssertClose(economy.ActiveRate(2, 2, session.Stats, 1), average * session.SpawnRate);
         }
@@ -136,7 +213,7 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.RegionName, Is.EqualTo("Pine Hollow"));
             Assert.That(session.IsNextTierUnlocked, Is.True);
             Assert.That(session.BuyNextTier(), Is.True);
-            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 910 - 230).Within(1e-6));
+            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 970 - 240).Within(1e-6));
             Assert.That(session.IsUpgradeUnlocked(UpgradeIndex("steel_sieve")), Is.True);
             Assert.That(session.IsNextTierUnlocked, Is.False);
         }
@@ -172,7 +249,7 @@ namespace NuggetCreek.Core.Tests
 
             // Region 1 idle = 1.2 spawns/s * $1.35 expected catch / 3.
             BigNumber expected = economy.IdleRate(0, 0, session.Stats, 1);
-            Assert.That(expected.ToDouble(), Is.EqualTo(1.2 * 1.35 / 3).Within(1e-12));
+            Assert.That(expected.ToDouble(), Is.EqualTo(1.2 * 1.43 / 3).Within(1e-12));
             AssertClose(expected * 10, session.TickIdle(10));
         }
 
@@ -188,7 +265,7 @@ namespace NuggetCreek.Core.Tests
 
             session.UnlockNextRegion();
             Assert.That(session.AmosWaitsForRegion, Is.False);
-            AssertClose(180e3, session.AmosNextCost.Value);
+            AssertClose(190e3, session.AmosNextCost.Value);
         }
 
         [Test]
