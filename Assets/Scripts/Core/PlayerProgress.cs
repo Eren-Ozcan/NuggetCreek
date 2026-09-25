@@ -98,6 +98,9 @@ namespace NuggetCreek.Core
         public bool FreeWashUsed;
         public int AdWashes;
 
+        /// <summary>Goal bar ads watched this game day.</summary>
+        public int GoalAds;
+
         public double BoostMultiplier = 1;
 
         /// <summary>Trusted UTC second the income boost ends.</summary>
@@ -223,6 +226,7 @@ namespace NuggetCreek.Core
             StreakIndex = Math.Max(0, Math.Min(StreakIndex, 29));
             RescueStreakIndex = Math.Max(-1, Math.Min(RescueStreakIndex, 29));
             AdWashes = Math.Max(0, AdWashes);
+            GoalAds = Math.Max(0, GoalAds);
             BoostMultiplier = Math.Max(1, BoostMultiplier);
             GuildLevel = Math.Max(0, GuildLevel);
             GuildXp = Math.Max(0, GuildXp);
