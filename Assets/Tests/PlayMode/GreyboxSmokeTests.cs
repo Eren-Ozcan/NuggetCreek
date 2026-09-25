@@ -3,6 +3,7 @@ using System.Collections;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using NuggetCreek.Core;
 using NuggetCreek.Game;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -166,6 +167,33 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(IsActive("Vein"), Is.True);
             StringAssert.StartsWith("VEIN x1.0  0/20", Label("Vein").text);
             yield return Shot("10_collection_layers");
+        }
+
+        [UnityTest]
+        public IEnumerator CollectionShowsSavedStars()
+        {
+            StringAssert.StartsWith("Nuggets  0/90", LabelIn("CollectionButton", "Label").text);
+            Click("CollectionButton");
+            yield return null;
+            Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("???"));
+            Click("Close");
+
+            // Round-trip catches through the signed save, then reload the scene on it.
+            var progress = new PlayerProgress();
+            progress.NuggetCatches[0] = 12;
+            progress.NuggetCatches[4] = 1;
+            SaveStore.Save(progress);
+            yield return SceneManager.LoadSceneAsync("Creek");
+            yield return null;
+
+            StringAssert.StartsWith("Nuggets  3/90", LabelIn("CollectionButton", "Label").text);
+            Click("CollectionButton");
+            yield return null;
+            Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("Pebble  [**-]"));
+            StringAssert.Contains("12/40 to next star", LabelIn("pebble", "Detail").text);
+            Assert.That(LabelIn("creek_heart", "Title").text, Is.EqualTo("Creek Heart  [*--]"));
+            Assert.That(LabelIn("button", "Title").text, Is.EqualTo("???"));
+            yield return Shot("11_collection");
         }
 
         [UnityTest]
