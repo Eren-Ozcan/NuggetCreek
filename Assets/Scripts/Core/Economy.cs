@@ -77,6 +77,18 @@ namespace NuggetCreek.Core
         public int MotherLodeEveryCollectibles(StatSheet stats) =>
             (int)Math.Ceiling(Config.MotherLodeEveryCollectibles * stats.CostMultiplier(Stat.MotherLodeFrequency));
 
+        /// <summary>
+        /// Mother Lode payout: 60 s of income at combo x1 rising linearly to 90 s at the max
+        /// combo (design doc 3.4), then the Mother Lode reward bonus (Vein Detector, Tobias).
+        /// </summary>
+        public BigNumber MotherLodeReward(BigNumber incomePerSecond, int peakCombo, StatSheet stats)
+        {
+            int maxCombo = Math.Max(2, Config.MotherLodeMaxCombo);
+            double t = (Math.Max(1, Math.Min(peakCombo, maxCombo)) - 1) / (double)(maxCombo - 1);
+            double seconds = Config.MotherLodeRewardMinSeconds + (Config.MotherLodeRewardMaxSeconds - Config.MotherLodeRewardMinSeconds) * t;
+            return incomePerSecond * (seconds * stats.Multiplier(Stat.MotherLodeReward));
+        }
+
         // --- Prices ---
 
         /// <summary>Price of an upgrade level (1-based): tier base * growth^(level-1).</summary>

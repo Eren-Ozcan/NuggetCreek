@@ -39,6 +39,30 @@ namespace NuggetCreek.Core
 
         public double MotherLodeEverySeconds = 10 * 60;
 
+        /// <summary>No Mother Lode before this much play time, so it lands after Pine Hollow and the first chest (design doc 10).</summary>
+        public double MotherLodeFirstAfterSeconds = 25 * 60;
+
+        public double MotherLodeDurationSeconds = 20;
+
+        /// <summary>Hits that raise the combo by one step, x1 up to MotherLodeMaxCombo.</summary>
+        public int MotherLodeHitsPerCombo = 4;
+
+        public int MotherLodeMaxCombo = 10;
+
+        /// <summary>A pause longer than this drops the combo back to x1.</summary>
+        public double MotherLodeComboHoldSeconds = 1.0;
+
+        /// <summary>Reward in seconds of current income at combo x1 and at the max combo.</summary>
+        public double MotherLodeRewardMinSeconds = 60;
+
+        public double MotherLodeRewardMaxSeconds = 90;
+
+        /// <summary>Gems per finished Mother Lode (5.0.6 budgets ~5 a day).</summary>
+        public int MotherLodeGemReward = 1;
+
+        /// <summary>Gem price to call a Mother Lode at once (8.2c).</summary>
+        public int MotherLodeSummonGems = 5;
+
         /// <summary>A Nugget is worth this many Gold Dust of the same region.</summary>
         public double NuggetValueMultiplier = 8.0;
 
