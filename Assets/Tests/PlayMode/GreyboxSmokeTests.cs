@@ -229,6 +229,35 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator StakingANewClaimResetsTheCreeks()
+        {
+            Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild Lv 0"));
+            Click("+$1M");
+            Click("MapButton");
+            yield return null;
+            ClickIn("Pine Hollow", "Action");
+            yield return null;
+
+            Click("GuildButton");
+            yield return null;
+            Assert.That(IsActive("Guild"), Is.True);
+            StringAssert.Contains("Prospecting XP this claim: +1", Label("ClaimText").text);
+            Assert.That(LabelIn("PerkPoints", "PerkPoints").text, Is.EqualTo("Perk Points: 0"));
+            Assert.That(IsActive("night_watch"), Is.True);
+            yield return Shot("14_guild");
+
+            Click("Rebirth");
+            yield return null;
+            Assert.That(LabelIn("Rebirth", "Label").text, Is.EqualTo("Tap again to confirm"));
+            Click("Rebirth");
+            yield return null;
+
+            Assert.That(IsActive("Guild"), Is.False);
+            Assert.That(Label("Dollars").text, Is.EqualTo("$0"));
+            StringAssert.StartsWith("Nugget Creek", Label("Status").text);
+        }
+
+        [UnityTest]
         public IEnumerator OfflineReturnPaysAfterTrustedTime()
         {
             Click("+$1K");
