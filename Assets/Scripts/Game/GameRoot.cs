@@ -8,7 +8,8 @@ namespace NuggetCreek.Game
 {
     /// <summary>
     /// Greybox entry point: owns the session, builds the UI in code, runs idle income,
-    /// saves, and handles the offline return (design doc 3.2, 3.3, 13.1).
+    /// goals and crew candidates, saves, and handles the offline return (design doc 3.2,
+    /// 3.3, 6.3, 13.1).
     /// </summary>
     public sealed class GameRoot : MonoBehaviour
     {
@@ -24,13 +25,18 @@ namespace NuggetCreek.Game
         UpgradesPanel upgrades;
         MapPanel map;
         OfflineModal offlineModal;
+        CandidateModal candidateModal;
 
         Text dollarsLabel;
+        Text gemsLabel;
+        Button goalButton;
         Text statusLabel;
         Text goalLabel;
         Text mapLabel;
         Text upgradesLabel;
         Button lateDoubleChip;
+        Button crewChip;
+        Text crewChipLabel;
 
         float autosaveIn = AutosaveSeconds;
         bool returnPending;
@@ -65,7 +71,8 @@ namespace NuggetCreek.Game
             ads.Tick(Time.unscaledDeltaTime);
 
             BigNumber idle = session.TickIdle(dt);
-            creek.InputEnabled = !upgrades.IsOpen && !map.IsOpen && !offlineModal.IsOpen;
+            session.TickCandidates(dt);
+            creek.InputEnabled = !upgrades.IsOpen && !map.IsOpen && !offlineModal.IsOpen && !candidateModal.IsOpen;
             creek.Tick(dt, idle);
             offlineModal.Tick(Time.unscaledDeltaTime);
 
@@ -75,6 +82,7 @@ namespace NuggetCreek.Game
             RefreshHud();
             upgrades.Refresh();
             map.Refresh();
+            candidateModal.Refresh();
 
             autosaveIn -= Time.unscaledDeltaTime;
             if (autosaveIn <= 0)
@@ -173,10 +181,13 @@ namespace NuggetCreek.Game
                 .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -topHeight), Vector2.zero);
             dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
             dollarsLabel.rectTransform.Place(new Vector2(0, 0.45f), Vector2.one, Vector2.zero, new Vector2(0, -20));
+            gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.UpperLeft, Palette.Gem, FontStyle.Bold);
+            gemsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -80), new Vector2(0, -24));
             statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
             statusLabel.rectTransform.Place(new Vector2(0, 0.22f), new Vector2(1, 0.45f));
-            goalLabel = Ui.Label("Goal", top, "", 34, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
-            goalLabel.rectTransform.Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(0, 10), Vector2.zero);
+            goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
+            goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(20, 6), new Vector2(-20, -2));
+            goalLabel.name = "Goal";
 
             RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
                 .Place(Vector2.zero, new Vector2(1, 0), Vector2.zero, new Vector2(0, bottomHeight));
@@ -189,6 +200,10 @@ namespace NuggetCreek.Game
             lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, 100), new Vector2(0, -topHeight - 20));
             lateDoubleChip.SetActive(false);
 
+            crewChip = Ui.Button("CrewChip", root, "", Palette.GemButton, () => candidateModal.Open(), out crewChipLabel, 34);
+            crewChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, 100), new Vector2(20, -topHeight - 20));
+            crewChip.SetActive(false);
+
             // Before the panels so full-screen modals cover them.
             if (Debug.isDebugBuild)
                 BuildDebugButtons(root, topHeight);
@@ -196,6 +211,8 @@ namespace NuggetCreek.Game
             upgrades = new UpgradesPanel(session, root);
             upgrades.Closed += () => offlineModal.Unhide();
             map = new MapPanel(session, root);
+            // A creek unlock may bring crew candidates (design doc 6.3); show them right away.
+            map.RegionChanged += () => candidateModal.Open();
             offlineModal = new OfflineModal(session, ads, root);
             offlineModal.UpgradeAmosRequested += () =>
             {
@@ -208,6 +225,8 @@ namespace NuggetCreek.Game
                 ads.Load();
             };
             offlineModal.Claimed += Save;
+            candidateModal = new CandidateModal(session, root);
+            candidateModal.Hired += Save;
         }
 
         void OpenUpgrades(bool focusAmos)
@@ -228,7 +247,8 @@ namespace NuggetCreek.Game
             dollarsLabel.SetText(NumberFormat.Dollars(progress.Dollars));
             string idle = session.IdleActive ? $"Amos +{NumberFormat.DollarsPerSecond(session.IdleRate)}" : "No crew yet";
             statusLabel.SetText($"{session.RegionName}  |  {idle}");
-            goalLabel.SetText(NextGoal());
+            gemsLabel.SetText(Effects.Gems(progress.Gems));
+            RefreshGoal();
 
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
@@ -239,9 +259,50 @@ namespace NuggetCreek.Game
             if (ads.IsLoaded)
                 lateDouble.NotifyAdReady(now);
             lateDoubleChip.SetActive(lateDouble.IsVisible(now) && ads.IsLoaded && !offlineModal.IsOpen);
+
+            crewChip.SetActive(session.HasCandidates && !candidateModal.IsOpen);
+            if (session.HasCandidates)
+                crewChipLabel.SetText($"New crew  {CandidateModal.Clock(progress.CandidateSecondsLeft)}");
         }
 
-        string NextGoal()
+        // --- Goals ---
+
+        void RefreshGoal()
+        {
+            GoalDefinition goal = session.CurrentGoal;
+            bool done = session.IsCurrentGoalComplete;
+            if (goalButton.interactable != done)
+                goalButton.interactable = done;
+            goalButton.GetComponent<Image>().color = done ? Palette.GemButton : Color.clear;
+            if (goal == null)
+                goalLabel.SetText(NextStep());
+            else if (done)
+                goalLabel.SetText($"Goal done! Tap to claim {Effects.Gems(session.CurrentGoalReward)}");
+            else
+                goalLabel.SetText($"Goal: {GoalText(goal)}  {session.GoalProgress(goal)}/{goal.Target}  (+{Effects.Gems(session.CurrentGoalReward)})");
+        }
+
+        void ClaimGoal()
+        {
+            if (session.ClaimGoal())
+                Save();
+        }
+
+        static string GoalText(GoalDefinition goal)
+        {
+            switch (goal.Kind)
+            {
+                case GoalKind.ManualCollected: return $"swipe up {goal.Target} Gold Dust by hand";
+                case GoalKind.UpgradeLevels: return $"buy {goal.Target} upgrade levels";
+                case GoalKind.AmosLevel: return goal.Target == 1 ? "hire Amos" : $"train Amos to Lv {goal.Target}";
+                case GoalKind.RegionsUnlocked: return $"reach {GameCatalog.RegionNames[goal.Target - 1]}";
+                case GoalKind.SluiceTier: return $"build Sluice Tier {goal.Target}";
+                case GoalKind.CrewHired: return goal.Target == 1 ? "hire a crew member" : $"hire {goal.Target} crew";
+                default: return goal.Kind.ToString();
+            }
+        }
+
+        string NextStep()
         {
             if (session.Progress.AmosLevel == 0)
                 return $"Next: hire Amos for {NumberFormat.Dollars(session.AmosNextCost.Value)} (Upgrades)";
@@ -266,11 +327,12 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 400), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 500), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
-            AddDebugButton(column, 2, "Away 2h", SimulateAway);
-            AddDebugButton(column, 3, "Reset", ResetGame);
+            AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
+            AddDebugButton(column, 3, "Away 2h", SimulateAway);
+            AddDebugButton(column, 4, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
