@@ -6,7 +6,8 @@ namespace NuggetCreek.Core
     /// Every number a sluice upgrade, crew member or perk can move. Bonuses of the same
     /// stat add up; different stats multiply. Values are fractions (+0.2 = +20%), except
     /// the chance stats, which are absolute probability points, CollectibleLifetime,
-    /// which is seconds, and the two vein stats, which are whole levels and catches.
+    /// which is seconds, and the whole-number stats (vein levels and catches, offline cap
+    /// hours, chest capacity, Mother Lode max combo).
     /// </summary>
     public enum Stat
     {
@@ -24,6 +25,10 @@ namespace NuggetCreek.Core
         CritValue,
         VeinMaxLevel,
         VeinCatchesPerLevel,
+        OfflineCapHours,
+        ChestCapacity,
+        ChestTime,
+        MotherLodeMaxCombo,
         DoubleCatch,
         AllIncome,
         ActiveIncome,
