@@ -99,7 +99,7 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator UnlockingPineHollowOpensTierTwo()
         {
-            Click("+$1K");
+            Click("+$1M");
             Click("MapButton");
             yield return null;
             yield return Shot("4_map");
@@ -107,7 +107,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
 
             StringAssert.StartsWith("Pine Hollow", Label("Status").text);
-            Assert.That(Label("Dollars").text, Is.EqualTo("$30"));
+            Assert.That(Label("Dollars").text, Is.EqualTo("$996.7K"));
             Assert.That(GameObject.Find("Map"), Is.Null, "map closes after unlocking");
         }
 
@@ -121,7 +121,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             Assert.That(IsActive("CandidateModal"), Is.False, "no candidates in Pine Hollow");
 
-            Click("+$1M");
+            Click("+$1T");
             Click("MapButton");
             yield return null;
             ClickIn("Silver Fork", "Action");
@@ -262,7 +262,7 @@ namespace NuggetCreek.PlayModeTests
         public IEnumerator StakingANewClaimResetsTheCreeks()
         {
             Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild Lv 0"));
-            Click("+$1M");
+            Click("+$1T");
             Click("MapButton");
             yield return null;
             ClickIn("Pine Hollow", "Action");
@@ -271,7 +271,7 @@ namespace NuggetCreek.PlayModeTests
             Click("GuildButton");
             yield return null;
             Assert.That(IsActive("Guild"), Is.True);
-            StringAssert.Contains("Prospecting XP this claim: +1", Label("ClaimText").text);
+            StringAssert.Contains("Prospecting XP this claim: +16", Label("ClaimText").text);
             Assert.That(LabelIn("PerkPoints", "PerkPoints").text, Is.EqualTo("Perk Points: 0"));
             Assert.That(IsActive("night_watch"), Is.True);
             yield return Shot("14_guild");
