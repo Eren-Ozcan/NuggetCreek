@@ -38,6 +38,10 @@ namespace NuggetCreek.Core
         /// <summary>Crew levels, indexed like <see cref="GameCatalog.Crew"/>; 0 = not hired.</summary>
         public int[] CrewLevels = new int[GameCatalog.Crew.Count];
 
+        /// <summary>Manual catches per Nugget type, indexed like <see cref="GameCatalog.Nuggets"/>.
+        /// Survives prestige (design doc 6.5).</summary>
+        public int[] NuggetCatches = new int[GameCatalog.Nuggets.Count];
+
         /// <summary>Crew indices on offer right now; empty when no candidate event is open.</summary>
         public int[] CrewCandidates = new int[0];
 
@@ -75,6 +79,12 @@ namespace NuggetCreek.Core
                 CrewLevels = new int[GameCatalog.Crew.Count];
             else if (CrewLevels.Length != GameCatalog.Crew.Count)
                 Array.Resize(ref CrewLevels, GameCatalog.Crew.Count);
+            if (NuggetCatches == null)
+                NuggetCatches = new int[GameCatalog.Nuggets.Count];
+            else if (NuggetCatches.Length != GameCatalog.Nuggets.Count)
+                Array.Resize(ref NuggetCatches, GameCatalog.Nuggets.Count);
+            for (int i = 0; i < NuggetCatches.Length; i++)
+                NuggetCatches[i] = Math.Max(0, NuggetCatches[i]);
             CrewCandidates = Array.FindAll(CrewCandidates ?? new int[0],
                 index => index >= 0 && index < GameCatalog.Crew.Count && CrewLevels[index] == 0);
             if (CrewCandidates.Length == 0)

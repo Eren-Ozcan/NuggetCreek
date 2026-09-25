@@ -11,6 +11,21 @@ namespace NuggetCreek.Core
         GiantNugget,
     }
 
+    /// <summary>What a Nugget catch did to the collection.</summary>
+    public readonly struct NuggetCatch
+    {
+        public readonly int Index;
+        public readonly bool Discovered;
+        public readonly int StarsGained;
+
+        public NuggetCatch(int index, bool discovered, int starsGained)
+        {
+            Index = index;
+            Discovered = discovered;
+            StarsGained = starsGained;
+        }
+    }
+
     /// <summary>
     /// Game rules over a <see cref="PlayerProgress"/>: collecting, idle and offline income,
     /// every Dollar purchase (upgrades, sluice tiers, regions, Amos), Gems, crew and goals.
@@ -47,7 +62,7 @@ namespace NuggetCreek.Core
                 GameCatalog.ApplyCrew(Stats, GameCatalog.Crew[i], Progress.CrewLevels[i]);
         }
 
-        public double PrestigeMultiplier => Economy.PrestigeMultiplier(Progress.ProspectingXp);
+        public double PrestigeMultiplier => Economy.PrestigeMultiplier(Progress.ProspectingXp, TotalStars);
 
         public string RegionName => GameCatalog.RegionNames[Progress.RegionIndex];
 
@@ -93,6 +108,60 @@ namespace NuggetCreek.Core
                 case CollectibleKind.GiantNugget: return Economy.NuggetValueMultiplier(Stats) * Economy.GiantNuggetValueMultiplier(Stats);
                 default: return 1;
             }
+        }
+
+        // --- Nugget collection (3.1.2) ---
+
+        /// <summary>
+        /// Type of a Nugget spawned in the current creek, by rarity weight. roll is uniform in
+        /// [0, 1). Returns -1 in a creek without a collection (past the launch creeks).
+        /// </summary>
+        public int RollNuggetType(double roll)
+        {
+            List<int> pool = GameCatalog.NuggetsInRegion(Progress.RegionIndex);
+            if (pool.Count == 0)
+                return -1;
+            double total = 0;
+            foreach (int index in pool)
+                total += Economy.NuggetWeight(GameCatalog.Nuggets[index].Rarity);
+            double target = roll * total;
+            foreach (int index in pool)
+            {
+                target -= Economy.NuggetWeight(GameCatalog.Nuggets[index].Rarity);
+                if (target < 0)
+                    return index;
+            }
+            return pool[pool.Count - 1];
+        }
+
+        public int NuggetCatches(int index) => Progress.NuggetCatches[index];
+
+        public int NuggetStars(int index) => Economy.NuggetStars(Progress.NuggetCatches[index]);
+
+        public bool IsNuggetDiscovered(int index) => Progress.NuggetCatches[index] > 0;
+
+        public int TotalStars
+        {
+            get
+            {
+                int stars = 0;
+                for (int i = 0; i < Progress.NuggetCatches.Length; i++)
+                    stars += Economy.NuggetStars(Progress.NuggetCatches[i]);
+                return stars;
+            }
+        }
+
+        public int MaxStars => GameCatalog.Nuggets.Count * Economy.MaxStarsPerNugget;
+
+        /// <summary>Counts a manual Nugget catch (plain, Rich or Giant) toward its type's stars.</summary>
+        public NuggetCatch CatchNugget(int index)
+        {
+            if (index < 0 || index >= Progress.NuggetCatches.Length)
+                return new NuggetCatch(-1, false, 0);
+            int before = Progress.NuggetCatches[index];
+            int after = before + 1;
+            Progress.NuggetCatches[index] = after;
+            return new NuggetCatch(index, before == 0, Economy.NuggetStars(after) - Economy.NuggetStars(before));
         }
 
         // --- Vein (3.1.1): manual catches in a row raise a manual value bonus ---
