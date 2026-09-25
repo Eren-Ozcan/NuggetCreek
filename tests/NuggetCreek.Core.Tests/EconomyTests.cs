@@ -103,11 +103,11 @@ namespace NuggetCreek.Core.Tests
             AssertClose(expected, pacing.DayIncome(region));
         }
 
-        [TestCase(1, 965.2499999999997)]
-        [TestCase(2, 1004210.8876799999)]
-        [TestCase(3, 179898630.91200003)]
-        [TestCase(4, 36770489395.200005)]
-        [TestCase(5, 13591511579492.357)]
+        [TestCase(1, 3281.8499999999985)]
+        [TestCase(2, 7849916.50899456)]
+        [TestCase(3, 1349779427.7327363)]
+        [TestCase(4, 324940814785.38245)]
+        [TestCase(5, 134990893007518.1)]
         public void SolvedRegionCost_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.SolveRegionCost(region));
@@ -276,13 +276,13 @@ namespace NuggetCreek.Core.Tests
         }
 
         // Design doc 5.0.3 table.
-        [TestCase(1e6, 1L)]
-        [TestCase(1e8, 7L)]
-        [TestCase(1e10, 63L)]
-        [TestCase(1e12, 501L)]
-        [TestCase(1e15, 11220L)]
-        [TestCase(1e18, 251188L)]
-        [TestCase(999999.0, 0L)]
+        [TestCase(2e9, 1L)]
+        [TestCase(1e11, 5L)]
+        [TestCase(1e12, 16L)]
+        [TestCase(1e13, 46L)]
+        [TestCase(1e15, 366L)]
+        [TestCase(1e18, 8213L)]
+        [TestCase(1.99e9, 0L)]
         [TestCase(0.0, 0L)]
         public void ProspectingXp_MatchesDesignTable(double total, long expectedXp)
         {
@@ -292,7 +292,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void ProspectingXp_EliasBonus()
         {
-            Assert.That(economy.ProspectingXp(1e12, Sheet((Stat.ProspectingXp, 1.0))), Is.EqualTo(1002));
+            Assert.That(economy.ProspectingXp(1e12, Sheet((Stat.ProspectingXp, 1.0))), Is.EqualTo(32));
         }
 
         [Test]

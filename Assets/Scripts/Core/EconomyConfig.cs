@@ -289,20 +289,20 @@ namespace NuggetCreek.Core
         // --- Progression tables (5.0.4, 6.1, 6.2), solved by tools/economy_tune.py ---
 
         /// <summary>Region unlock costs for the 6 launch regions; index 0 is free.</summary>
-        public double[] RegionUnlockCosts = { 0, 970, 1e6, 180e6, 37e9, 14e12 };
+        public double[] RegionUnlockCosts = { 0, 3.3e3, 7.8e6, 1.3e9, 320e9, 130e12 };
 
         /// <summary>Sluice tier costs for the 8 launch tiers; index 0 is the starting sluice.</summary>
-        public double[] TierCosts = { 0, 240, 250e3, 45e6, 9.2e9, 3.5e12, 720e12, 150e15 };
+        public double[] TierCosts = { 0, 820, 2e6, 320e6, 80e9, 32e12, 7.2e15, 1.6e18 };
 
         /// <summary>Level 1 price of each tier's two upgrades (3% of the tier cost, floored at 2x the previous).</summary>
-        public double[] UpgradeBaseCosts = { 30, 60, 7.5e3, 1.4e6, 280e6, 100e9, 22e12, 4.5e15 };
+        public double[] UpgradeBaseCosts = { 30, 60, 60e3, 9.6e6, 2.4e9, 960e9, 220e12, 48e15 };
 
         /// <summary>Upgrade price growth per level. RC: upgrade_growth.</summary>
         public double UpgradeCostGrowth = 1.22;
 
         // --- Prestige (5.0.3) ---
 
-        public double PrestigeXpDivisor = 1e6;
+        public double PrestigeXpDivisor = 2e9;
         public double PrestigeXpExponent = 0.45;
         public double PrestigeBonusPerXp = 0.02;
 

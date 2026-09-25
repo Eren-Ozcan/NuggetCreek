@@ -213,7 +213,7 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.RegionName, Is.EqualTo("Pine Hollow"));
             Assert.That(session.IsNextTierUnlocked, Is.True);
             Assert.That(session.BuyNextTier(), Is.True);
-            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 970 - 240).Within(1e-6));
+            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 3300 - 820).Within(1e-6));
             Assert.That(session.IsUpgradeUnlocked(UpgradeIndex("steel_sieve")), Is.True);
             Assert.That(session.IsNextTierUnlocked, Is.False);
         }
@@ -221,7 +221,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void TravelOnlyToUnlockedRegions()
         {
-            GameSession session = NewSession(1000);
+            GameSession session = NewSession(4000);
             Assert.That(session.TravelTo(1), Is.False);
             session.UnlockNextRegion();
             Assert.That(session.TravelTo(0), Is.True);

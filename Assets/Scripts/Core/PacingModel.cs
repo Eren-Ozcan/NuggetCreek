@@ -25,6 +25,14 @@ namespace NuggetCreek.Core
         /// <summary>Opening days per region (index = region), from the target curve.</summary>
         public static readonly double[] TargetDays = { 0, 0.01, 0.6, 3, 8, 20, 40 };
 
+        /// <summary>
+        /// Phase 2.8 bot calibration per region (index = region): the 30-day bot playing the
+        /// real core with every phase 2 system reaches creeks faster than this model, so each
+        /// solved cost is scaled to land on its target day. Mirrors BOT_CALIBRATION in
+        /// tools/economy_tune.py.
+        /// </summary>
+        public static readonly double[] BotCalibration = { 1.0, 3.4, 7.817, 7.503, 8.837, 9.932, 9.932 };
+
         static readonly Dictionary<int, double> PrestigeAt = new Dictionary<int, double> { { 4, 2.5 }, { 5, 6.0 }, { 6, 15.0 } };
 
         readonly Economy economy;
@@ -87,9 +95,9 @@ namespace NuggetCreek.Core
         public BigNumber SolveRegionCost(int regionIndex)
         {
             if (regionIndex == 1)
-                return FirstSessionIncome() * RegionShare;
+                return FirstSessionIncome() * (RegionShare * BotCalibration[1]);
             double window = TargetDays[regionIndex] - TargetDays[regionIndex - 1];
-            return DayIncome(regionIndex - 1) * (window * RegionShare);
+            return DayIncome(regionIndex - 1) * (window * RegionShare * BotCalibration[regionIndex]);
         }
 
         /// <summary>Unrounded cost of Amos level 2..12, 45 minutes of idle at the unlocking region.</summary>

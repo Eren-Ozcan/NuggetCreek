@@ -29,7 +29,7 @@ namespace NuggetCreek.Core.Tests
         {
             var progress = new PlayerProgress
             {
-                Dollars = 5e9, TotalEarned = 1e12, RegionIndex = 4, RegionsUnlocked = 5, TierIndex = 4,
+                Dollars = 5e9, TotalEarned = 2e15, RegionIndex = 4, RegionsUnlocked = 5, TierIndex = 4,
                 AmosLevel = 9, Gems = 120, ProspectingXp = 10, GuildLevel = 3,
             };
             progress.UpgradeLevels[0] = 10;
@@ -70,7 +70,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void MultiplierAfterRebirthCountsTheClaim()
         {
-            GameSession session = NewSession(new PlayerProgress { TotalEarned = 1e12 });
+            GameSession session = NewSession(new PlayerProgress { TotalEarned = 2e15 });
             Assert.That(session.PrestigeMultiplierAfterRebirth, Is.EqualTo(11.02).Within(1e-12));
             session.Rebirth();
             Assert.That(session.PrestigeMultiplier, Is.EqualTo(11.02).Within(1e-12));
@@ -79,8 +79,8 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void SuggestionWaitsForTheWall()
         {
-            // $10B lifetime in Nugget Creek: 63 XP would make x2.26, and Pine Hollow is cheap.
-            var progress = new PlayerProgress { TotalEarned = 1e10, AmosLevel = 1, ManualCollected = 100 };
+            // $20T lifetime in Nugget Creek: 63 XP would make x2.26, and Pine Hollow is cheap.
+            var progress = new PlayerProgress { TotalEarned = 2e13, AmosLevel = 1, ManualCollected = 100 };
             GameSession session = NewSession(progress);
             Assert.That(session.PrestigeMultiplierAfterRebirth, Is.GreaterThan(2));
             Assert.That(session.HoursToNextTarget, Is.LessThan(48));
@@ -97,7 +97,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void SuggestionNeedsTheClaimToDoubleIncome()
         {
-            var progress = new PlayerProgress { TotalEarned = 1e10, AmosLevel = 1, ProspectingXp = 100 };
+            var progress = new PlayerProgress { TotalEarned = 2e13, AmosLevel = 1, ProspectingXp = 100 };
             progress.RegionsUnlocked = config.RegionCount;
             progress.RegionIndex = config.RegionCount - 1;
             progress.TierIndex = config.TierCount - 1;
@@ -121,7 +121,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void NoSuggestionForASmallClaim()
         {
-            GameSession session = NewSession(new PlayerProgress { TotalEarned = 1e8, AmosLevel = 1 });
+            GameSession session = NewSession(new PlayerProgress { TotalEarned = 2e11, AmosLevel = 1 });
             Assert.That(session.ClaimXp, Is.LessThan(25));
             Assert.That(session.RebirthSuggested, Is.False);
         }
@@ -157,7 +157,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void MilestonesOpenVeinChestsComboIncomeAndXp()
         {
-            GameSession session = NewSession(new PlayerProgress { TotalEarned = 1e12, ChestsOpened = 1, ChestsWaiting = 1 });
+            GameSession session = NewSession(new PlayerProgress { TotalEarned = 2e15, ChestsOpened = 1, ChestsWaiting = 1 });
             Assert.That(session.VeinOpen, Is.False);
 
             session.Progress.GuildLevel = 8;
