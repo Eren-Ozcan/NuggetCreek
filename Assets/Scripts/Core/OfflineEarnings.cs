@@ -86,7 +86,9 @@ namespace NuggetCreek.Core
 
             double cap = Math.Max(0, capSeconds);
             double credited = Math.Min(elapsed, cap);
-            BigNumber amount = idleRatePerSecond * credited;
+            // Past the cap the crew keeps a slow trickle going (design doc 3.3); nothing without a crew.
+            double pastCap = cap > 0 ? Math.Max(0, elapsed - cap) * config.OfflinePastCapRate : 0;
+            BigNumber amount = idleRatePerSecond * (credited + pastCap);
             var status = trusted ? OfflineStatus.Credited : OfflineStatus.PendingTrustedTime;
             return new OfflineResult(status, elapsed, credited, amount, cap > 0 && elapsed >= cap);
         }

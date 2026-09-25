@@ -38,12 +38,20 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void LongAbsence_IsClippedToCap()
+        public void LongAbsence_IsClippedToCapWithATrickleAfter()
         {
             OfflineResult r = offline.Evaluate(Away(10 * Hour), 3 * Hour, 2);
             Assert.That(r.CreditedSeconds, Is.EqualTo(3 * Hour));
-            Assert.That(r.Amount.ToDouble(), Is.EqualTo(2 * 3 * Hour));
+            // 3 h at the full rate, the other 7 h at 17%.
+            Assert.That(r.Amount.ToDouble(), Is.EqualTo(2 * (3 * Hour + 0.17 * 7 * Hour)).Within(1e-6));
             Assert.That(r.CapReached);
+        }
+
+        [Test]
+        public void NoTrickleWithoutACrew()
+        {
+            OfflineResult r = offline.Evaluate(Away(10 * Hour), 0, 2);
+            Assert.That(r.Amount.IsZero);
         }
 
         [Test]

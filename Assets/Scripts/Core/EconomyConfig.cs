@@ -305,6 +305,9 @@ namespace NuggetCreek.Core
         public double[] AmosLevelCosts = { 4.6e3, 190e3, 290e3, 8.8e6, 13e6, 860e6, 1.3e9, 130e9, 200e9, 17e12, 26e12 };
 
         public double OfflineCapHoursPerAmosLevel = 1;
+
+        /// <summary>Share of the offline rate paid for time past the cap (design doc 3.3, measured ~17% on device).</summary>
+        public double OfflinePastCapRate = 0.17;
         public int AmosMaxLevel = 12;
         public int AmosLevelsPerRegion = 2;
 

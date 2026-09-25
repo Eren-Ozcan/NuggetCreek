@@ -288,7 +288,8 @@ namespace NuggetCreek.Core.Tests
             Assert.That(result.Status, Is.EqualTo(OfflineStatus.Credited));
             Assert.That(result.CapReached, Is.True);
             Assert.That(result.CreditedSeconds, Is.EqualTo(3600));
-            AssertClose(session.OfflineRate * 3600, result.Amount);
+            // The hour past the cap is paid at the trickle rate.
+            AssertClose(session.OfflineRate * (3600 + 0.17 * 2 * 3600), result.Amount);
 
             Assert.That(session.ClaimOffline(result, 2), Is.True);
             AssertClose(result.Amount * 2, session.Progress.Dollars);
