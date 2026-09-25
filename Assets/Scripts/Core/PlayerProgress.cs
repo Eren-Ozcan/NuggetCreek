@@ -78,6 +78,31 @@ namespace NuggetCreek.Core
         /// <summary>Most creeks ever open at once; survives rebirth (the free second gear slot).</summary>
         public int BestRegionsUnlocked = 1;
 
+        // --- Daily systems ---
+
+        /// <summary>Last game day seen; -1 until trusted time gives one.</summary>
+        public long CurrentDay = -1;
+
+        public long LastStreakClaimDay = -1;
+
+        /// <summary>0-based calendar day the next claim pays.</summary>
+        public int StreakIndex;
+
+        /// <summary>Calendar day an ad can restore after one missed day; -1 when none.</summary>
+        public int RescueStreakIndex = -1;
+
+        public int[] JobKinds = { 0, 1, 2 };
+        public int[] JobProgress = new int[3];
+        public bool[] JobClaimed = new bool[3];
+
+        public bool FreeWashUsed;
+        public int AdWashes;
+
+        public double BoostMultiplier = 1;
+
+        /// <summary>Trusted UTC second the income boost ends.</summary>
+        public double BoostEndUtc;
+
         /// <summary>Crew indices on offer right now; empty when no candidate event is open.</summary>
         public int[] CrewCandidates = new int[0];
 
@@ -134,6 +159,16 @@ namespace NuggetCreek.Core
                 Array.Resize(ref PerkRanks, GameCatalog.Perks.Count);
             for (int i = 0; i < PerkRanks.Length; i++)
                 PerkRanks[i] = Math.Max(0, Math.Min(PerkRanks[i], GameCatalog.Perks[i].MaxRank));
+            if (JobKinds == null || JobKinds.Length != 3)
+                JobKinds = new[] { 0, 1, 2 };
+            if (JobProgress == null || JobProgress.Length != 3)
+                JobProgress = new int[3];
+            if (JobClaimed == null || JobClaimed.Length != 3)
+                JobClaimed = new bool[3];
+            StreakIndex = Math.Max(0, Math.Min(StreakIndex, 29));
+            RescueStreakIndex = Math.Max(-1, Math.Min(RescueStreakIndex, 29));
+            AdWashes = Math.Max(0, AdWashes);
+            BoostMultiplier = Math.Max(1, BoostMultiplier);
             GuildLevel = Math.Max(0, GuildLevel);
             GuildXp = Math.Max(0, GuildXp);
             Rebirths = Math.Max(0, Rebirths);
