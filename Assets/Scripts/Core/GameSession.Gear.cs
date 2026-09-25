@@ -125,6 +125,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.GearLevels[index]++;
             RebuildStats();
+            CountJob(DailyJobKind.GearLevels);
             return true;
         }
 
@@ -155,6 +156,7 @@ namespace NuggetCreek.Core
             {
                 Progress.GearLevels[index] = level + 1;
                 RebuildStats();
+                CountJob(DailyJobKind.GearLevels);
                 return new GearCard(index, false, true, 0);
             }
             EarnGems(Config.GearMaxedDuplicateGems);
@@ -258,6 +260,7 @@ namespace NuggetCreek.Core
             BigNumber dollars = ChestDollars;
             Progress.ChestOpening = false;
             Progress.ChestsOpened++;
+            CountJob(DailyJobKind.ChestsOpened);
             Earn(dollars);
             Rarity rarity = first ? Rarity.Common : RollRarity(Config.ChestCardOdds, 0, random.NextDouble());
             GearCard card = GrantGearCard(PickGear(rarity, random.NextDouble()));
@@ -283,22 +286,7 @@ namespace NuggetCreek.Core
         {
             if (!GearUnlocked || !TrySpendGems(Config.GearBoxGems[box]))
                 return null;
-            int count = Config.GearBoxCards[box];
-            var rarities = new Rarity[count];
-            bool guaranteed = false;
-            for (int i = 0; i < count; i++)
-            {
-                rarities[i] = RollRarity(Config.GearBoxOdds, box * 3, random.NextDouble());
-                if (rarities[i] >= Config.GearBoxGuarantee[box])
-                    guaranteed = true;
-            }
-            if (!guaranteed)
-                rarities[count - 1] = Config.GearBoxGuarantee[box];
-
-            var cards = new List<GearCard>(count);
-            foreach (Rarity rarity in rarities)
-                cards.Add(GrantGearCard(PickGear(rarity, random.NextDouble())));
-            return cards;
+            return GrantGearBox(box);
         }
     }
 }

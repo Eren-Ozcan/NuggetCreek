@@ -164,7 +164,9 @@ namespace NuggetCreek.Core
             int before = Progress.NuggetCatches[index];
             int after = before + 1;
             Progress.NuggetCatches[index] = after;
-            return new NuggetCatch(index, before == 0, Economy.NuggetStars(after) - Economy.NuggetStars(before));
+            int stars = Economy.NuggetStars(after) - Economy.NuggetStars(before);
+            CountJob(DailyJobKind.CollectionStars, stars);
+            return new NuggetCatch(index, before == 0, stars);
         }
 
         // --- Vein (3.1.1): manual catches in a row raise a manual value bonus ---
@@ -224,7 +226,7 @@ namespace NuggetCreek.Core
                 factor *= 2;
             if (critical)
                 factor *= Economy.CritValueMultiplier(Stats);
-            factor *= Stats.Multiplier(Stat.AllIncome) * PrestigeMultiplier * Stats.Multiplier(Stat.ActiveIncome) * VeinMultiplier;
+            factor *= Stats.Multiplier(Stat.AllIncome) * IncomeMultiplier * Stats.Multiplier(Stat.ActiveIncome) * VeinMultiplier;
             return Economy.DustValue(Progress.RegionIndex, Progress.TierIndex, Stats) * factor;
         }
 
@@ -234,6 +236,9 @@ namespace NuggetCreek.Core
             BigNumber value = CatchValue(kind, doubleCatch, critical);
             AdvanceVein();
             CountTowardChest();
+            CountJob(DailyJobKind.ManualCatches);
+            if (kind != CollectibleKind.GoldDust)
+                CountJob(DailyJobKind.Nuggets);
             Progress.ManualCollected++;
             Progress.CollectedSinceMotherLode++;
             Earn(value);
@@ -253,7 +258,7 @@ namespace NuggetCreek.Core
         public bool IdleActive => Progress.AmosLevel > 0;
 
         public BigNumber IdleRate =>
-            IdleActive ? Economy.IdleRate(Progress.RegionIndex, Progress.TierIndex, Stats, PrestigeMultiplier) : BigNumber.Zero;
+            IdleActive ? Economy.IdleRate(Progress.RegionIndex, Progress.TierIndex, Stats, IncomeMultiplier) : BigNumber.Zero;
 
         public BigNumber OfflineRate =>
             IdleActive ? Economy.OfflineRate(Progress.RegionIndex, Progress.TierIndex, Stats, PrestigeMultiplier) : BigNumber.Zero;
@@ -270,8 +275,15 @@ namespace NuggetCreek.Core
 
         public double OfflineCapSeconds => Economy.OfflineCapSeconds(Progress.AmosLevel, Stats);
 
-        public OfflineResult EvaluateOffline(OfflineClockInput clock) =>
-            offline.Evaluate(clock, OfflineCapSeconds, OfflineRate);
+        /// <summary>Offline Dollars for an absence, plus the boost for the part of it a Daily Wash boost covered.</summary>
+        public OfflineResult EvaluateOffline(OfflineClockInput clock)
+        {
+            OfflineResult result = offline.Evaluate(clock, OfflineCapSeconds, OfflineRate);
+            BigNumber bonus = OfflineBoostBonus(clock.LastSeenUtc, result.CreditedSeconds);
+            if (bonus.IsZero)
+                return result;
+            return new OfflineResult(result.Status, result.ElapsedSeconds, result.CreditedSeconds, result.Amount + bonus, result.CapReached);
+        }
 
         /// <summary>Pays a trusted offline result; multiplier is 2 after a rewarded ad.</summary>
         public bool ClaimOffline(OfflineResult result, int multiplier)
@@ -302,6 +314,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.UpgradeLevels[index]++;
             RebuildStats();
+            CountJob(DailyJobKind.UpgradesBought);
             return true;
         }
 
@@ -396,7 +409,7 @@ namespace NuggetCreek.Core
 
         /// <summary>Dollars per second right now from swiping and the crew together.</summary>
         public BigNumber IncomePerSecond =>
-            Economy.ActiveRate(Progress.RegionIndex, Progress.TierIndex, Stats, PrestigeMultiplier) + IdleRate;
+            Economy.ActiveRate(Progress.RegionIndex, Progress.TierIndex, Stats, IncomeMultiplier) + IdleRate;
 
         /// <summary>After 400 catches (fewer with Wren) or 10 minutes of play, whichever first.</summary>
         public bool MotherLodeDue =>
@@ -427,6 +440,7 @@ namespace NuggetCreek.Core
             run.End();
             BigNumber reward = MotherLodeReward(run);
             Earn(reward);
+            CountJob(DailyJobKind.MotherLodes);
             EarnGems(Config.MotherLodeGemReward);
             return reward;
         }
