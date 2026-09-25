@@ -197,6 +197,38 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator FirstChestOpensAtOnceAndGivesWornGear()
+        {
+            Assert.That(IsActive("ChestChip"), Is.False);
+            Click("Chest now");
+            yield return null;
+            Assert.That(IsActive("ChestChip"), Is.True);
+
+            Click("ChestChip");
+            yield return null;
+            Assert.That(IsActive("ChestModal"), Is.True);
+            Assert.That(LabelIn("ChestModal", "ChestStatus").text, Is.EqualTo("Ready!"), "the first chest has no timer");
+            StringAssert.Contains("Common 80%", LabelIn("ChestModal", "Odds").text);
+
+            Click("OpenChest");
+            yield return null;
+            StringAssert.StartsWith("NEW COMMON GEAR", LabelIn("ChestModal", "ChestReward").text);
+            Assert.That(Label("Dollars").text, Is.Not.EqualTo("$0"));
+            yield return Shot("12_chest_reward");
+
+            Click("ChestCollect");
+            yield return null;
+            Assert.That(IsActive("ChestModal"), Is.False);
+
+            Click("UpgradesButton");
+            yield return null;
+            Assert.That(IsActive("GEAR"), Is.True);
+            StringAssert.StartsWith("Slots:  ", Label("GearSlots").text);
+            StringAssert.DoesNotContain("Slots:  empty", Label("GearSlots").text, "new gear is worn at once");
+            yield return Shot("13_gear");
+        }
+
+        [UnityTest]
         public IEnumerator OfflineReturnPaysAfterTrustedTime()
         {
             Click("+$1K");
