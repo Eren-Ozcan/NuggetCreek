@@ -38,7 +38,8 @@ namespace NuggetCreek.PlayModeTests
         public IEnumerator FreshGameSpawnsGoldAndHiresAmos()
         {
             Assert.That(Label("Dollars").text, Is.EqualTo("$0"));
-            Assert.That(Label("Goal").text, Does.Contain("hire Amos for $70"));
+            Assert.That(Label("Goal").text, Does.Contain("swipe up 15 Gold Dust by hand  0/15"));
+            Assert.That(Label("Gems").text, Is.EqualTo("0 Gems"));
 
             yield return WaitFor(() => GameObject.Find("GoldDust") != null, 3);
             yield return Shot("1_creek_fresh");
@@ -78,6 +79,48 @@ namespace NuggetCreek.PlayModeTests
             StringAssert.StartsWith("Pine Hollow", Label("Status").text);
             Assert.That(Label("Dollars").text, Is.EqualTo("$90"));
             Assert.That(GameObject.Find("Map"), Is.Null, "map closes after unlocking");
+        }
+
+        [UnityTest]
+        public IEnumerator SilverForkOffersCrewForGems()
+        {
+            Click("+$1M");
+            Click("MapButton");
+            yield return null;
+            ClickIn("Pine Hollow", "Action");
+            yield return null;
+            Assert.That(IsActive("CandidateModal"), Is.False, "no candidates in Pine Hollow");
+
+            Click("+$1M");
+            Click("MapButton");
+            yield return null;
+            ClickIn("Silver Fork", "Action");
+            yield return null;
+            Assert.That(IsActive("CandidateModal"), Is.True);
+            StringAssert.StartsWith("Pick one. The offer ends in 10:00", LabelIn("CandidateModal", "Timer").text);
+            Button hire = Find("CandidateModal").GetComponentsInChildren<Button>().First(b => b.name == "Hire");
+            Assert.That(hire.interactable, Is.False, "no Gems yet");
+
+            Click("Later");
+            yield return null;
+            Assert.That(IsActive("CrewChip"), Is.True);
+            Click("+50 Gems");
+            Click("CrewChip");
+            yield return null;
+            yield return Shot("6_crew_candidates");
+
+            string hiredName = LabelIn("CandidateModal", "Name").text;
+            ClickIn("CandidateModal", "Hire");
+            yield return null;
+            Assert.That(IsActive("CandidateModal"), Is.False);
+            Assert.That(IsActive("CrewChip"), Is.False);
+            Assert.That(Label("Gems").text, Is.EqualTo("40 Gems"));
+
+            Click("UpgradesButton");
+            yield return null;
+            Text title = Find("Upgrades").GetComponentsInChildren<Text>().First(t => t.name == "Title" && t.text.StartsWith(hiredName + "  Lv"));
+            StringAssert.StartsWith(hiredName + "  Lv 1/10", title.text);
+            yield return Shot("7_crew_row");
         }
 
         [UnityTest]
