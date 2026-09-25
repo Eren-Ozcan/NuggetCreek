@@ -87,6 +87,7 @@ namespace NuggetCreek.Core
         {
             BigNumber value = CatchValue(kind, doubleCatch);
             Progress.ManualCollected++;
+            Progress.CollectedSinceMotherLode++;
             Earn(value);
             return value;
         }
@@ -229,6 +230,54 @@ namespace NuggetCreek.Core
                 return false;
             Progress.AmosLevel++;
             return true;
+        }
+
+        // --- Mother Lode (design doc 3.4) ---
+
+        /// <summary>Counts play time toward the Mother Lode; call every frame while the creek runs.</summary>
+        public void TickPlay(double deltaSeconds)
+        {
+            if (deltaSeconds <= 0)
+                return;
+            Progress.PlaySeconds += deltaSeconds;
+            Progress.SecondsSinceMotherLode += deltaSeconds;
+        }
+
+        /// <summary>Dollars per second right now from swiping and the crew together.</summary>
+        public BigNumber IncomePerSecond =>
+            Economy.ActiveRate(Progress.RegionIndex, Progress.TierIndex, Stats, PrestigeMultiplier) + IdleRate;
+
+        /// <summary>After 400 catches (fewer with Wren) or 10 minutes of play, whichever first.</summary>
+        public bool MotherLodeDue =>
+            Progress.PlaySeconds >= Config.MotherLodeFirstAfterSeconds
+            && (Progress.CollectedSinceMotherLode >= Economy.MotherLodeEveryCollectibles(Stats)
+                || Progress.SecondsSinceMotherLode >= Config.MotherLodeEverySeconds);
+
+        /// <summary>Starts the event and restarts both counters; the income it pays is fixed now.</summary>
+        public MotherLodeRun StartMotherLode()
+        {
+            Progress.CollectedSinceMotherLode = 0;
+            Progress.SecondsSinceMotherLode = 0;
+            return new MotherLodeRun(Config, IncomePerSecond);
+        }
+
+        /// <summary>Starts a Mother Lode at once for Gems; null when the player cannot pay.</summary>
+        public MotherLodeRun SummonMotherLode() =>
+            TrySpendGems(Config.MotherLodeSummonGems) ? StartMotherLode() : null;
+
+        public BigNumber MotherLodeReward(MotherLodeRun run) =>
+            Economy.MotherLodeReward(run.IncomePerSecond, run.PeakCombo, Stats);
+
+        /// <summary>Pays a run once, even if it was cut short; returns the Dollars paid.</summary>
+        public BigNumber FinishMotherLode(MotherLodeRun run)
+        {
+            if (run.IsPaid)
+                return BigNumber.Zero;
+            run.End();
+            BigNumber reward = MotherLodeReward(run);
+            Earn(reward);
+            EarnGems(Config.MotherLodeGemReward);
+            return reward;
         }
 
         // --- Gems ---
