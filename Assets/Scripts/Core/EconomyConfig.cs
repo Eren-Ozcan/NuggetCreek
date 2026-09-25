@@ -92,6 +92,19 @@ namespace NuggetCreek.Core
         /// <summary>Gem price to go from level i+1 to i+2 (L1 to L2 first, L9 to L10 last).</summary>
         public int[] CrewLevelUpCosts = { 6, 9, 13, 19, 27, 39, 57, 82, 119 };
 
+        /// <summary>Candidates appear when this creek (0-based; Silver Fork) or a later one unlocks.</summary>
+        public int CrewCandidateFirstRegion = 2;
+
+        public int CrewCandidatesPerEvent = 2;
+
+        /// <summary>How long a candidate pair stays open, counted while the game runs. RC: crew_window_s.</summary>
+        public double CrewCandidateWindowSeconds = 10 * 60;
+
+        // --- Progress goals (5.0.6: ~8 Gems a day) ---
+
+        /// <summary>Gem reward per goal, indexed like <see cref="GameCatalog.Goals"/>.</summary>
+        public int[] GoalGemRewards = { 10, 3, 5, 5, 3, 3, 3, 3, 5, 5, 3, 3, 3, 5, 5, 5, 3, 3, 5, 5, 3, 10 };
+
         // --- Offline return (3.3.2, 13.1) ---
 
         /// <summary>RC: offline_gem_double_per_hour.</summary>

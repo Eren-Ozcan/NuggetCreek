@@ -39,8 +39,32 @@ namespace NuggetCreek.Core
         }
     }
 
+    /// <summary>What a progress goal counts. Every kind reads a lifetime value from the save.</summary>
+    public enum GoalKind
+    {
+        ManualCollected,
+        UpgradeLevels,
+        AmosLevel,
+        RegionsUnlocked,
+        SluiceTier,
+        CrewHired,
+    }
+
+    /// <summary>One step of the progress goal chain; its Gem reward lives in <see cref="EconomyConfig.GoalGemRewards"/>.</summary>
+    public sealed class GoalDefinition
+    {
+        public readonly GoalKind Kind;
+        public readonly int Target;
+
+        public GoalDefinition(GoalKind kind, int target)
+        {
+            Kind = kind;
+            Target = target;
+        }
+    }
+
     /// <summary>
-    /// Fixed game content: sluice upgrades (design doc 6.1) and crew (6.3). Prices live in
+    /// Fixed game content: sluice upgrades (design doc 6.1), crew (6.3) and progress goals. Prices live in
     /// <see cref="EconomyConfig"/> so Remote Config can tune them; effects are content.
     /// </summary>
     public static class GameCatalog
@@ -96,6 +120,37 @@ namespace NuggetCreek.Core
             new CrewDefinition("mei", "Mei", Stat.OfflineIncome, 0.10),
             new CrewDefinition("clementine", "Clementine", Stat.UpgradeCost, -0.03),
             new CrewDefinition("gus", "Gus", Stat.DoubleCatch, 0.005),
+        };
+
+        /// <summary>
+        /// Progress goals, one active at a time (design doc 9, 12.1 screen 5). The first one is
+        /// the onboarding card and counts manual catches only; later ones walk the player
+        /// through each creek, tier and the first crew hires.
+        /// </summary>
+        public static readonly IReadOnlyList<GoalDefinition> Goals = new[]
+        {
+            new GoalDefinition(GoalKind.ManualCollected, 15),
+            new GoalDefinition(GoalKind.UpgradeLevels, 3),
+            new GoalDefinition(GoalKind.AmosLevel, 1),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 2),
+            new GoalDefinition(GoalKind.SluiceTier, 2),
+            new GoalDefinition(GoalKind.ManualCollected, 300),
+            new GoalDefinition(GoalKind.UpgradeLevels, 12),
+            new GoalDefinition(GoalKind.AmosLevel, 3),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 3),
+            new GoalDefinition(GoalKind.CrewHired, 1),
+            new GoalDefinition(GoalKind.SluiceTier, 3),
+            new GoalDefinition(GoalKind.UpgradeLevels, 25),
+            new GoalDefinition(GoalKind.AmosLevel, 5),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 4),
+            new GoalDefinition(GoalKind.ManualCollected, 3000),
+            new GoalDefinition(GoalKind.CrewHired, 2),
+            new GoalDefinition(GoalKind.SluiceTier, 4),
+            new GoalDefinition(GoalKind.UpgradeLevels, 40),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 5),
+            new GoalDefinition(GoalKind.CrewHired, 3),
+            new GoalDefinition(GoalKind.SluiceTier, 5),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 6),
         };
 
         /// <summary>Adds owned upgrade levels to a sheet. levels[i] belongs to Upgrades[i].</summary>
