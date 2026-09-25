@@ -52,6 +52,8 @@ namespace NuggetCreek.Game
         Text dollarsLabel;
         Text gemsLabel;
         Button goalButton;
+        Button goalAd;
+        Text goalAdLabel;
         Text statusLabel;
         Text goalLabel;
         Text mapLabel;
@@ -250,8 +252,12 @@ namespace NuggetCreek.Game
             dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, 70), new Vector2(20, -95));
 
             goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
-            goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(20, 6), new Vector2(-20, -2));
+            goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(20, 6), new Vector2(-250, -2));
             goalLabel.name = "Goal";
+            // Goal bonus (design doc 8.4): a rewarded ad for a few Gems, a handful of times a day.
+            goalAd = Ui.Button("GoalAd", top, "", Palette.Ad, WatchGoalAd, out goalAdLabel, 28);
+            goalAd.AsRect().Place(new Vector2(1, 0), new Vector2(1, 0.22f), new Vector2(-240, 6), new Vector2(-20, -2));
+            goalAd.SetActive(false);
 
             RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
                 .Place(Vector2.zero, new Vector2(1, 0), Vector2.zero, new Vector2(0, bottomHeight));
@@ -374,6 +380,7 @@ namespace NuggetCreek.Game
             SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily: tomorrow");
             gemsLabel.SetText(Effects.Gems(progress.Gems));
             RefreshGoal();
+            RefreshGoalAd();
 
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
@@ -449,6 +456,28 @@ namespace NuggetCreek.Game
                 goalLabel.SetText($"Goal: {GoalText(goal)}  {session.GoalProgress(goal)}/{goal.Target}  (+{Effects.Gems(session.CurrentGoalReward)})");
         }
 
+        void RefreshGoalAd()
+        {
+            // Never an ad prompt in the first five minutes (design doc 9).
+            bool show = session.GoalAdsLeftToday > 0 && session.Progress.PlaySeconds >= 5 * 60 && !motherLode.IsActive;
+            goalAd.SetActive(show);
+            if (!show)
+                return;
+            goalAdLabel.SetText($"+{session.Economy.Config.GoalAdGems} Gems (ad)");
+            if (goalAd.interactable != ads.IsLoaded)
+                goalAd.interactable = ads.IsLoaded;
+        }
+
+        void WatchGoalAd()
+        {
+            ads.Show(rewarded =>
+            {
+                if (rewarded && session.ClaimGoalAd())
+                    Save();
+                ads.Load();
+            });
+        }
+
         void ClaimGoal()
         {
             if (session.ClaimGoal())
@@ -517,17 +546,18 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1000), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1100), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
-            AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
-            AddDebugButton(column, 3, "Away 2h", SimulateAway);
-            AddDebugButton(column, 4, "Lode now", MakeMotherLodeDue);
-            AddDebugButton(column, 5, "Layers", OpenCollectionLayers);
-            AddDebugButton(column, 6, "Chest now", AddDebugChest);
-            AddDebugButton(column, 7, "Next day", () => debugDayShift++);
-            AddDebugButton(column, 8, "Skip intro", () => session.IntroSkipped = true);
-            AddDebugButton(column, 9, "Reset", ResetGame);
+            AddDebugButton(column, 2, "+$1T", () => session.Earn(1e12));
+            AddDebugButton(column, 3, "+50 Gems", () => session.EarnGems(50));
+            AddDebugButton(column, 4, "Away 2h", SimulateAway);
+            AddDebugButton(column, 5, "Lode now", MakeMotherLodeDue);
+            AddDebugButton(column, 6, "Layers", OpenCollectionLayers);
+            AddDebugButton(column, 7, "Chest now", AddDebugChest);
+            AddDebugButton(column, 8, "Next day", () => debugDayShift++);
+            AddDebugButton(column, 9, "Skip intro", () => session.IntroSkipped = true);
+            AddDebugButton(column, 10, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
