@@ -7,6 +7,8 @@ namespace NuggetCreek.Core
     {
         GoldDust,
         Nugget,
+        RichNugget,
+        GiantNugget,
     }
 
     /// <summary>
@@ -57,35 +59,108 @@ namespace NuggetCreek.Core
 
         public double CollectRadiusPixels => Config.CollectRadiusPixels * Stats.Multiplier(Stat.CollectRadius);
 
-        /// <summary>Kind of the next spawn. roll is uniform in [0, 1).</summary>
+        /// <summary>
+        /// Kind of the next spawn. roll is uniform in [0, 1). A Nugget spawn comes up Giant
+        /// first, then Rich, else plain (design doc 3.1.1), all from the same roll.
+        /// </summary>
         public CollectibleKind RollKind(double roll)
         {
             if (Progress.ManualCollected < Config.OnboardingGuaranteedDust)
                 return CollectibleKind.GoldDust;
-            return roll < Economy.NuggetChance(Stats) ? CollectibleKind.Nugget : CollectibleKind.GoldDust;
+            double nugget = Economy.NuggetChance(Stats);
+            if (roll >= nugget)
+                return CollectibleKind.GoldDust;
+            double giant = nugget * Economy.GiantNuggetChance(Stats);
+            if (roll < giant)
+                return CollectibleKind.GiantNugget;
+            double rich = giant + (nugget - giant) * Economy.RichNuggetChance(Stats);
+            return roll < rich ? CollectibleKind.RichNugget : CollectibleKind.Nugget;
         }
 
         /// <summary>Whether a catch counts twice (Water Channel, Gus). roll is uniform in [0, 1).</summary>
         public bool RollDoubleCatch(double roll) => roll < Stats[Stat.DoubleCatch];
 
-        /// <summary>
-        /// Dollars for one manual catch. Averaged over the rolls this equals
-        /// <see cref="Economy.CollectValue"/> times the active income bonus, so
-        /// SpawnRate * average = <see cref="Economy.ActiveRate(int,int,StatSheet,double)"/>.
-        /// </summary>
-        public BigNumber CatchValue(CollectibleKind kind, bool doubleCatch)
+        /// <summary>Whether a manual catch is critical. roll is uniform in [0, 1).</summary>
+        public bool RollCritical(double roll) => roll < Economy.CritChance(Stats);
+
+        /// <summary>Value of a collectible kind in Gold Dust of the current region.</summary>
+        public double KindMultiplier(CollectibleKind kind)
         {
-            double factor = kind == CollectibleKind.Nugget ? Economy.NuggetValueMultiplier(Stats) : 1;
+            switch (kind)
+            {
+                case CollectibleKind.Nugget: return Economy.NuggetValueMultiplier(Stats);
+                case CollectibleKind.RichNugget: return Economy.NuggetValueMultiplier(Stats) * Economy.RichNuggetValueMultiplier(Stats);
+                case CollectibleKind.GiantNugget: return Economy.NuggetValueMultiplier(Stats) * Economy.GiantNuggetValueMultiplier(Stats);
+                default: return 1;
+            }
+        }
+
+        // --- Vein (3.1.1): manual catches in a row raise a manual value bonus ---
+
+        /// <summary>Current vein level; resets when a collectible is lost. Not saved.</summary>
+        public int VeinLevel { get; private set; }
+
+        /// <summary>Manual catches toward the next vein level.</summary>
+        public int VeinStreak { get; private set; }
+
+        public int VeinMaxLevel => Economy.VeinMaxLevel(Stats);
+
+        public bool VeinOpen => VeinMaxLevel > 0;
+
+        public int VeinCatchesPerLevel => Economy.VeinCatchesPerLevel(Stats);
+
+        public double VeinMultiplier => Economy.VeinMultiplier(VeinLevel);
+
+        /// <summary>A collectible left the screen uncaught; returns whether a vein broke.</summary>
+        public bool LoseCollectible()
+        {
+            bool broke = VeinLevel > 0 || VeinStreak > 0;
+            VeinLevel = 0;
+            VeinStreak = 0;
+            return broke;
+        }
+
+        void AdvanceVein()
+        {
+            int max = VeinMaxLevel;
+            if (max <= 0)
+                return;
+            if (VeinLevel >= max)
+            {
+                VeinLevel = max;
+                VeinStreak = 0;
+                return;
+            }
+            VeinStreak++;
+            if (VeinStreak >= VeinCatchesPerLevel)
+            {
+                VeinLevel++;
+                VeinStreak = 0;
+            }
+        }
+
+        /// <summary>
+        /// Dollars for one manual catch at the current vein level. Averaged over the rolls
+        /// with the vein closed this equals <see cref="Economy.CollectValue"/> times the active
+        /// income and critical factors, so SpawnRate * average =
+        /// <see cref="Economy.ActiveRate(int,int,StatSheet,double)"/>.
+        /// </summary>
+        public BigNumber CatchValue(CollectibleKind kind, bool doubleCatch, bool critical = false)
+        {
+            double factor = KindMultiplier(kind);
             if (doubleCatch)
                 factor *= 2;
-            factor *= Stats.Multiplier(Stat.AllIncome) * PrestigeMultiplier * Stats.Multiplier(Stat.ActiveIncome);
+            if (critical)
+                factor *= Economy.CritValueMultiplier(Stats);
+            factor *= Stats.Multiplier(Stat.AllIncome) * PrestigeMultiplier * Stats.Multiplier(Stat.ActiveIncome) * VeinMultiplier;
             return Economy.DustValue(Progress.RegionIndex, Progress.TierIndex, Stats) * factor;
         }
 
-        /// <summary>Credits a manual catch and returns its value.</summary>
-        public BigNumber Collect(CollectibleKind kind, bool doubleCatch)
+        /// <summary>Credits a manual catch, advances the vein and returns the catch's value.</summary>
+        public BigNumber Collect(CollectibleKind kind, bool doubleCatch, bool critical = false)
         {
-            BigNumber value = CatchValue(kind, doubleCatch);
+            BigNumber value = CatchValue(kind, doubleCatch, critical);
+            AdvanceVein();
             Progress.ManualCollected++;
             Progress.CollectedSinceMotherLode++;
             Earn(value);
