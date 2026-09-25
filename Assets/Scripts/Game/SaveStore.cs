@@ -40,6 +40,11 @@ namespace NuggetCreek.Game
             public double chestSecondsLeft;
             public int catchesTowardChest;
             public int chestsOpened;
+            public int[] perkRanks;
+            public int guildLevel;
+            public long guildXp;
+            public int rebirths;
+            public int bestRegionsUnlocked;
             public int[] crewCandidates;
             public double candidateSecondsLeft;
             public int goalIndex;
@@ -89,6 +94,11 @@ namespace NuggetCreek.Game
                 ChestSecondsLeft = data.chestSecondsLeft,
                 CatchesTowardChest = data.catchesTowardChest,
                 ChestsOpened = data.chestsOpened,
+                PerkRanks = data.perkRanks,
+                GuildLevel = data.guildLevel,
+                GuildXp = data.guildXp,
+                Rebirths = data.rebirths,
+                BestRegionsUnlocked = data.bestRegionsUnlocked,
                 CrewCandidates = data.crewCandidates,
                 CandidateSecondsLeft = data.candidateSecondsLeft,
                 GoalIndex = data.goalIndex,
@@ -129,6 +139,11 @@ namespace NuggetCreek.Game
                 chestSecondsLeft = progress.ChestSecondsLeft,
                 catchesTowardChest = progress.CatchesTowardChest,
                 chestsOpened = progress.ChestsOpened,
+                perkRanks = progress.PerkRanks,
+                guildLevel = progress.GuildLevel,
+                guildXp = progress.GuildXp,
+                rebirths = progress.Rebirths,
+                bestRegionsUnlocked = progress.BestRegionsUnlocked,
                 crewCandidates = progress.CrewCandidates,
                 candidateSecondsLeft = progress.CandidateSecondsLeft,
                 goalIndex = progress.GoalIndex,
