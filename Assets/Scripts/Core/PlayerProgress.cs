@@ -46,6 +46,15 @@ namespace NuggetCreek.Core
         /// <summary>Index of the active goal in <see cref="GameCatalog.Goals"/>; Count once all are claimed.</summary>
         public int GoalIndex;
 
+        /// <summary>Seconds of play with the game open, lifetime; gates the first Mother Lode.</summary>
+        public double PlaySeconds;
+
+        /// <summary>Manual catches since the last Mother Lode.</summary>
+        public int CollectedSinceMotherLode;
+
+        /// <summary>Play seconds since the last Mother Lode.</summary>
+        public double SecondsSinceMotherLode;
+
         // --- Clock readings from the last time the game went to background (OfflineEarnings) ---
 
         public double LastSeenUtc;
@@ -71,6 +80,9 @@ namespace NuggetCreek.Core
             if (CrewCandidates.Length == 0)
                 CandidateSecondsLeft = 0;
             Gems = Math.Max(0, Gems);
+            PlaySeconds = Math.Max(0, PlaySeconds);
+            CollectedSinceMotherLode = Math.Max(0, CollectedSinceMotherLode);
+            SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, RegionsUnlocked);
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
