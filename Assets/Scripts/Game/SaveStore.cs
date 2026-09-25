@@ -33,6 +33,9 @@ namespace NuggetCreek.Game
             public int[] crewCandidates;
             public double candidateSecondsLeft;
             public int goalIndex;
+            public double playSeconds;
+            public int collectedSinceMotherLode;
+            public double secondsSinceMotherLode;
             public double lastSeenUtc;
             public double lastDeviceUtc;
             public double lastMonotonicSeconds;
@@ -69,6 +72,9 @@ namespace NuggetCreek.Game
                 CrewCandidates = data.crewCandidates,
                 CandidateSecondsLeft = data.candidateSecondsLeft,
                 GoalIndex = data.goalIndex,
+                PlaySeconds = data.playSeconds,
+                CollectedSinceMotherLode = data.collectedSinceMotherLode,
+                SecondsSinceMotherLode = data.secondsSinceMotherLode,
                 LastSeenUtc = data.lastSeenUtc,
                 LastDeviceUtc = data.lastDeviceUtc,
                 LastMonotonicSeconds = data.lastMonotonicSeconds,
@@ -96,6 +102,9 @@ namespace NuggetCreek.Game
                 crewCandidates = progress.CrewCandidates,
                 candidateSecondsLeft = progress.CandidateSecondsLeft,
                 goalIndex = progress.GoalIndex,
+                playSeconds = progress.PlaySeconds,
+                collectedSinceMotherLode = progress.CollectedSinceMotherLode,
+                secondsSinceMotherLode = progress.SecondsSinceMotherLode,
                 lastSeenUtc = progress.LastSeenUtc,
                 lastDeviceUtc = progress.LastDeviceUtc,
                 lastMonotonicSeconds = progress.LastMonotonicSeconds,
