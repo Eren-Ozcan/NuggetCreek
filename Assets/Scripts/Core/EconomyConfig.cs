@@ -156,6 +156,36 @@ namespace NuggetCreek.Core
         /// <summary>Each box holds at least one card of this rarity or better.</summary>
         public Rarity[] GearBoxGuarantee = { Rarity.Rare, Rarity.Rare, Rarity.Legendary };
 
+        // --- Rebirth and the Prospectors' Guild (6.5, 6.6) ---
+
+        /// <summary>The game suggests a new claim once it would pay at least this much Prospecting XP ...</summary>
+        public long RebirthSuggestMinXp = 25;
+
+        /// <summary>... and income grew less than this over the last RebirthSuggestWindowSeconds of play.</summary>
+        public double RebirthSuggestGrowth = 0.10;
+
+        public double RebirthSuggestWindowSeconds = 5 * 60;
+
+        public int GuildMaxLevel = 100;
+
+        /// <summary>Guild XP to go from level L to L+1: GuildXpBase + GuildXpPerLevel * L.</summary>
+        public int GuildXpBase = 40;
+
+        public int GuildXpPerLevel = 30;
+
+        /// <summary>Guild XP per rewarded ad watched from the Guild panel. RC: guild_xp_per_ad.</summary>
+        public int GuildXpPerAd = 10;
+
+        /// <summary>Guild milestone levels: vein opens, chests, Mother Lode combo, all income, Prospecting XP.</summary>
+        public int[] GuildMilestoneLevels = { 8, 20, 40, 65, 100 };
+
+        public int MilestoneVeinLevels = 2;
+        public int MilestoneChestCapacity = 2;
+        public double MilestoneChestTime = -0.25;
+        public int MilestoneMotherLodeCombo = 5;
+        public double MilestoneIncomeMultiplier = 1.5;
+        public double MilestoneXpMultiplier = 1.5;
+
         /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
         public double ActiveIdleRatio = 3.0;
 
