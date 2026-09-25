@@ -186,6 +186,39 @@ namespace NuggetCreek.Core
         public double MilestoneIncomeMultiplier = 1.5;
         public double MilestoneXpMultiplier = 1.5;
 
+        // --- Daily systems (7.1) ---
+
+        /// <summary>Local hour the game day rolls over, so a late session is not split in two.</summary>
+        public double DailyRolloverHour = 4;
+
+        /// <summary>30-day login calendar, one entry per day: Gems, minutes of income, creek chests, gear box (-1 none).</summary>
+        public int[] StreakGems = { 5, 0, 0, 10, 20, 5, 0, 0, 10, 25, 5, 0, 0, 10, 40, 5, 0, 0, 10, 30, 5, 0, 0, 10, 40, 5, 0, 0, 10, 60 };
+
+        public double[] StreakIncomeMinutes = { 0, 15, 0, 0, 0, 0, 15, 0, 0, 0, 0, 15, 0, 0, 0, 0, 15, 0, 0, 0, 0, 15, 0, 0, 0, 0, 15, 0, 0, 0 };
+
+        public int[] StreakChests = { 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0 };
+
+        public int[] StreakBoxes = { -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 1 };
+
+        /// <summary>Target of each daily job, indexed by <see cref="DailyJobKind"/>.</summary>
+        public int[] DailyJobTargets = { 300, 15, 1, 2, 5, 1, 1, 1 };
+
+        public int DailyJobGems = 10;
+
+        /// <summary>Washes after the free one, each after a rewarded ad.</summary>
+        public int WashAdMax = 4;
+
+        /// <summary>Daily Wash outcomes, shown with their odds: 3 / 8 / 25 Gems, x2 30 min, x2 2 h, x3 1 h, x4 30 min, a creek chest.</summary>
+        public double[] WashChances = { 0.25, 0.15, 0.03, 0.25, 0.15, 0.10, 0.05, 0.02 };
+
+        public int[] WashGems = { 3, 8, 25, 0, 0, 0, 0, 0 };
+
+        public double[] WashMultipliers = { 1, 1, 1, 2, 2, 3, 4, 1 };
+
+        public double[] WashMinutes = { 0, 0, 0, 30, 120, 60, 30, 0 };
+
+        public int[] WashChests = { 0, 0, 0, 0, 0, 0, 0, 1 };
+
         /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
         public double ActiveIdleRatio = 3.0;
 
