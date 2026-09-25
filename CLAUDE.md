@@ -7,9 +7,10 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
 
 - `Assets/Scripts/Core/` — engine-free game logic (`NuggetCreek.Core` asmdef,
   `noEngineReferences: true`): `BigNumber`, `NumberFormat`, `EconomyConfig`, `Economy`,
-  `Stat`/`StatSheet`, `GameCatalog` (upgrades, 16 crew),
+  `Stat`/`StatSheet`, `GameCatalog` (upgrades, 16 crew, progress goals),
   `OfflineEarnings`, `RewardedDoubleButton`, `SaveEnvelope`, `PacingModel`,
-  `PlayerProgress` (save data) and `GameSession` (rules: collect, idle, offline, purchases).
+  `PlayerProgress` (save data) and `GameSession` (rules: collect, idle, offline, purchases,
+  Gems, crew hires and candidates, goals).
   No `UnityEngine` here — platform code (ads, Remote Config, Keystore, clocks) lives in
   other assemblies and feeds this one plain values.
 - `Assets/Scripts/Game/` — Unity layer (`NuggetCreek.Game`): `GameRoot` builds the whole
