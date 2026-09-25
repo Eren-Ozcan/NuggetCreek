@@ -64,6 +64,20 @@ namespace NuggetCreek.Core
 
         public int ChestsOpened;
 
+        /// <summary>Guild perk ranks, indexed like <see cref="GameCatalog.Perks"/>.</summary>
+        public int[] PerkRanks = new int[GameCatalog.Perks.Count];
+
+        public int GuildLevel;
+
+        /// <summary>Guild XP collected toward the next level.</summary>
+        public long GuildXp;
+
+        /// <summary>New claims staked, lifetime.</summary>
+        public int Rebirths;
+
+        /// <summary>Most creeks ever open at once; survives rebirth (the free second gear slot).</summary>
+        public int BestRegionsUnlocked = 1;
+
         /// <summary>Crew indices on offer right now; empty when no candidate event is open.</summary>
         public int[] CrewCandidates = new int[0];
 
@@ -114,6 +128,15 @@ namespace NuggetCreek.Core
             for (int i = 0; i < GearLevels.Length; i++)
                 GearLevels[i] = Math.Max(0, Math.Min(GearLevels[i], GameCatalog.GearMaxLevel));
             NormalizeGearSlots();
+            if (PerkRanks == null)
+                PerkRanks = new int[GameCatalog.Perks.Count];
+            else if (PerkRanks.Length != GameCatalog.Perks.Count)
+                Array.Resize(ref PerkRanks, GameCatalog.Perks.Count);
+            for (int i = 0; i < PerkRanks.Length; i++)
+                PerkRanks[i] = Math.Max(0, Math.Min(PerkRanks[i], GameCatalog.Perks[i].MaxRank));
+            GuildLevel = Math.Max(0, GuildLevel);
+            GuildXp = Math.Max(0, GuildXp);
+            Rebirths = Math.Max(0, Rebirths);
             ChestsWaiting = Math.Max(0, ChestsWaiting);
             ChestSecondsLeft = Math.Max(0, ChestSecondsLeft);
             CatchesTowardChest = Math.Max(0, CatchesTowardChest);
@@ -129,6 +152,7 @@ namespace NuggetCreek.Core
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, RegionsUnlocked);
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
+            BestRegionsUnlocked = Math.Max(BestRegionsUnlocked, RegionsUnlocked);
         }
 
         /// <summary>Four slots, each holding owned gear at most once.</summary>
