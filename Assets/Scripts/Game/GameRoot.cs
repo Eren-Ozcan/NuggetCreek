@@ -383,13 +383,14 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 600), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 700), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
             AddDebugButton(column, 3, "Away 2h", SimulateAway);
             AddDebugButton(column, 4, "Lode now", MakeMotherLodeDue);
-            AddDebugButton(column, 5, "Reset", ResetGame);
+            AddDebugButton(column, 5, "Layers", OpenCollectionLayers);
+            AddDebugButton(column, 6, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
@@ -414,6 +415,15 @@ namespace NuggetCreek.Game
             EconomyConfig config = session.Economy.Config;
             session.Progress.PlaySeconds = System.Math.Max(session.Progress.PlaySeconds, config.MotherLodeFirstAfterSeconds);
             session.Progress.SecondsSinceMotherLode = config.MotherLodeEverySeconds;
+        }
+
+        /// <summary>Opens the perk and gear layers (critical, Giant, vein) until restart, to see them before those systems exist.</summary>
+        void OpenCollectionLayers()
+        {
+            EconomyConfig config = session.Economy.Config;
+            config.CritChanceBase = 0.25;
+            config.GiantNuggetChanceBase = 0.2;
+            config.VeinMaxLevelBase = 5;
         }
 
         void ResetGame()
