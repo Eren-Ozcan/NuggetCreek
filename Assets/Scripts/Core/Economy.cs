@@ -41,20 +41,70 @@ namespace NuggetCreek.Core
         public double NuggetValueMultiplier(StatSheet stats) =>
             Config.NuggetValueMultiplier * stats.Multiplier(Stat.NuggetValue);
 
-        /// <summary>Expected Dollars per collected item: Gold Dust/Nugget mix, double catches, all-income and prestige.</summary>
+        /// <summary>Share of Nugget spawns that come up Giant (rolled before Rich).</summary>
+        public double GiantNuggetChance(StatSheet stats) =>
+            Math.Min(1, Config.GiantNuggetChanceBase + stats[Stat.GiantNuggetChance]);
+
+        /// <summary>Share of the remaining Nugget spawns that come up Rich.</summary>
+        public double RichNuggetChance(StatSheet stats) =>
+            Math.Min(1, Config.RichNuggetChanceBase + stats[Stat.RichNuggetChance]);
+
+        /// <summary>Giant Nugget value in Nuggets.</summary>
+        public double GiantNuggetValueMultiplier(StatSheet stats) =>
+            Config.GiantNuggetValueMultiplier * stats.Multiplier(Stat.GiantNuggetValue);
+
+        /// <summary>Rich Nugget value in Nuggets.</summary>
+        public double RichNuggetValueMultiplier(StatSheet stats) =>
+            Config.RichNuggetValueMultiplier * stats.Multiplier(Stat.RichNuggetValue);
+
+        /// <summary>Expected value of one Nugget spawn in Nuggets: Giant first, then Rich, else plain.</summary>
+        public double NuggetLayerFactor(StatSheet stats)
+        {
+            double giant = GiantNuggetChance(stats);
+            double rich = RichNuggetChance(stats);
+            return giant * GiantNuggetValueMultiplier(stats) + (1 - giant) * (1 + rich * (RichNuggetValueMultiplier(stats) - 1));
+        }
+
+        public double CritChance(StatSheet stats) =>
+            Math.Min(1, Config.CritChanceBase + stats[Stat.CritChance]);
+
+        public double CritValueMultiplier(StatSheet stats) =>
+            Config.CritValueMultiplier * stats.Multiplier(Stat.CritValue);
+
+        /// <summary>Expected factor critical catches add to manual income.</summary>
+        public double CritFactor(StatSheet stats) =>
+            1 + CritChance(stats) * (CritValueMultiplier(stats) - 1);
+
+        /// <summary>Vein level ceiling; zero means the vein is closed.</summary>
+        public int VeinMaxLevel(StatSheet stats) =>
+            Math.Max(0, Config.VeinMaxLevelBase + (int)Math.Round(stats[Stat.VeinMaxLevel]));
+
+        /// <summary>Manual catches in a row per vein level, never below 1.</summary>
+        public int VeinCatchesPerLevel(StatSheet stats) =>
+            Math.Max(1, Config.VeinCatchesPerLevel + (int)Math.Round(stats[Stat.VeinCatchesPerLevel]));
+
+        public double VeinMultiplier(int veinLevel) => 1 + Config.VeinValuePerLevel * Math.Max(0, veinLevel);
+
+        /// <summary>
+        /// Expected Dollars per collected item: Gold Dust/Nugget mix (Rich and Giant included),
+        /// double catches, all-income and prestige. Critical catches are manual only, see ActiveRate.
+        /// </summary>
         public BigNumber CollectValue(int regionIndex, int tierIndex, StatSheet stats, double prestigeMultiplier)
         {
-            double mix = 1 + NuggetChance(stats) * (NuggetValueMultiplier(stats) - 1);
+            double mix = 1 + NuggetChance(stats) * (NuggetValueMultiplier(stats) * NuggetLayerFactor(stats) - 1);
             double factor = mix * stats.Multiplier(Stat.DoubleCatch) * stats.Multiplier(Stat.AllIncome) * prestigeMultiplier;
             return DustValue(regionIndex, tierIndex, stats) * factor;
         }
 
-        /// <summary>Manual collection income per second. Idle income derives from this, not part of it.</summary>
+        /// <summary>
+        /// Manual collection income per second, critical catches included. The vein bonus is
+        /// left out: it depends on skill and is closed before perks.
+        /// </summary>
         public BigNumber ActiveRate(int regionIndex, int tierIndex, StatSheet stats, double prestigeMultiplier) =>
             ActiveRate(regionIndex, tierIndex, stats, prestigeMultiplier, SpawnBaseFor(regionIndex));
 
         public BigNumber ActiveRate(int regionIndex, int tierIndex, StatSheet stats, double prestigeMultiplier, double spawnBase) =>
-            BaseRate(regionIndex, tierIndex, stats, prestigeMultiplier, spawnBase) * stats.Multiplier(Stat.ActiveIncome);
+            BaseRate(regionIndex, tierIndex, stats, prestigeMultiplier, spawnBase) * (stats.Multiplier(Stat.ActiveIncome) * CritFactor(stats));
 
         /// <summary>Crew idle collection per second (needs Amos).</summary>
         public BigNumber IdleRate(int regionIndex, int tierIndex, StatSheet stats, double prestigeMultiplier) =>

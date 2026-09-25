@@ -66,6 +66,35 @@ namespace NuggetCreek.Core
         /// <summary>A Nugget is worth this many Gold Dust of the same region.</summary>
         public double NuggetValueMultiplier = 8.0;
 
+        // --- Collection layers (3.1.1, 3.5) ---
+
+        /// <summary>Share of Nuggets that come up Rich.</summary>
+        public double RichNuggetChanceBase = 0.10;
+
+        /// <summary>A Rich Nugget is worth this many Nuggets; Midas Touch raises it.</summary>
+        public double RichNuggetValueMultiplier = 3.0;
+
+        /// <summary>Share of Nuggets that come up Giant. Zero until the Big Strike perk.</summary>
+        public double GiantNuggetChanceBase = 0;
+
+        /// <summary>A Giant Nugget is worth this many Nuggets; Assay Bonus raises it.</summary>
+        public double GiantNuggetValueMultiplier = 25.0;
+
+        /// <summary>Critical catch chance on manual catches. Zero until gear adds it.</summary>
+        public double CritChanceBase = 0;
+
+        /// <summary>A critical manual catch pays this many times its value; Precision raises it.</summary>
+        public double CritValueMultiplier = 3.0;
+
+        /// <summary>Manual catches in a row, with no collectible lost, per vein level.</summary>
+        public int VeinCatchesPerLevel = 20;
+
+        /// <summary>Vein level ceiling before perks. Zero keeps the vein closed until Rich Vein.</summary>
+        public int VeinMaxLevelBase = 0;
+
+        /// <summary>Manual catch bonus per vein level.</summary>
+        public double VeinValuePerLevel = 0.10;
+
         /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
         public double ActiveIdleRatio = 3.0;
 
@@ -78,13 +107,13 @@ namespace NuggetCreek.Core
         // --- Progression tables (5.0.4, 6.1, 6.2), solved by tools/economy_tune.py ---
 
         /// <summary>Region unlock costs for the 6 launch regions; index 0 is free.</summary>
-        public double[] RegionUnlockCosts = { 0, 910, 950e3, 170e6, 34e9, 12e12 };
+        public double[] RegionUnlockCosts = { 0, 970, 1e6, 180e6, 37e9, 14e12 };
 
         /// <summary>Sluice tier costs for the 8 launch tiers; index 0 is the starting sluice.</summary>
-        public double[] TierCosts = { 0, 230, 240e3, 42e6, 8.5e9, 3e12, 620e12, 130e15 };
+        public double[] TierCosts = { 0, 240, 250e3, 45e6, 9.2e9, 3.5e12, 720e12, 150e15 };
 
         /// <summary>Level 1 price of each tier's two upgrades (3% of the tier cost, floored at 2x the previous).</summary>
-        public double[] UpgradeBaseCosts = { 30, 60, 7.2e3, 1.3e6, 260e6, 90e9, 19e12, 3.9e15 };
+        public double[] UpgradeBaseCosts = { 30, 60, 7.5e3, 1.4e6, 280e6, 100e9, 22e12, 4.5e15 };
 
         /// <summary>Upgrade price growth per level. RC: upgrade_growth.</summary>
         public double UpgradeCostGrowth = 1.22;
@@ -102,7 +131,7 @@ namespace NuggetCreek.Core
 
         /// <summary>Amos level costs for L2..L12: 45 minutes of typical idle income when the
         /// level unlocks, the second level of each region pair at 1.5x.</summary>
-        public double[] AmosLevelCosts = { 4.4e3, 180e3, 280e3, 8.3e6, 12e6, 790e6, 1.2e9, 120e9, 170e9, 15e12, 22e12 };
+        public double[] AmosLevelCosts = { 4.6e3, 190e3, 290e3, 8.8e6, 13e6, 860e6, 1.3e9, 130e9, 200e9, 17e12, 26e12 };
 
         public double OfflineCapHoursPerAmosLevel = 1;
         public int AmosMaxLevel = 12;
