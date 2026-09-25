@@ -17,6 +17,9 @@ namespace NuggetCreek.Game.UI
         public static readonly Color TextMuted = new Color32(0xB5, 0xAE, 0x9A, 0xFF);
         public static readonly Color Gold = new Color32(0xFF, 0xD5, 0x4A, 0xFF);
         public static readonly Color Nugget = new Color32(0xE8, 0x93, 0x2D, 0xFF);
+        public static readonly Color RichNugget = new Color32(0xFF, 0x6A, 0x3D, 0xFF);
+        public static readonly Color GiantNugget = new Color32(0xFF, 0xF2, 0xA8, 0xFF);
+        public static readonly Color Critical = new Color32(0xFF, 0x4F, 0x6E, 0xFF);
         public static readonly Color Button = new Color32(0x3F, 0x8F, 0x4E, 0xFF);
         public static readonly Color ButtonAlt = new Color32(0x4A, 0x55, 0x4E, 0xFF);
         public static readonly Color Ad = new Color32(0x7A, 0x4F, 0xC2, 0xFF);

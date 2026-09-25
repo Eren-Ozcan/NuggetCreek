@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using NuggetCreek.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,13 +7,16 @@ using UnityEngine.UI;
 namespace NuggetCreek.Game.UI
 {
     /// <summary>
-    /// The creek: spawns glinting Gold Dust and Nuggets and collects them when a swipe
-    /// passes over them (design doc 3.1). Also shows Amos panning while idle is active.
+    /// The creek: spawns glinting Gold Dust and Nuggets (plain, Rich, Giant) and collects
+    /// them when a swipe passes over them (design doc 3.1, 3.1.1). Rolls critical catches,
+    /// shows the vein level once it is open, and Amos panning while idle is active.
     /// </summary>
     public sealed class CreekView : MonoBehaviour
     {
         const float DustSize = 60;
         const float NuggetSize = 100;
+        const float RichNuggetSize = 115;
+        const float GiantNuggetSize = 180;
         const float FadeSeconds = 0.6f;
         const float PopupSeconds = 0.9f;
         const float EdgeMargin = 90;
@@ -37,6 +41,7 @@ namespace NuggetCreek.Game.UI
         RectTransform area;
         RectTransform amos;
         Text hint;
+        Text vein;
         readonly List<Collectible> live = new List<Collectible>();
         readonly List<Popup> popups = new List<Popup>();
         float spawnIn;
@@ -59,6 +64,9 @@ namespace NuggetCreek.Game.UI
             hint = Ui.Label("Hint", area, "Swipe over the glinting gold!", 44, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             hint.rectTransform.Place(new Vector2(0, 0.45f), new Vector2(1, 0.55f));
 
+            vein = Ui.Label("Vein", area, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold);
+            vein.rectTransform.Box(new Vector2(0, 1), new Vector2(520, 60), new Vector2(30, -30));
+
             Image amosBody = Ui.Image("AmosMarker", area, Palette.Amos, Ui.Circle);
             amos = amosBody.rectTransform.Box(new Vector2(0, 0), new Vector2(130, 130), new Vector2(30, 30));
             Text amosName = Ui.Label("Name", amos, "AMOS", 30, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
@@ -74,6 +82,7 @@ namespace NuggetCreek.Game.UI
 
             hint.SetActive(session.Progress.ManualCollected < HintUntilCollected);
             UpdateAmos(deltaTime, idleEarned);
+            UpdateVein();
 
             spawnIn -= deltaTime;
             if (spawnIn <= 0)
@@ -97,10 +106,9 @@ namespace NuggetCreek.Game.UI
         void Spawn()
         {
             CollectibleKind kind = session.RollKind(Random.value);
-            bool nugget = kind == CollectibleKind.Nugget;
-            Image image = Ui.Image(nugget ? "Nugget" : "GoldDust", area, nugget ? Palette.Nugget : Palette.Gold, Ui.Circle);
+            Image image = Ui.Image(kind.ToString(), area, ColorOf(kind), Ui.Circle);
             image.raycastTarget = false;
-            float size = nugget ? NuggetSize : DustSize;
+            float size = SizeOf(kind);
             Rect bounds = area.rect;
             var position = new Vector2(
                 Random.Range(EdgeMargin, bounds.width - EdgeMargin),
@@ -125,6 +133,8 @@ namespace NuggetCreek.Game.UI
                 c.Age += deltaTime;
                 if (c.Age >= c.Lifetime)
                 {
+                    if (session.LoseCollectible() && session.VeinOpen)
+                        ShowPopup(c.Image.rectTransform.anchoredPosition, "Vein lost", 34, Palette.TextMuted);
                     Destroy(c.Image.gameObject);
                     live.RemoveAt(i);
                     continue;
@@ -167,12 +177,47 @@ namespace NuggetCreek.Game.UI
                 if (DistanceToSegment(c.Image.rectTransform.anchoredPosition, from, point) > radius)
                     continue;
                 bool doubleCatch = session.RollDoubleCatch(Random.value);
-                BigNumber value = session.Collect(c.Kind, doubleCatch);
-                string text = "+" + NumberFormat.Dollars(value) + (doubleCatch ? " x2" : "");
-                ShowPopup(c.Image.rectTransform.anchoredPosition, text, c.Kind == CollectibleKind.Nugget ? 52 : 40,
-                    c.Kind == CollectibleKind.Nugget ? Palette.Nugget : Palette.Gold);
+                bool critical = session.RollCritical(Random.value);
+                BigNumber value = session.Collect(c.Kind, doubleCatch, critical);
+                string text = (critical ? "CRIT! +" : "+") + NumberFormat.Dollars(value) + (doubleCatch ? " x2" : "");
+                int size = c.Kind == CollectibleKind.GoldDust ? 40 : c.Kind == CollectibleKind.GiantNugget ? 64 : 52;
+                ShowPopup(c.Image.rectTransform.anchoredPosition, text, critical ? size + 8 : size,
+                    critical ? Palette.Critical : ColorOf(c.Kind));
                 Destroy(c.Image.gameObject);
                 live.RemoveAt(i);
+            }
+        }
+
+        void UpdateVein()
+        {
+            vein.SetActive(session.VeinOpen);
+            if (!session.VeinOpen)
+                return;
+            string multiplier = session.VeinMultiplier.ToString("0.0#", CultureInfo.InvariantCulture);
+            vein.text = session.VeinLevel >= session.VeinMaxLevel
+                ? $"VEIN x{multiplier}  MAX"
+                : $"VEIN x{multiplier}  {session.VeinStreak}/{session.VeinCatchesPerLevel}";
+        }
+
+        static Color ColorOf(CollectibleKind kind)
+        {
+            switch (kind)
+            {
+                case CollectibleKind.Nugget: return Palette.Nugget;
+                case CollectibleKind.RichNugget: return Palette.RichNugget;
+                case CollectibleKind.GiantNugget: return Palette.GiantNugget;
+                default: return Palette.Gold;
+            }
+        }
+
+        static float SizeOf(CollectibleKind kind)
+        {
+            switch (kind)
+            {
+                case CollectibleKind.Nugget: return NuggetSize;
+                case CollectibleKind.RichNugget: return RichNuggetSize;
+                case CollectibleKind.GiantNugget: return GiantNuggetSize;
+                default: return DustSize;
             }
         }
 

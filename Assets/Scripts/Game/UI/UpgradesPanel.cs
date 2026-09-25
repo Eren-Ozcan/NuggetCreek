@@ -292,7 +292,14 @@ namespace NuggetCreek.Game.UI
             {
                 case Stat.NuggetChance:
                 case Stat.DoubleCatch:
+                case Stat.RichNuggetChance:
+                case Stat.GiantNuggetChance:
+                case Stat.CritChance:
                     return $"{sign}{amount * 100:0.#} pt {Name(stat)}";
+                case Stat.VeinMaxLevel:
+                    return $"{sign}{amount:0} {Name(stat)}";
+                case Stat.VeinCatchesPerLevel:
+                    return $"{sign}{amount:0} {Name(stat)}";
                 case Stat.CollectibleLifetime:
                     return $"{sign}{amount:0.##}s {Name(stat)}";
                 default:
@@ -310,6 +317,14 @@ namespace NuggetCreek.Game.UI
                 case Stat.OfflineIncome: return "offline income";
                 case Stat.NuggetChance: return "Nugget chance";
                 case Stat.NuggetValue: return "Nugget value";
+                case Stat.RichNuggetChance: return "Rich Nugget chance";
+                case Stat.RichNuggetValue: return "Rich Nugget value";
+                case Stat.GiantNuggetChance: return "Giant Nugget chance";
+                case Stat.GiantNuggetValue: return "Giant Nugget value";
+                case Stat.CritChance: return "critical chance";
+                case Stat.CritValue: return "critical value";
+                case Stat.VeinMaxLevel: return "max vein levels";
+                case Stat.VeinCatchesPerLevel: return "catches per vein level";
                 case Stat.DoubleCatch: return "double catch chance";
                 case Stat.AllIncome: return "all income";
                 case Stat.ActiveIncome: return "swipe income";
