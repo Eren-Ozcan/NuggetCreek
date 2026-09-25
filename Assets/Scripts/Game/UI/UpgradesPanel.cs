@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace NuggetCreek.Game.UI
 {
-    /// <summary>Full-screen Upgrades modal: SLUICE (tier and upgrades) and CREW (Amos) for the greybox.</summary>
+    /// <summary>Full-screen Upgrades modal: SLUICE (tier and upgrades) and CREW (Amos, hired crew) for the greybox.</summary>
     public sealed class UpgradesPanel
     {
         sealed class Row
@@ -24,6 +24,7 @@ namespace NuggetCreek.Game.UI
         readonly RectTransform list;
         readonly List<Row> rows = new List<Row>();
         Row amosRow;
+        Text crewHint;
 
         public bool IsOpen => root.gameObject.activeSelf;
 
@@ -51,6 +52,10 @@ namespace NuggetCreek.Game.UI
                 AddUpgradeRow(i);
             Section("CREW");
             amosRow = AddAmosRow();
+            for (int i = 0; i < GameCatalog.Crew.Count; i++)
+                AddCrewRow(i);
+            crewHint = Ui.Label("CrewHint", list, "", 32, TextAnchor.MiddleLeft, Palette.TextMuted);
+            Ui.PreferredHeight(crewHint, 110);
 
             Close();
         }
@@ -85,6 +90,7 @@ namespace NuggetCreek.Game.UI
                 return;
             foreach (Row row in rows)
                 row.Refresh();
+            crewHint.SetText(CrewHintText());
         }
 
         /// <summary>True when something in the panel can be bought right now (badge on the bar button).</summary>
@@ -93,8 +99,21 @@ namespace NuggetCreek.Game.UI
             for (int i = 0; i < GameCatalog.Upgrades.Count; i++)
                 if (session.IsUpgradeUnlocked(i) && session.CanAfford(session.UpgradeCost(i)))
                     return true;
+            for (int i = 0; i < GameCatalog.Crew.Count; i++)
+                if (session.CanAffordGems(session.CrewLevelUpCost(i)))
+                    return true;
             return (session.IsNextTierUnlocked && session.CanAfford(session.NextTierCost))
                 || session.CanAfford(session.AmosNextCost);
+        }
+
+        string CrewHintText()
+        {
+            if (session.CrewHireCost == null)
+                return "The whole crew is on the creek.";
+            if (session.HasCandidates)
+                return "Candidates are waiting to be hired. Tap the crew chip on the creek.";
+            string first = GameCatalog.RegionNames[session.Economy.Config.CrewCandidateFirstRegion];
+            return $"New hands turn up each time you unlock a creek, from {first} on.";
         }
 
         void Section(string text)
@@ -198,6 +217,29 @@ namespace NuggetCreek.Game.UI
             return row;
         }
 
+        void AddCrewRow(int index)
+        {
+            CrewDefinition crew = GameCatalog.Crew[index];
+            Row row = NewRow(crew.Id, () =>
+            {
+                if (session.LevelUpCrew(index))
+                    Purchased?.Invoke();
+            });
+            row.Buy.GetComponent<Image>().color = Palette.GemButton;
+            row.Refresh = () =>
+            {
+                int level = session.CrewLevel(index);
+                row.Root.SetActive(level > 0);
+                if (level == 0)
+                    return;
+                row.Title.SetText($"{crew.Name}  Lv {level}/{GameCatalog.CrewMaxLevel}");
+                string now = Effects.PerLevel(crew.Stat, crew.PerLevel * level);
+                int? cost = session.CrewLevelUpCost(index);
+                row.Detail.SetText(cost.HasValue ? $"{now}. Next: {Effects.PerLevel(crew.Stat, crew.PerLevel)}." : now + ".");
+                SetGemBuy(row, cost, cost.HasValue ? null : "MAX");
+            };
+        }
+
         Row NewRow(string name, Action onBuy)
         {
             Image background = Ui.Image(name, list, Palette.Row);
@@ -223,6 +265,14 @@ namespace NuggetCreek.Game.UI
             if (row.Buy.interactable != interactable)
                 row.Buy.interactable = interactable;
         }
+
+        void SetGemBuy(Row row, int? cost, string fixedText)
+        {
+            row.BuyLabel.SetText(fixedText ?? Effects.Gems(cost.Value));
+            bool interactable = session.CanAffordGems(cost);
+            if (row.Buy.interactable != interactable)
+                row.Buy.interactable = interactable;
+        }
     }
 
     static class ComponentExtensions
@@ -233,6 +283,8 @@ namespace NuggetCreek.Game.UI
     /// <summary>Player-facing wording for stat effects.</summary>
     public static class Effects
     {
+        public static string Gems(int amount) => amount == 1 ? "1 Gem" : $"{amount} Gems";
+
         public static string PerLevel(Stat stat, double amount)
         {
             string sign = amount >= 0 ? "+" : "";

@@ -21,6 +21,8 @@ namespace NuggetCreek.Game.UI
         public static readonly Color ButtonAlt = new Color32(0x4A, 0x55, 0x4E, 0xFF);
         public static readonly Color Ad = new Color32(0x7A, 0x4F, 0xC2, 0xFF);
         public static readonly Color Amos = new Color32(0x8D, 0x6E, 0x4C, 0xFF);
+        public static readonly Color Gem = new Color32(0x4F, 0xD1, 0x9A, 0xFF);
+        public static readonly Color GemButton = new Color32(0x2A, 0x8A, 0x6A, 0xFF);
     }
 
     /// <summary>Code-built uGUI helpers for the greybox. Sizes are in 1080x1920 reference pixels.</summary>
