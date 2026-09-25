@@ -1,3 +1,4 @@
+using System.Globalization;
 using NuggetCreek.Core;
 using NuggetCreek.Game.UI;
 using UnityEngine;
@@ -24,6 +25,9 @@ namespace NuggetCreek.Game
         CreekView creek;
         CollectionPanel collection;
         ChestModal chestModal;
+        GuildPanel guild;
+        Text guildLabel;
+        Button claimChip;
         Button chestChip;
         Text chestChipLabel;
         Text collectionLabel;
@@ -55,6 +59,9 @@ namespace NuggetCreek.Game
         void Awake()
         {
             Application.targetFrameRate = 60;
+            // The game is English only (design doc 0): format numbers the same on every device locale.
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             var config = new EconomyConfig();
             session = new GameSession(new Economy(config), SaveStore.Load());
             ads = new FakeRewardedAds();
@@ -79,7 +86,7 @@ namespace NuggetCreek.Game
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen;
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -105,6 +112,7 @@ namespace NuggetCreek.Game
             map.Refresh();
             collection.Refresh();
             chestModal.Refresh();
+            guild.Refresh();
             candidateModal.Refresh();
 
             autosaveIn -= Time.unscaledDeltaTime;
@@ -214,6 +222,9 @@ namespace NuggetCreek.Game
             gemsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -80), new Vector2(0, -24));
             statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
             statusLabel.rectTransform.Place(new Vector2(0, 0.22f), new Vector2(1, 0.45f));
+            Button guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
+            guildButton.AsRect().Box(Vector2.one, new Vector2(220, 70), new Vector2(-20, -20));
+
             goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
             goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(20, 6), new Vector2(-20, -2));
             goalLabel.name = "Goal";
@@ -236,6 +247,10 @@ namespace NuggetCreek.Game
             Button collectionButton = Ui.Button("CollectionButton", root, "", Palette.ButtonAlt, () => collection.Open(), out collectionLabel, 32);
             collectionButton.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 140));
 
+            claimChip = Ui.Button("ClaimChip", root, "New claim?", Palette.Button, () => guild.Open(), out _, 32);
+            claimChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, 100), new Vector2(20, -topHeight - 130));
+            claimChip.SetActive(false);
+
             chestChip = Ui.Button("ChestChip", root, "", Palette.Nugget, () => chestModal.Open(), out chestChipLabel, 32);
             chestChip.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 260));
             chestChip.SetActive(false);
@@ -253,6 +268,8 @@ namespace NuggetCreek.Game
             collection = new CollectionPanel(session, root);
             chestModal = new ChestModal(session, ads, root);
             chestModal.Claimed += Save;
+            guild = new GuildPanel(session, ads, root);
+            guild.Reborn += Save;
             creek.NuggetDiscovered += _ => Save();
             upgrades.Closed += () => offlineModal.Unhide();
             map = new MapPanel(session, root);
@@ -307,6 +324,8 @@ namespace NuggetCreek.Game
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
             chestChipLabel.SetText(ChestChipText());
+            guildLabel.SetText($"Guild Lv {session.GuildLevel}");
+            claimChip.SetActive(session.RebirthSuggested && !guild.IsOpen && !motherLode.IsActive);
 
             float now = Time.realtimeSinceStartup;
             if (ads.IsLoaded)
