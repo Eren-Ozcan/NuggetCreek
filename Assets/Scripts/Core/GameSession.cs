@@ -61,9 +61,11 @@ namespace NuggetCreek.Core
             for (int i = 0; i < GameCatalog.Crew.Count; i++)
                 GameCatalog.ApplyCrew(Stats, GameCatalog.Crew[i], Progress.CrewLevels[i]);
             ApplyEquippedGear();
+            ApplyGuild();
         }
 
-        public double PrestigeMultiplier => Economy.PrestigeMultiplier(Progress.ProspectingXp, TotalStars);
+        public double PrestigeMultiplier =>
+            Economy.PrestigeMultiplier(Progress.ProspectingXp, TotalStars) * GuildIncomeMultiplier;
 
         public string RegionName => GameCatalog.RegionNames[Progress.RegionIndex];
 
@@ -266,7 +268,7 @@ namespace NuggetCreek.Core
             return earned;
         }
 
-        public double OfflineCapSeconds => Economy.OfflineCapSeconds(Progress.AmosLevel);
+        public double OfflineCapSeconds => Economy.OfflineCapSeconds(Progress.AmosLevel, Stats);
 
         public OfflineResult EvaluateOffline(OfflineClockInput clock) =>
             offline.Evaluate(clock, OfflineCapSeconds, OfflineRate);
@@ -346,6 +348,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.RegionIndex = Progress.RegionsUnlocked;
             Progress.RegionsUnlocked++;
+            Progress.BestRegionsUnlocked = Math.Max(Progress.BestRegionsUnlocked, Progress.RegionsUnlocked);
             if (Progress.RegionIndex >= Config.CrewCandidateFirstRegion)
                 OfferCandidates();
             return true;
@@ -388,6 +391,7 @@ namespace NuggetCreek.Core
             Progress.PlaySeconds += deltaSeconds;
             Progress.SecondsSinceMotherLode += deltaSeconds;
             TickChest(deltaSeconds);
+            SampleIncome(deltaSeconds);
         }
 
         /// <summary>Dollars per second right now from swiping and the crew together.</summary>
@@ -405,7 +409,7 @@ namespace NuggetCreek.Core
         {
             Progress.CollectedSinceMotherLode = 0;
             Progress.SecondsSinceMotherLode = 0;
-            return new MotherLodeRun(Config, IncomePerSecond);
+            return new MotherLodeRun(Config, IncomePerSecond, Economy.MotherLodeMaxCombo(Stats));
         }
 
         /// <summary>Starts a Mother Lode at once for Gems; null when the player cannot pay.</summary>

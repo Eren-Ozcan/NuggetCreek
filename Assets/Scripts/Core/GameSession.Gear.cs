@@ -63,7 +63,7 @@ namespace NuggetCreek.Core
             switch (slot)
             {
                 case 0: return GearUnlocked;
-                case 1: return GearUnlocked && Progress.RegionsUnlocked > Config.GearSecondSlotRegion;
+                case 1: return GearUnlocked && Math.Max(Progress.BestRegionsUnlocked, Progress.RegionsUnlocked) > Config.GearSecondSlotRegion;
                 case 2: return Progress.ThirdGearSlotBought;
                 case 3: return Progress.FourthGearSlotOwned;
                 default: return false;
@@ -187,7 +187,10 @@ namespace NuggetCreek.Core
 
         // --- Creek chests ---
 
-        public int ChestCapacity => Config.ChestCapacity;
+        public int ChestCapacity => Config.ChestCapacity + (int)Math.Round(Stats[Stat.ChestCapacity]);
+
+        /// <summary>Free unlock time of a chest after the Guild's chest milestone.</summary>
+        public double ChestOpenSeconds => Config.ChestOpenSeconds * Stats.CostMultiplier(Stat.ChestTime);
 
         /// <summary>Counts a manual catch; every ChestEveryCatches (the first after fewer) earns a chest.</summary>
         void CountTowardChest()
@@ -213,7 +216,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.ChestsWaiting--;
             Progress.ChestOpening = true;
-            Progress.ChestSecondsLeft = Progress.ChestsOpened == 0 ? 0 : Config.ChestOpenSeconds;
+            Progress.ChestSecondsLeft = Progress.ChestsOpened == 0 ? 0 : ChestOpenSeconds;
             return true;
         }
 
