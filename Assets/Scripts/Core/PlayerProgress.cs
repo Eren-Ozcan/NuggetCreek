@@ -33,6 +33,19 @@ namespace NuggetCreek.Core
 
         public long ProspectingXp;
 
+        public int Gems;
+
+        /// <summary>Crew levels, indexed like <see cref="GameCatalog.Crew"/>; 0 = not hired.</summary>
+        public int[] CrewLevels = new int[GameCatalog.Crew.Count];
+
+        /// <summary>Crew indices on offer right now; empty when no candidate event is open.</summary>
+        public int[] CrewCandidates = new int[0];
+
+        public double CandidateSecondsLeft;
+
+        /// <summary>Index of the active goal in <see cref="GameCatalog.Goals"/>; Count once all are claimed.</summary>
+        public int GoalIndex;
+
         // --- Clock readings from the last time the game went to background (OfflineEarnings) ---
 
         public double LastSeenUtc;
@@ -49,6 +62,16 @@ namespace NuggetCreek.Core
                 UpgradeLevels = new int[GameCatalog.Upgrades.Count];
             else if (UpgradeLevels.Length != GameCatalog.Upgrades.Count)
                 Array.Resize(ref UpgradeLevels, GameCatalog.Upgrades.Count);
+            if (CrewLevels == null)
+                CrewLevels = new int[GameCatalog.Crew.Count];
+            else if (CrewLevels.Length != GameCatalog.Crew.Count)
+                Array.Resize(ref CrewLevels, GameCatalog.Crew.Count);
+            CrewCandidates = Array.FindAll(CrewCandidates ?? new int[0],
+                index => index >= 0 && index < GameCatalog.Crew.Count && CrewLevels[index] == 0);
+            if (CrewCandidates.Length == 0)
+                CandidateSecondsLeft = 0;
+            Gems = Math.Max(0, Gems);
+            GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, RegionsUnlocked);
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
         }
