@@ -22,6 +22,8 @@ namespace NuggetCreek.Game
         LateDoubleOffer lateDouble;
 
         CreekView creek;
+        CollectionPanel collection;
+        Text collectionLabel;
         UpgradesPanel upgrades;
         MapPanel map;
         OfflineModal offlineModal;
@@ -74,7 +76,7 @@ namespace NuggetCreek.Game
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen;
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -98,6 +100,7 @@ namespace NuggetCreek.Game
             RefreshHud();
             upgrades.Refresh();
             map.Refresh();
+            collection.Refresh();
             candidateModal.Refresh();
 
             autosaveIn -= Time.unscaledDeltaTime;
@@ -226,6 +229,9 @@ namespace NuggetCreek.Game
             crewChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, 100), new Vector2(20, -topHeight - 20));
             crewChip.SetActive(false);
 
+            Button collectionButton = Ui.Button("CollectionButton", root, "", Palette.ButtonAlt, () => collection.Open(), out collectionLabel, 32);
+            collectionButton.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 140));
+
             summonLode = Ui.Button("SummonLode", root, "", Palette.GemButton, SummonMotherLode, out Text summonLabel, 32);
             summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, 100), new Vector2(-20, bottomHeight + 20));
             summonLabel.SetText($"Mother Lode  {Effects.Gems(session.Economy.Config.MotherLodeSummonGems)}");
@@ -236,6 +242,8 @@ namespace NuggetCreek.Game
                 BuildDebugButtons(root, topHeight);
 
             upgrades = new UpgradesPanel(session, root);
+            collection = new CollectionPanel(session, root);
+            creek.NuggetDiscovered += _ => Save();
             upgrades.Closed += () => offlineModal.Unhide();
             map = new MapPanel(session, root);
             // A creek unlock may bring crew candidates (design doc 6.3); show them right away.
@@ -285,6 +293,8 @@ namespace NuggetCreek.Game
             bool mapBadge = session.CanAfford(session.NextRegionCost);
             upgradesLabel.SetText(upgradeBadge ? "Upgrades  (!)" : "Upgrades");
             mapLabel.SetText(mapBadge ? "Map  (!)" : "Map");
+            collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
+            collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
 
             float now = Time.realtimeSinceStartup;
             if (ads.IsLoaded)

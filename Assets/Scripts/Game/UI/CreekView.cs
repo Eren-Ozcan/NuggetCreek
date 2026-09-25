@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using NuggetCreek.Core;
@@ -22,11 +23,13 @@ namespace NuggetCreek.Game.UI
         const float EdgeMargin = 90;
         const float AmosPopupEvery = 2f;
         const int HintUntilCollected = 3;
+        const float BannerSeconds = 2.5f;
 
         sealed class Collectible
         {
             public Image Image;
             public CollectibleKind Kind;
+            public int NuggetType = -1;
             public float Age;
             public float Lifetime;
         }
@@ -42,12 +45,17 @@ namespace NuggetCreek.Game.UI
         RectTransform amos;
         Text hint;
         Text vein;
+        Text banner;
+        float bannerLeft;
         readonly List<Collectible> live = new List<Collectible>();
         readonly List<Popup> popups = new List<Popup>();
         float spawnIn;
         Vector2? lastPointer;
         float amosTimer;
         BigNumber amosPending = BigNumber.Zero;
+
+        /// <summary>Raised when a manual catch finds a Nugget type for the first time.</summary>
+        public event Action<int> NuggetDiscovered;
 
         /// <summary>False while a modal covers the creek.</summary>
         public bool InputEnabled { get; set; } = true;
@@ -66,6 +74,11 @@ namespace NuggetCreek.Game.UI
 
             vein = Ui.Label("Vein", area, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold);
             vein.rectTransform.Box(new Vector2(0, 1), new Vector2(520, 60), new Vector2(30, -30));
+
+            // A short banner, not a modal: a new Nugget type must not stop the swipe.
+            banner = Ui.Label("NewNugget", area, "", 44, TextAnchor.MiddleCenter, Palette.GiantNugget, FontStyle.Bold);
+            banner.rectTransform.Place(new Vector2(0, 0.78f), new Vector2(1, 0.86f));
+            banner.SetActive(false);
 
             Image amosBody = Ui.Image("AmosMarker", area, Palette.Amos, Ui.Circle);
             amos = amosBody.rectTransform.Box(new Vector2(0, 0), new Vector2(130, 130), new Vector2(30, 30));
@@ -94,25 +107,26 @@ namespace NuggetCreek.Game.UI
             AgeCollectibles(deltaTime);
             HandleSwipe();
             AgePopups(deltaTime);
+            AgeBanner(deltaTime);
         }
 
         void ScheduleNextSpawn()
         {
             double rate = session.SpawnRate;
             // Jitter keeps the rhythm organic while the mean stays 1 / rate.
-            spawnIn = (float)(1 / rate) * Random.Range(0.6f, 1.4f);
+            spawnIn = (float)(1 / rate) * UnityEngine.Random.Range(0.6f, 1.4f);
         }
 
         void Spawn()
         {
-            CollectibleKind kind = session.RollKind(Random.value);
+            CollectibleKind kind = session.RollKind(UnityEngine.Random.value);
             Image image = Ui.Image(kind.ToString(), area, ColorOf(kind), Ui.Circle);
             image.raycastTarget = false;
             float size = SizeOf(kind);
             Rect bounds = area.rect;
             var position = new Vector2(
-                Random.Range(EdgeMargin, bounds.width - EdgeMargin),
-                Random.Range(EdgeMargin + 160, bounds.height - EdgeMargin));
+                UnityEngine.Random.Range(EdgeMargin, bounds.width - EdgeMargin),
+                UnityEngine.Random.Range(EdgeMargin + 160, bounds.height - EdgeMargin));
             image.rectTransform.Box(Vector2.zero, new Vector2(size, size), position);
             image.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             image.rectTransform.anchoredPosition = position;
@@ -121,6 +135,7 @@ namespace NuggetCreek.Game.UI
             {
                 Image = image,
                 Kind = kind,
+                NuggetType = kind == CollectibleKind.GoldDust ? -1 : session.RollNuggetType(UnityEngine.Random.value),
                 Lifetime = (float)session.CollectibleLifetimeSeconds,
             });
         }
@@ -176,16 +191,45 @@ namespace NuggetCreek.Game.UI
                 Collectible c = live[i];
                 if (DistanceToSegment(c.Image.rectTransform.anchoredPosition, from, point) > radius)
                     continue;
-                bool doubleCatch = session.RollDoubleCatch(Random.value);
-                bool critical = session.RollCritical(Random.value);
+                bool doubleCatch = session.RollDoubleCatch(UnityEngine.Random.value);
+                bool critical = session.RollCritical(UnityEngine.Random.value);
                 BigNumber value = session.Collect(c.Kind, doubleCatch, critical);
                 string text = (critical ? "CRIT! +" : "+") + NumberFormat.Dollars(value) + (doubleCatch ? " x2" : "");
                 int size = c.Kind == CollectibleKind.GoldDust ? 40 : c.Kind == CollectibleKind.GiantNugget ? 64 : 52;
                 ShowPopup(c.Image.rectTransform.anchoredPosition, text, critical ? size + 8 : size,
                     critical ? Palette.Critical : ColorOf(c.Kind));
+                if (c.NuggetType >= 0)
+                    RecordNugget(c.NuggetType, c.Image.rectTransform.anchoredPosition);
                 Destroy(c.Image.gameObject);
                 live.RemoveAt(i);
             }
+        }
+
+        void RecordNugget(int index, Vector2 position)
+        {
+            NuggetCatch result = session.CatchNugget(index);
+            string name = GameCatalog.Nuggets[index].Name;
+            if (result.Discovered)
+            {
+                banner.SetText($"NEW NUGGET!  {name}");
+                banner.SetActive(true);
+                bannerLeft = BannerSeconds;
+                NuggetDiscovered?.Invoke(index);
+            }
+            else if (result.StarsGained > 0)
+            {
+                string stars = CollectionPanel.StarText(session.NuggetStars(index), session.Economy.MaxStarsPerNugget);
+                ShowPopup(position + new Vector2(0, 70), $"{name} {stars}", 36, Palette.GiantNugget);
+            }
+        }
+
+        void AgeBanner(float deltaTime)
+        {
+            if (bannerLeft <= 0)
+                return;
+            bannerLeft -= deltaTime;
+            if (bannerLeft <= 0)
+                banner.SetActive(false);
         }
 
         void UpdateVein()
