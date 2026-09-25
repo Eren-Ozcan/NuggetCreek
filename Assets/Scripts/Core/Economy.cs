@@ -205,7 +205,7 @@ namespace NuggetCreek.Core
             return null;
         }
 
-        public double NuggetWeight(NuggetRarity rarity) => Config.NuggetRarityWeights[(int)rarity];
+        public double NuggetWeight(Rarity rarity) => Config.RarityWeights[(int)rarity];
 
         // --- Amos and offline cap ---
 

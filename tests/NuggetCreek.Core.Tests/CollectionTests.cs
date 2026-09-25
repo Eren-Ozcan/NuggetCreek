@@ -31,9 +31,9 @@ namespace NuggetCreek.Core.Tests
             for (int region = 0; region < config.RegionCount; region++)
             {
                 var rarities = GameCatalog.NuggetsInRegion(region).Select(i => GameCatalog.Nuggets[i].Rarity).ToList();
-                Assert.That(rarities.Count(r => r == NuggetRarity.Common), Is.EqualTo(3), "region " + region);
-                Assert.That(rarities.Count(r => r == NuggetRarity.Rare), Is.EqualTo(1), "region " + region);
-                Assert.That(rarities.Count(r => r == NuggetRarity.Legendary), Is.EqualTo(1), "region " + region);
+                Assert.That(rarities.Count(r => r == Rarity.Common), Is.EqualTo(3), "region " + region);
+                Assert.That(rarities.Count(r => r == Rarity.Rare), Is.EqualTo(1), "region " + region);
+                Assert.That(rarities.Count(r => r == Rarity.Legendary), Is.EqualTo(1), "region " + region);
             }
         }
 

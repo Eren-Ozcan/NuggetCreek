@@ -115,12 +115,12 @@ namespace NuggetCreek.Game.UI
         public static string StarText(int stars, int max) =>
             "[" + new string('*', stars) + new string('-', Mathf.Max(0, max - stars)) + "]";
 
-        static Color ColorOf(NuggetRarity rarity)
+        static Color ColorOf(Rarity rarity)
         {
             switch (rarity)
             {
-                case NuggetRarity.Rare: return Palette.RichNugget;
-                case NuggetRarity.Legendary: return Palette.GiantNugget;
+                case Rarity.Rare: return Palette.RichNugget;
+                case Rarity.Legendary: return Palette.GiantNugget;
                 default: return Palette.Nugget;
             }
         }
