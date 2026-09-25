@@ -8,8 +8,8 @@ namespace NuggetCreek.Game
 {
     /// <summary>
     /// Greybox entry point: owns the session, builds the UI in code, runs idle income,
-    /// goals and crew candidates, saves, and handles the offline return (design doc 3.2,
-    /// 3.3, 6.3, 13.1).
+    /// goals, crew candidates and the Mother Lode, saves, and handles the offline return
+    /// (design doc 3.2, 3.3, 3.4, 6.3, 13.1).
     /// </summary>
     public sealed class GameRoot : MonoBehaviour
     {
@@ -26,6 +26,7 @@ namespace NuggetCreek.Game
         MapPanel map;
         OfflineModal offlineModal;
         CandidateModal candidateModal;
+        MotherLodeView motherLode;
 
         Text dollarsLabel;
         Text gemsLabel;
@@ -37,6 +38,7 @@ namespace NuggetCreek.Game
         Button lateDoubleChip;
         Button crewChip;
         Text crewChipLabel;
+        Button summonLode;
 
         float autosaveIn = AutosaveSeconds;
         bool returnPending;
@@ -72,8 +74,22 @@ namespace NuggetCreek.Game
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            creek.InputEnabled = !upgrades.IsOpen && !map.IsOpen && !offlineModal.IsOpen && !candidateModal.IsOpen;
-            creek.Tick(dt, idle);
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen;
+            creek.InputEnabled = !modalOpen;
+            if (motherLode.IsActive)
+            {
+                motherLode.Tick(dt);
+            }
+            else
+            {
+                creek.Tick(dt, idle);
+                if (!modalOpen)
+                {
+                    session.TickPlay(dt);
+                    if (session.MotherLodeDue)
+                        StartMotherLode(session.StartMotherLode());
+                }
+            }
             offlineModal.Tick(Time.unscaledDeltaTime);
 
             if (returnPending && Time.realtimeSinceStartup - returnWaitStarted > TrustedTimeWaitSeconds)
@@ -92,7 +108,10 @@ namespace NuggetCreek.Game
         void OnApplicationPause(bool paused)
         {
             if (paused)
+            {
+                motherLode.FinishNow();
                 Save();
+            }
             else if (!returnPending && !offlineModal.HasUnclaimed)
             {
                 ads.Load();
@@ -176,6 +195,9 @@ namespace NuggetCreek.Game
             RectTransform creekRect = Ui.Rect("Creek", root).Place(Vector2.zero, Vector2.one, new Vector2(0, bottomHeight), new Vector2(0, -topHeight));
             creek = creekRect.gameObject.AddComponent<CreekView>();
             creek.Init(session);
+            // Above the creek, below the bars, so the Dollar counter stays in view during the event.
+            motherLode = new MotherLodeView(session, root, creekRect);
+            motherLode.Finished += Save;
 
             RectTransform top = Ui.Image("TopBar", root, Palette.Bar).rectTransform
                 .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -topHeight), Vector2.zero);
@@ -204,6 +226,11 @@ namespace NuggetCreek.Game
             crewChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, 100), new Vector2(20, -topHeight - 20));
             crewChip.SetActive(false);
 
+            summonLode = Ui.Button("SummonLode", root, "", Palette.GemButton, SummonMotherLode, out Text summonLabel, 32);
+            summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, 100), new Vector2(-20, bottomHeight + 20));
+            summonLabel.SetText($"Mother Lode  {Effects.Gems(session.Economy.Config.MotherLodeSummonGems)}");
+            summonLode.SetActive(false);
+
             // Before the panels so full-screen modals cover them.
             if (Debug.isDebugBuild)
                 BuildDebugButtons(root, topHeight);
@@ -231,12 +258,16 @@ namespace NuggetCreek.Game
 
         void OpenUpgrades(bool focusAmos)
         {
+            if (motherLode.IsActive)
+                return;
             map.Close();
             upgrades.Open(focusAmos);
         }
 
         void OpenMap()
         {
+            if (motherLode.IsActive)
+                return;
             upgrades.Close();
             map.Open();
         }
@@ -260,9 +291,34 @@ namespace NuggetCreek.Game
                 lateDouble.NotifyAdReady(now);
             lateDoubleChip.SetActive(lateDouble.IsVisible(now) && ads.IsLoaded && !offlineModal.IsOpen);
 
-            crewChip.SetActive(session.HasCandidates && !candidateModal.IsOpen);
+            crewChip.SetActive(session.HasCandidates && !candidateModal.IsOpen && !motherLode.IsActive);
+
+            // The Gem call appears once the player has met a natural Mother Lode (design doc 8.2c).
+            bool lodeKnown = progress.PlaySeconds >= session.Economy.Config.MotherLodeFirstAfterSeconds;
+            summonLode.SetActive(lodeKnown && !motherLode.IsActive);
+            bool canSummon = session.CanAffordGems(session.Economy.Config.MotherLodeSummonGems);
+            if (summonLode.interactable != canSummon)
+                summonLode.interactable = canSummon;
             if (session.HasCandidates)
                 crewChipLabel.SetText($"New crew  {CandidateModal.Clock(progress.CandidateSecondsLeft)}");
+        }
+
+        // --- Mother Lode ---
+
+        void StartMotherLode(MotherLodeRun run)
+        {
+            if (run == null)
+                return;
+            upgrades.Close();
+            map.Close();
+            candidateModal.Close();
+            motherLode.Begin(run);
+        }
+
+        void SummonMotherLode()
+        {
+            if (!motherLode.IsActive)
+                StartMotherLode(session.SummonMotherLode());
         }
 
         // --- Goals ---
@@ -327,12 +383,13 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 500), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 600), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
             AddDebugButton(column, 3, "Away 2h", SimulateAway);
-            AddDebugButton(column, 4, "Reset", ResetGame);
+            AddDebugButton(column, 4, "Lode now", MakeMotherLodeDue);
+            AddDebugButton(column, 5, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
@@ -350,6 +407,13 @@ namespace NuggetCreek.Game
             session.Progress.LastSeenUtc -= 2 * 3600;
             ads.Load();
             BeginReturn();
+        }
+
+        void MakeMotherLodeDue()
+        {
+            EconomyConfig config = session.Economy.Config;
+            session.Progress.PlaySeconds = System.Math.Max(session.Progress.PlaySeconds, config.MotherLodeFirstAfterSeconds);
+            session.Progress.SecondsSinceMotherLode = config.MotherLodeEverySeconds;
         }
 
         void ResetGame()
