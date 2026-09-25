@@ -303,6 +303,8 @@ namespace NuggetCreek.Game.UI
                     return $"{sign}{amount * 100:0.#} pt {Name(stat)}";
                 case Stat.VeinMaxLevel:
                     return $"{sign}{amount:0} {Name(stat)}";
+                case Stat.OfflineCapHours:
+                    return $"{sign}{amount:0}h {Name(stat)}";
                 case Stat.VeinCatchesPerLevel:
                     return $"{sign}{amount:0} {Name(stat)}";
                 case Stat.CollectibleLifetime:
@@ -330,6 +332,7 @@ namespace NuggetCreek.Game.UI
                 case Stat.CritValue: return "critical value";
                 case Stat.VeinMaxLevel: return "max vein levels";
                 case Stat.VeinCatchesPerLevel: return "catches per vein level";
+                case Stat.OfflineCapHours: return "away cap";
                 case Stat.DoubleCatch: return "double catch chance";
                 case Stat.AllIncome: return "all income";
                 case Stat.ActiveIncome: return "swipe income";
