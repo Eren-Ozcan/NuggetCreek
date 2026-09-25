@@ -32,7 +32,7 @@ namespace NuggetCreek.Core
     /// The platform layer feeds it random rolls, time deltas and clock readings; it never
     /// reads them itself.
     /// </summary>
-    public sealed class GameSession
+    public sealed partial class GameSession
     {
         public Economy Economy { get; }
         public PlayerProgress Progress { get; }
@@ -60,6 +60,7 @@ namespace NuggetCreek.Core
             GameCatalog.ApplyUpgrades(Stats, Progress.UpgradeLevels);
             for (int i = 0; i < GameCatalog.Crew.Count; i++)
                 GameCatalog.ApplyCrew(Stats, GameCatalog.Crew[i], Progress.CrewLevels[i]);
+            ApplyEquippedGear();
         }
 
         public double PrestigeMultiplier => Economy.PrestigeMultiplier(Progress.ProspectingXp, TotalStars);
@@ -230,6 +231,7 @@ namespace NuggetCreek.Core
         {
             BigNumber value = CatchValue(kind, doubleCatch, critical);
             AdvanceVein();
+            CountTowardChest();
             Progress.ManualCollected++;
             Progress.CollectedSinceMotherLode++;
             Earn(value);
@@ -385,6 +387,7 @@ namespace NuggetCreek.Core
                 return;
             Progress.PlaySeconds += deltaSeconds;
             Progress.SecondsSinceMotherLode += deltaSeconds;
+            TickChest(deltaSeconds);
         }
 
         /// <summary>Dollars per second right now from swiping and the crew together.</summary>
