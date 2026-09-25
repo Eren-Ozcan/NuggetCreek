@@ -42,6 +42,28 @@ namespace NuggetCreek.Core
         /// Survives prestige (design doc 6.5).</summary>
         public int[] NuggetCatches = new int[GameCatalog.Nuggets.Count];
 
+        /// <summary>Gear levels, indexed like <see cref="GameCatalog.Gear"/>; 0 = not owned.</summary>
+        public int[] GearLevels = new int[GameCatalog.Gear.Count];
+
+        /// <summary>Gear index worn in each slot, -1 when empty.</summary>
+        public int[] GearSlots = { -1, -1, -1, -1 };
+
+        public bool ThirdGearSlotBought;
+
+        /// <summary>Set by the IAP pack (phase 3); the greybox keeps it locked.</summary>
+        public bool FourthGearSlotOwned;
+
+        public int ChestsWaiting;
+
+        public bool ChestOpening;
+
+        /// <summary>Unlock time left on the opening chest, counted while the game is open.</summary>
+        public double ChestSecondsLeft;
+
+        public int CatchesTowardChest;
+
+        public int ChestsOpened;
+
         /// <summary>Crew indices on offer right now; empty when no candidate event is open.</summary>
         public int[] CrewCandidates = new int[0];
 
@@ -85,6 +107,17 @@ namespace NuggetCreek.Core
                 Array.Resize(ref NuggetCatches, GameCatalog.Nuggets.Count);
             for (int i = 0; i < NuggetCatches.Length; i++)
                 NuggetCatches[i] = Math.Max(0, NuggetCatches[i]);
+            if (GearLevels == null)
+                GearLevels = new int[GameCatalog.Gear.Count];
+            else if (GearLevels.Length != GameCatalog.Gear.Count)
+                Array.Resize(ref GearLevels, GameCatalog.Gear.Count);
+            for (int i = 0; i < GearLevels.Length; i++)
+                GearLevels[i] = Math.Max(0, Math.Min(GearLevels[i], GameCatalog.GearMaxLevel));
+            NormalizeGearSlots();
+            ChestsWaiting = Math.Max(0, ChestsWaiting);
+            ChestSecondsLeft = Math.Max(0, ChestSecondsLeft);
+            CatchesTowardChest = Math.Max(0, CatchesTowardChest);
+            ChestsOpened = Math.Max(0, ChestsOpened);
             CrewCandidates = Array.FindAll(CrewCandidates ?? new int[0],
                 index => index >= 0 && index < GameCatalog.Crew.Count && CrewLevels[index] == 0);
             if (CrewCandidates.Length == 0)
@@ -96,6 +129,22 @@ namespace NuggetCreek.Core
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, RegionsUnlocked);
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
+        }
+
+        /// <summary>Four slots, each holding owned gear at most once.</summary>
+        void NormalizeGearSlots()
+        {
+            int[] slots = { -1, -1, -1, -1 };
+            if (GearSlots != null)
+            {
+                for (int i = 0; i < Math.Min(slots.Length, GearSlots.Length); i++)
+                {
+                    int gear = GearSlots[i];
+                    if (gear >= 0 && gear < GearLevels.Length && GearLevels[gear] > 0 && Array.IndexOf(slots, gear) < 0)
+                        slots[i] = gear;
+                }
+            }
+            GearSlots = slots;
         }
     }
 }
