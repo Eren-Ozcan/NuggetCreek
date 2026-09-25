@@ -84,6 +84,27 @@ namespace NuggetCreek.Core
         }
     }
 
+    /// <summary>A Prospectors' Guild perk (design doc 6.6): each rank adds PerRank to one stat.</summary>
+    public sealed class PerkDefinition
+    {
+        public readonly string Id;
+        public readonly string Name;
+        public readonly Stat Stat;
+        public readonly double PerRank;
+        public readonly int MaxRank;
+        public readonly int Cost;
+
+        public PerkDefinition(string id, string name, Stat stat, double perRank, int maxRank, int cost)
+        {
+            Id = id;
+            Name = name;
+            Stat = stat;
+            PerRank = perRank;
+            MaxRank = maxRank;
+            Cost = cost;
+        }
+    }
+
     /// <summary>What a progress goal counts. Every kind reads a lifetime value from the save.</summary>
     public enum GoalKind
     {
@@ -217,6 +238,23 @@ namespace NuggetCreek.Core
             new GearDefinition("horseshoe", "Horseshoe", Rarity.Rare, Stat.DoubleCatch, 0.005),
             new GearDefinition("prospectors_hat", "Prospector's Hat", Rarity.Legendary, Stat.AllIncome, 0.10),
             new GearDefinition("grandpas_pan", "Grandpa's Pan", Rarity.Legendary, Stat.DustValue, 0.25),
+        };
+
+        /// <summary>The 12 Guild perks (design doc 6.6); Perk Points come from Guild levels.</summary>
+        public static readonly IReadOnlyList<PerkDefinition> Perks = new[]
+        {
+            new PerkDefinition("night_watch", "Night Watch", Stat.OfflineCapHours, 1, 4, 2),
+            new PerkDefinition("steady_stream", "Steady Stream", Stat.IdleSpeed, 0.15, 10, 1),
+            new PerkDefinition("quick_hands", "Quick Hands", Stat.CollectibleLifetime, 0.2, 5, 1),
+            new PerkDefinition("deep_vein", "Deep Vein", Stat.VeinMaxLevel, 3, 10, 1),
+            new PerkDefinition("sure_grip", "Sure Grip", Stat.VeinCatchesPerLevel, -2, 4, 2),
+            new PerkDefinition("nugget_nose", "Nugget Nose", Stat.NuggetChance, 0.005, 10, 1),
+            new PerkDefinition("midas_touch", "Midas Touch", Stat.RichNuggetValue, 0.5, 5, 2),
+            new PerkDefinition("big_strike", "Big Strike", Stat.GiantNuggetChance, 0.0007, 10, 1),
+            new PerkDefinition("assay_bonus", "Assay Bonus", Stat.GiantNuggetValue, 0.08, 10, 2),
+            new PerkDefinition("keen_eye", "Keen Eye", Stat.CritValue, 0.2, 5, 1),
+            new PerkDefinition("cartographer", "Cartographer", Stat.RegionCost, -0.03, 5, 2),
+            new PerkDefinition("old_hand", "Old Hand", Stat.ProspectingXp, 0.10, 10, 1),
         };
 
         /// <summary>The 15 hireable crew members, in design doc order.</summary>
