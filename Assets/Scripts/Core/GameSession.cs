@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace NuggetCreek.Core
 {
@@ -10,8 +11,9 @@ namespace NuggetCreek.Core
 
     /// <summary>
     /// Game rules over a <see cref="PlayerProgress"/>: collecting, idle and offline income,
-    /// and every Dollar purchase (upgrades, sluice tiers, regions, Amos). The platform layer
-    /// feeds it random rolls, time deltas and clock readings; it never reads them itself.
+    /// every Dollar purchase (upgrades, sluice tiers, regions, Amos), Gems, crew and goals.
+    /// The platform layer feeds it random rolls, time deltas and clock readings; it never
+    /// reads them itself.
     /// </summary>
     public sealed class GameSession
     {
@@ -20,13 +22,16 @@ namespace NuggetCreek.Core
         public StatSheet Stats { get; } = new StatSheet();
 
         readonly OfflineEarnings offline;
+        readonly Random random;
 
-        public GameSession(Economy economy, PlayerProgress progress)
+        /// <param name="random">Draws crew candidates; pass a seeded one in tests.</param>
+        public GameSession(Economy economy, PlayerProgress progress, Random random = null)
         {
             Economy = economy ?? throw new ArgumentNullException(nameof(economy));
             Progress = progress ?? throw new ArgumentNullException(nameof(progress));
             Progress.Normalize();
             offline = new OfflineEarnings(economy.Config);
+            this.random = random ?? new Random();
             RebuildStats();
         }
 
@@ -36,6 +41,8 @@ namespace NuggetCreek.Core
         {
             Stats.Clear();
             GameCatalog.ApplyUpgrades(Stats, Progress.UpgradeLevels);
+            for (int i = 0; i < GameCatalog.Crew.Count; i++)
+                GameCatalog.ApplyCrew(Stats, GameCatalog.Crew[i], Progress.CrewLevels[i]);
         }
 
         public double PrestigeMultiplier => Economy.PrestigeMultiplier(Progress.ProspectingXp);
@@ -192,6 +199,8 @@ namespace NuggetCreek.Core
                 return false;
             Progress.RegionIndex = Progress.RegionsUnlocked;
             Progress.RegionsUnlocked++;
+            if (Progress.RegionIndex >= Config.CrewCandidateFirstRegion)
+                OfferCandidates();
             return true;
         }
 
@@ -219,6 +228,162 @@ namespace NuggetCreek.Core
             if (!TrySpend(AmosNextCost))
                 return false;
             Progress.AmosLevel++;
+            return true;
+        }
+
+        // --- Gems ---
+
+        public void EarnGems(int amount)
+        {
+            if (amount > 0)
+                Progress.Gems += amount;
+        }
+
+        public bool CanAffordGems(int? cost) => cost.HasValue && Progress.Gems >= cost.Value;
+
+        bool TrySpendGems(int? cost)
+        {
+            if (!CanAffordGems(cost))
+                return false;
+            Progress.Gems -= cost.Value;
+            return true;
+        }
+
+        // --- Crew (design doc 6.3) ---
+
+        public int CrewLevel(int index) => Progress.CrewLevels[index];
+
+        public int CrewHiredCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (int level in Progress.CrewLevels)
+                    if (level > 0)
+                        count++;
+                return count;
+            }
+        }
+
+        /// <summary>Gem price of the next hire, whoever it is; null once everyone is hired.</summary>
+        public int? CrewHireCost => Economy.CrewHireCost(CrewHiredCount);
+
+        /// <summary>Gem price of the next level for this member; null when not hired or maxed.</summary>
+        public int? CrewLevelUpCost(int index)
+        {
+            int level = Progress.CrewLevels[index];
+            return level >= 1 && level < GameCatalog.CrewMaxLevel ? Economy.CrewLevelUpCost(level) : null;
+        }
+
+        public bool LevelUpCrew(int index)
+        {
+            if (!TrySpendGems(CrewLevelUpCost(index)))
+                return false;
+            Progress.CrewLevels[index]++;
+            RebuildStats();
+            return true;
+        }
+
+        public bool HasCandidates => Progress.CrewCandidates.Length > 0;
+
+        public IReadOnlyList<int> Candidates => Progress.CrewCandidates;
+
+        /// <summary>
+        /// Opens a candidate event: draws from the members not hired yet. A pair still on
+        /// offer goes back to the pool first, so the newest creek always brings a fresh pair.
+        /// </summary>
+        public void OfferCandidates()
+        {
+            var pool = new List<int>();
+            for (int i = 0; i < GameCatalog.Crew.Count; i++)
+                if (Progress.CrewLevels[i] == 0)
+                    pool.Add(i);
+            int count = Math.Min(Config.CrewCandidatesPerEvent, pool.Count);
+            var picked = new int[count];
+            for (int i = 0; i < count; i++)
+            {
+                int draw = random.Next(pool.Count);
+                picked[i] = pool[draw];
+                pool.RemoveAt(draw);
+            }
+            Progress.CrewCandidates = picked;
+            Progress.CandidateSecondsLeft = count > 0 ? Config.CrewCandidateWindowSeconds : 0;
+        }
+
+        /// <summary>Hires one of the candidates on offer; the other one returns to the pool.</summary>
+        public bool HireCandidate(int crewIndex)
+        {
+            if (Array.IndexOf(Progress.CrewCandidates, crewIndex) < 0 || !TrySpendGems(CrewHireCost))
+                return false;
+            Progress.CrewLevels[crewIndex] = 1;
+            CloseCandidates();
+            RebuildStats();
+            return true;
+        }
+
+        public void PassCandidates() => CloseCandidates();
+
+        /// <summary>Runs the candidate window down while the game is open; returns true when it just expired.</summary>
+        public bool TickCandidates(double deltaSeconds)
+        {
+            if (!HasCandidates || deltaSeconds <= 0)
+                return false;
+            Progress.CandidateSecondsLeft -= deltaSeconds;
+            if (Progress.CandidateSecondsLeft > 0)
+                return false;
+            CloseCandidates();
+            return true;
+        }
+
+        void CloseCandidates()
+        {
+            Progress.CrewCandidates = new int[0];
+            Progress.CandidateSecondsLeft = 0;
+        }
+
+        // --- Progress goals ---
+
+        /// <summary>The active goal, or null once the chain is done.</summary>
+        public GoalDefinition CurrentGoal =>
+            Progress.GoalIndex < GameCatalog.Goals.Count ? GameCatalog.Goals[Progress.GoalIndex] : null;
+
+        public int CurrentGoalReward =>
+            Progress.GoalIndex < Config.GoalGemRewards.Length ? Config.GoalGemRewards[Progress.GoalIndex] : 0;
+
+        public long GoalProgress(GoalDefinition goal)
+        {
+            switch (goal.Kind)
+            {
+                case GoalKind.ManualCollected: return Progress.ManualCollected;
+                case GoalKind.UpgradeLevels:
+                    long total = 0;
+                    foreach (int level in Progress.UpgradeLevels)
+                        total += level;
+                    return total;
+                case GoalKind.AmosLevel: return Progress.AmosLevel;
+                case GoalKind.RegionsUnlocked: return Progress.RegionsUnlocked;
+                case GoalKind.SluiceTier: return Progress.TierIndex + 1;
+                case GoalKind.CrewHired: return CrewHiredCount;
+                default: throw new ArgumentOutOfRangeException(nameof(goal));
+            }
+        }
+
+        public bool IsCurrentGoalComplete
+        {
+            get
+            {
+                GoalDefinition goal = CurrentGoal;
+                return goal != null && GoalProgress(goal) >= goal.Target;
+            }
+        }
+
+        /// <summary>Pays the finished goal in Gems and moves to the next one.</summary>
+        public bool ClaimGoal()
+        {
+            if (!IsCurrentGoalComplete)
+                return false;
+            EarnGems(CurrentGoalReward);
+            Progress.GoalIndex++;
             return true;
         }
 
