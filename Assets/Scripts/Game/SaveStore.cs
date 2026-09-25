@@ -30,6 +30,7 @@ namespace NuggetCreek.Game
             public long prospectingXp;
             public int gems;
             public int[] crewLevels;
+            public int[] nuggetCatches;
             public int[] crewCandidates;
             public double candidateSecondsLeft;
             public int goalIndex;
@@ -69,6 +70,7 @@ namespace NuggetCreek.Game
                 ProspectingXp = data.prospectingXp,
                 Gems = data.gems,
                 CrewLevels = data.crewLevels,
+                NuggetCatches = data.nuggetCatches,
                 CrewCandidates = data.crewCandidates,
                 CandidateSecondsLeft = data.candidateSecondsLeft,
                 GoalIndex = data.goalIndex,
@@ -99,6 +101,7 @@ namespace NuggetCreek.Game
                 prospectingXp = progress.ProspectingXp,
                 gems = progress.Gems,
                 crewLevels = progress.CrewLevels,
+                nuggetCatches = progress.NuggetCatches,
                 crewCandidates = progress.CrewCandidates,
                 candidateSecondsLeft = progress.CandidateSecondsLeft,
                 goalIndex = progress.GoalIndex,
