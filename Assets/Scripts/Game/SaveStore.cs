@@ -31,6 +31,15 @@ namespace NuggetCreek.Game
             public int gems;
             public int[] crewLevels;
             public int[] nuggetCatches;
+            public int[] gearLevels;
+            public int[] gearSlots;
+            public bool thirdGearSlotBought;
+            public bool fourthGearSlotOwned;
+            public int chestsWaiting;
+            public bool chestOpening;
+            public double chestSecondsLeft;
+            public int catchesTowardChest;
+            public int chestsOpened;
             public int[] crewCandidates;
             public double candidateSecondsLeft;
             public int goalIndex;
@@ -71,6 +80,15 @@ namespace NuggetCreek.Game
                 Gems = data.gems,
                 CrewLevels = data.crewLevels,
                 NuggetCatches = data.nuggetCatches,
+                GearLevels = data.gearLevels,
+                GearSlots = data.gearSlots,
+                ThirdGearSlotBought = data.thirdGearSlotBought,
+                FourthGearSlotOwned = data.fourthGearSlotOwned,
+                ChestsWaiting = data.chestsWaiting,
+                ChestOpening = data.chestOpening,
+                ChestSecondsLeft = data.chestSecondsLeft,
+                CatchesTowardChest = data.catchesTowardChest,
+                ChestsOpened = data.chestsOpened,
                 CrewCandidates = data.crewCandidates,
                 CandidateSecondsLeft = data.candidateSecondsLeft,
                 GoalIndex = data.goalIndex,
@@ -102,6 +120,15 @@ namespace NuggetCreek.Game
                 gems = progress.Gems,
                 crewLevels = progress.CrewLevels,
                 nuggetCatches = progress.NuggetCatches,
+                gearLevels = progress.GearLevels,
+                gearSlots = progress.GearSlots,
+                thirdGearSlotBought = progress.ThirdGearSlotBought,
+                fourthGearSlotOwned = progress.FourthGearSlotOwned,
+                chestsWaiting = progress.ChestsWaiting,
+                chestOpening = progress.ChestOpening,
+                chestSecondsLeft = progress.ChestSecondsLeft,
+                catchesTowardChest = progress.CatchesTowardChest,
+                chestsOpened = progress.ChestsOpened,
                 crewCandidates = progress.CrewCandidates,
                 candidateSecondsLeft = progress.CandidateSecondsLeft,
                 goalIndex = progress.GoalIndex,
