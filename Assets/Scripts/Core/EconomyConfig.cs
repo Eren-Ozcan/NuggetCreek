@@ -99,13 +99,62 @@ namespace NuggetCreek.Core
 
         /// <summary>Drop weight of each Nugget type by rarity (Common, Rare, Legendary). A creek's
         /// five types (3 Common, 1 Rare, 1 Legendary) add up to 1.</summary>
-        public double[] NuggetRarityWeights = { 0.28, 0.13, 0.03 };
+        public double[] RarityWeights = { 0.28, 0.13, 0.03 };
 
         /// <summary>Manual catches of one type for each of its stars.</summary>
         public int[] NuggetStarThresholds = { 1, 10, 40 };
 
         /// <summary>Each collection star raises the prestige bonus by this fraction.</summary>
         public double StarPrestigeBonus = 0.01;
+
+        // --- Gear and chests (6.4) ---
+
+        public int GearSlotCount = 4;
+
+        /// <summary>The second slot opens free with this creek (0-based; Silver Fork).</summary>
+        public int GearSecondSlotRegion = 2;
+
+        /// <summary>Permanent third slot. The fourth comes with an IAP pack.</summary>
+        public int GearThirdSlotGems = 80;
+
+        /// <summary>Gem price to raise gear from level L to L+1 is this times L (2, 4, 6 ... 18).</summary>
+        public int GearLevelUpGemsStep = 2;
+
+        /// <summary>A duplicate card of maxed gear turns into this many Gems.</summary>
+        public int GearMaxedDuplicateGems = 2;
+
+        /// <summary>Manual catches to the first chest (onboarding ~3:30, design doc 9), then between chests.</summary>
+        public int FirstChestAfterCatches = 150;
+
+        public int ChestEveryCatches = 250;
+
+        /// <summary>Earned chests that can wait unopened; more are lost. Storehouse raises it later.</summary>
+        public int ChestCapacity = 3;
+
+        /// <summary>Free unlock time of a chest, counted only while the game is open. The first chest has none.</summary>
+        public double ChestOpenSeconds = 10 * 60;
+
+        /// <summary>Opening at once costs 1 Gem per started block of this many seconds left, up to ChestInstantMaxGems.</summary>
+        public double ChestInstantSecondsPerGem = 120;
+
+        public int ChestInstantMaxGems = 5;
+
+        /// <summary>A chest pays this many seconds of current income (Doc raises it).</summary>
+        public double ChestIncomeSeconds = 180;
+
+        /// <summary>Card rarity odds in a creek chest (Common, Rare, Legendary).</summary>
+        public double[] ChestCardOdds = { 0.80, 0.18, 0.02 };
+
+        /// <summary>Gear boxes, indexed Green, Orange, Red: Gem price and cards inside.</summary>
+        public int[] GearBoxGems = { 60, 300, 900 };
+
+        public int[] GearBoxCards = { 3, 5, 8 };
+
+        /// <summary>Card rarity odds per box, three values (Common, Rare, Legendary) per box in box order.</summary>
+        public double[] GearBoxOdds = { 0.75, 0.23, 0.02, 0.60, 0.30, 0.10, 0.50, 0.35, 0.15 };
+
+        /// <summary>Each box holds at least one card of this rarity or better.</summary>
+        public Rarity[] GearBoxGuarantee = { Rarity.Rare, Rarity.Rare, Rarity.Legendary };
 
         /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
         public double ActiveIdleRatio = 3.0;
