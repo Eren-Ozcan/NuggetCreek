@@ -77,7 +77,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
 
             StringAssert.StartsWith("Pine Hollow", Label("Status").text);
-            Assert.That(Label("Dollars").text, Is.EqualTo("$90"));
+            Assert.That(Label("Dollars").text, Is.EqualTo("$30"));
             Assert.That(GameObject.Find("Map"), Is.Null, "map closes after unlocking");
         }
 
@@ -153,6 +153,19 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             Assert.That(IsActive("MotherLode"), Is.False);
             Assert.That(IsActive("SummonLode"), Is.True);
+        }
+
+        [UnityTest]
+        public IEnumerator CollectionLayersStayClosedUntilOpened()
+        {
+            yield return null;
+            Assert.That(IsActive("Vein"), Is.False, "the vein is closed before perks");
+
+            Click("Layers");
+            yield return null;
+            Assert.That(IsActive("Vein"), Is.True);
+            StringAssert.StartsWith("VEIN x1.0  0/20", Label("Vein").text);
+            yield return Shot("10_collection_layers");
         }
 
         [UnityTest]
