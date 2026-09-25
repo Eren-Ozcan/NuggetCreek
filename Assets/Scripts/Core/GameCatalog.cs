@@ -39,6 +39,32 @@ namespace NuggetCreek.Core
         }
     }
 
+    public enum NuggetRarity
+    {
+        Common,
+        Rare,
+        Legendary,
+    }
+
+    /// <summary>One of the 30 collectible Nugget types; each creek drops its own five.</summary>
+    public sealed class NuggetDefinition
+    {
+        public readonly string Id;
+        public readonly string Name;
+        public readonly int RegionIndex;
+        public readonly NuggetRarity Rarity;
+        public readonly string Flavor;
+
+        public NuggetDefinition(string id, string name, int regionIndex, NuggetRarity rarity, string flavor)
+        {
+            Id = id;
+            Name = name;
+            RegionIndex = regionIndex;
+            Rarity = rarity;
+            Flavor = flavor;
+        }
+    }
+
     /// <summary>What a progress goal counts. Every kind reads a lifetime value from the save.</summary>
     public enum GoalKind
     {
@@ -101,6 +127,59 @@ namespace NuggetCreek.Core
             new UpgradeDefinition("passive_sluices", "Passive Sluices", 7, Stat.IdleSpeed, 0.15, 10),
             new UpgradeDefinition("big_pan", "Big Pan", 7, Stat.CollectRadius, 0.05, 10),
         };
+
+        /// <summary>
+        /// The Nugget collection (design doc 3.1.2): five types per launch creek, three Common,
+        /// one Rare, one Legendary, in creek order. Drop weights live in EconomyConfig.
+        /// </summary>
+        public static readonly IReadOnlyList<NuggetDefinition> Nuggets = new[]
+        {
+            new NuggetDefinition("pebble", "Pebble", 0, NuggetRarity.Common, "Small, round and still worth the stoop."),
+            new NuggetDefinition("button", "Button", 0, NuggetRarity.Common, "Flat as a coat button. Nobody sews it on."),
+            new NuggetDefinition("teardrop", "Teardrop", 0, NuggetRarity.Common, "The creek cried gold, just this once."),
+            new NuggetDefinition("crooked_thumb", "Crooked Thumb", 0, NuggetRarity.Rare, "Bent like a thumb that has panned too long."),
+            new NuggetDefinition("creek_heart", "Creek Heart", 0, NuggetRarity.Legendary, "The creek keeps one of these. Now you do."),
+
+            new NuggetDefinition("pine_cone", "Pine Cone", 1, NuggetRarity.Common, "Scales of gold, no seeds inside."),
+            new NuggetDefinition("bark_chip", "Bark Chip", 1, NuggetRarity.Common, "Rough on one side, bright on the other."),
+            new NuggetDefinition("acorn", "Acorn", 1, NuggetRarity.Common, "The squirrels would never let it go."),
+            new NuggetDefinition("owl_eye", "Owl Eye", 1, NuggetRarity.Rare, "Round, yellow and a little too watchful."),
+            new NuggetDefinition("hollow_crown", "Hollow Crown", 1, NuggetRarity.Legendary, "Fit for the king of an empty valley."),
+
+            new NuggetDefinition("tine", "Tine", 2, NuggetRarity.Common, "One prong of a fork nobody ever ate with."),
+            new NuggetDefinition("coin_flake", "Coin Flake", 2, NuggetRarity.Common, "Thin enough to spend, if anyone would take it."),
+            new NuggetDefinition("river_spoon", "River Spoon", 2, NuggetRarity.Common, "The river scooped it. You scooped the river."),
+            new NuggetDefinition("two_tone", "Two-Tone", 2, NuggetRarity.Rare, "Half gold, half silver, all trouble to assay."),
+            new NuggetDefinition("wishbone", "Wishbone", 2, NuggetRarity.Legendary, "Snap it and you lose half. Keep your wish."),
+
+            new NuggetDefinition("ember", "Ember", 3, NuggetRarity.Common, "Glows like a coal. Cold to the touch."),
+            new NuggetDefinition("rust_knot", "Rust Knot", 3, NuggetRarity.Common, "Red clay tied up in a gold knot."),
+            new NuggetDefinition("clay_brick", "Clay Brick", 3, NuggetRarity.Common, "Build nothing with it. Just keep it."),
+            new NuggetDefinition("rattler", "Rattler", 3, NuggetRarity.Rare, "Coiled up in the gravel. Pick it up slowly."),
+            new NuggetDefinition("sunset_slab", "Sunset Slab", 3, NuggetRarity.Legendary, "The gulch at dusk, poured into one piece."),
+
+            new NuggetDefinition("icicle", "Icicle", 4, NuggetRarity.Common, "Gold that dripped and froze on the way down."),
+            new NuggetDefinition("snowball", "Snowball", 4, NuggetRarity.Common, "Heavy enough to win any snowball fight."),
+            new NuggetDefinition("frost_flake", "Frost Flake", 4, NuggetRarity.Common, "No two alike, same as the real ones."),
+            new NuggetDefinition("polar_tooth", "Polar Tooth", 4, NuggetRarity.Rare, "Sharp, white-tipped and best left unexplained."),
+            new NuggetDefinition("glacier_eye", "Glacier Eye", 4, NuggetRarity.Legendary, "Ice held it for ten thousand years."),
+
+            new NuggetDefinition("canyon_shard", "Canyon Shard", 5, NuggetRarity.Common, "A splinter off the canyon wall."),
+            new NuggetDefinition("echo_stone", "Echo Stone", 5, NuggetRarity.Common, "Shout into the canyon. This comes back."),
+            new NuggetDefinition("lantern", "Lantern", 5, NuggetRarity.Common, "Lights up the pan without a flame."),
+            new NuggetDefinition("miners_fist", "Miner's Fist", 5, NuggetRarity.Rare, "Clenched tight, like it knows what it is worth."),
+            new NuggetDefinition("deep_king", "Deep King", 5, NuggetRarity.Legendary, "The canyon's oldest piece. It came up for you."),
+        };
+
+        /// <summary>Indices into <see cref="Nuggets"/> that drop in a creek; empty past the launch creeks.</summary>
+        public static List<int> NuggetsInRegion(int regionIndex)
+        {
+            var result = new List<int>();
+            for (int i = 0; i < Nuggets.Count; i++)
+                if (Nuggets[i].RegionIndex == regionIndex)
+                    result.Add(i);
+            return result;
+        }
 
         /// <summary>The 15 hireable crew members, in design doc order.</summary>
         public static readonly IReadOnlyList<CrewDefinition> Crew = new[]
