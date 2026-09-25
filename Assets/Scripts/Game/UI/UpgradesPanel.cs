@@ -6,7 +6,7 @@ using UnityEngine.UI;
 
 namespace NuggetCreek.Game.UI
 {
-    /// <summary>Full-screen Upgrades modal: SLUICE (tier and upgrades) and CREW (Amos, hired crew) for the greybox.</summary>
+    /// <summary>Full-screen Upgrades modal: SLUICE (tier and upgrades), CREW (Amos, hired crew) and GEAR for the greybox.</summary>
     public sealed class UpgradesPanel
     {
         sealed class Row
@@ -25,6 +25,7 @@ namespace NuggetCreek.Game.UI
         readonly List<Row> rows = new List<Row>();
         Row amosRow;
         Text crewHint;
+        readonly GearSection gear;
 
         public bool IsOpen => root.gameObject.activeSelf;
 
@@ -56,6 +57,7 @@ namespace NuggetCreek.Game.UI
                 AddCrewRow(i);
             crewHint = Ui.Label("CrewHint", list, "", 32, TextAnchor.MiddleLeft, Palette.TextMuted);
             Ui.PreferredHeight(crewHint, 110);
+            gear = new GearSection(session, list, () => Purchased?.Invoke());
 
             Close();
         }
@@ -91,6 +93,7 @@ namespace NuggetCreek.Game.UI
             foreach (Row row in rows)
                 row.Refresh();
             crewHint.SetText(CrewHintText());
+            gear.Refresh();
         }
 
         /// <summary>True when something in the panel can be bought right now (badge on the bar button).</summary>
@@ -102,6 +105,8 @@ namespace NuggetCreek.Game.UI
             for (int i = 0; i < GameCatalog.Crew.Count; i++)
                 if (session.CanAffordGems(session.CrewLevelUpCost(i)))
                     return true;
+            if (gear.AnythingAffordable())
+                return true;
             return (session.IsNextTierUnlocked && session.CanAfford(session.NextTierCost))
                 || session.CanAfford(session.AmosNextCost);
         }
