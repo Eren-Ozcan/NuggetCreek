@@ -23,6 +23,9 @@ namespace NuggetCreek.Game
 
         CreekView creek;
         CollectionPanel collection;
+        ChestModal chestModal;
+        Button chestChip;
+        Text chestChipLabel;
         Text collectionLabel;
         UpgradesPanel upgrades;
         MapPanel map;
@@ -76,7 +79,7 @@ namespace NuggetCreek.Game
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen;
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -101,6 +104,7 @@ namespace NuggetCreek.Game
             upgrades.Refresh();
             map.Refresh();
             collection.Refresh();
+            chestModal.Refresh();
             candidateModal.Refresh();
 
             autosaveIn -= Time.unscaledDeltaTime;
@@ -232,6 +236,10 @@ namespace NuggetCreek.Game
             Button collectionButton = Ui.Button("CollectionButton", root, "", Palette.ButtonAlt, () => collection.Open(), out collectionLabel, 32);
             collectionButton.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 140));
 
+            chestChip = Ui.Button("ChestChip", root, "", Palette.Nugget, () => chestModal.Open(), out chestChipLabel, 32);
+            chestChip.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 260));
+            chestChip.SetActive(false);
+
             summonLode = Ui.Button("SummonLode", root, "", Palette.GemButton, SummonMotherLode, out Text summonLabel, 32);
             summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, 100), new Vector2(-20, bottomHeight + 20));
             summonLabel.SetText($"Mother Lode  {Effects.Gems(session.Economy.Config.MotherLodeSummonGems)}");
@@ -243,6 +251,8 @@ namespace NuggetCreek.Game
 
             upgrades = new UpgradesPanel(session, root);
             collection = new CollectionPanel(session, root);
+            chestModal = new ChestModal(session, ads, root);
+            chestModal.Claimed += Save;
             creek.NuggetDiscovered += _ => Save();
             upgrades.Closed += () => offlineModal.Unhide();
             map = new MapPanel(session, root);
@@ -295,6 +305,8 @@ namespace NuggetCreek.Game
             mapLabel.SetText(mapBadge ? "Map  (!)" : "Map");
             collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
+            chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
+            chestChipLabel.SetText(ChestChipText());
 
             float now = Time.realtimeSinceStartup;
             if (ads.IsLoaded)
@@ -377,6 +389,16 @@ namespace NuggetCreek.Game
             return "All launch creeks unlocked";
         }
 
+        string ChestChipText()
+        {
+            PlayerProgress progress = session.Progress;
+            if (session.ChestReady)
+                return "Chest ready!";
+            if (progress.ChestOpening)
+                return "Chest " + CandidateModal.Clock(progress.ChestSecondsLeft);
+            return progress.ChestsWaiting == 1 ? "Open chest" : $"Chests x{progress.ChestsWaiting}";
+        }
+
         void WatchLateDouble()
         {
             BigNumber amount = lateDouble.Amount;
@@ -393,14 +415,15 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 700), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 800), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
             AddDebugButton(column, 3, "Away 2h", SimulateAway);
             AddDebugButton(column, 4, "Lode now", MakeMotherLodeDue);
             AddDebugButton(column, 5, "Layers", OpenCollectionLayers);
-            AddDebugButton(column, 6, "Reset", ResetGame);
+            AddDebugButton(column, 6, "Chest now", AddDebugChest);
+            AddDebugButton(column, 7, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
@@ -434,6 +457,12 @@ namespace NuggetCreek.Game
             config.CritChanceBase = 0.25;
             config.GiantNuggetChanceBase = 0.2;
             config.VeinMaxLevelBase = 5;
+        }
+
+        void AddDebugChest()
+        {
+            PlayerProgress progress = session.Progress;
+            progress.ChestsWaiting = System.Math.Min(progress.ChestsWaiting + 1, session.ChestCapacity);
         }
 
         void ResetGame()
