@@ -26,6 +26,25 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
   `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>`
   (the editor must be closed); set `NC_SHOT_DIR` to also save 1080x1920 screenshots.
 
+## Android builds
+
+`Assets/Scripts/Editor/AndroidBuild.cs` owns every Android setting (package, IL2CPP ARM64,
+targetSdk 36, version code, signing). Menu *Nugget Creek > Android* or
+`Unity.exe -batchmode -quit -projectPath . -executeMethod NuggetCreek.Editor.AndroidBuild.<Method>`:
+
+- `BuildDevApk` — development APK for phone playtests, debug key.
+- `BuildMeasureApk` — store settings plus `PerfProbe` (logcat FPS/memory), debug key.
+  Then `scripts/android-measure.sh` installs it, taps for 2 min and prints APK size, PSS and FPS.
+- `BuildReleaseAab` — Play upload, signed with the upload key; refuses to overwrite an existing
+  version code.
+- `BumpPatch` — version rule is `AppVersion` (Core): name `major.minor.patch`,
+  versionCode `major*10000 + minor*100 + patch`. Every Play upload bumps at least the patch.
+
+Upload key: `android-keystore/` (gitignored), password in `android-keystore/keystore.pass` or
+`NC_KEYSTORE_PASS`; backup and SHA-1 in `C:\Projects\pictures\nugget-creek\android-keystore\`.
+Dev/measure builds stay on the debug key on purpose: Android 8+ scopes ANDROID_ID to the signing
+key and the save signature uses it until phase 3.3, so a key switch on a phone orphans the save.
+
 ## Rules
 
 - **Private material stays out of git.** The design docs (`docs/GAME_DESIGN.md`,
