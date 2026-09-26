@@ -58,6 +58,10 @@ namespace NuggetCreek.Game
             public int adWashes;
             public double boostMultiplier;
             public double boostEndUtc;
+            public int peteSeen;
+            public bool freeHireUsed;
+            public bool returnGiftGiven;
+            public long firstDay;
             public long spentCents;
             public bool adsRemoved;
             public bool adsRemovedNoticePending;
@@ -137,6 +141,10 @@ namespace NuggetCreek.Game
                 AdWashes = data.adWashes,
                 BoostMultiplier = data.boostMultiplier,
                 BoostEndUtc = data.boostEndUtc,
+                PeteSeen = data.peteSeen,
+                FreeHireUsed = data.freeHireUsed,
+                ReturnGiftGiven = data.returnGiftGiven,
+                FirstDay = data.firstDay,
                 SpentCents = data.spentCents,
                 AdsRemoved = data.adsRemoved,
                 AdsRemovedNoticePending = data.adsRemovedNoticePending,
@@ -208,6 +216,10 @@ namespace NuggetCreek.Game
                 adWashes = progress.AdWashes,
                 boostMultiplier = progress.BoostMultiplier,
                 boostEndUtc = progress.BoostEndUtc,
+                peteSeen = progress.PeteSeen,
+                freeHireUsed = progress.FreeHireUsed,
+                returnGiftGiven = progress.ReturnGiftGiven,
+                firstDay = progress.FirstDay,
                 spentCents = progress.SpentCents,
                 adsRemoved = progress.AdsRemoved,
                 adsRemovedNoticePending = progress.AdsRemovedNoticePending,
