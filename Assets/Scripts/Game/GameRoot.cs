@@ -26,6 +26,9 @@ namespace NuggetCreek.Game
         CollectionPanel collection;
         ChestModal chestModal;
         GuildPanel guild;
+        DailyPanel daily;
+        Text dailyLabel;
+        long debugDayShift;
         Text guildLabel;
         Button claimChip;
         Button chestChip;
@@ -82,11 +85,12 @@ namespace NuggetCreek.Game
         void Update()
         {
             float dt = Time.deltaTime;
+            UpdateTrustedDay();
             ads.Tick(Time.unscaledDeltaTime);
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen;
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -113,6 +117,7 @@ namespace NuggetCreek.Game
             collection.Refresh();
             chestModal.Refresh();
             guild.Refresh();
+            daily.Refresh();
             candidateModal.Refresh();
 
             autosaveIn -= Time.unscaledDeltaTime;
@@ -225,6 +230,9 @@ namespace NuggetCreek.Game
             Button guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
             guildButton.AsRect().Box(Vector2.one, new Vector2(220, 70), new Vector2(-20, -20));
 
+            Button dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
+            dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, 70), new Vector2(20, -95));
+
             goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
             goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(20, 6), new Vector2(-20, -2));
             goalLabel.name = "Goal";
@@ -270,6 +278,8 @@ namespace NuggetCreek.Game
             chestModal.Claimed += Save;
             guild = new GuildPanel(session, ads, root);
             guild.Reborn += Save;
+            daily = new DailyPanel(session, ads, root);
+            daily.Changed += Save;
             creek.NuggetDiscovered += _ => Save();
             upgrades.Closed += () => offlineModal.Unhide();
             map = new MapPanel(session, root);
@@ -312,7 +322,10 @@ namespace NuggetCreek.Game
             PlayerProgress progress = session.Progress;
             dollarsLabel.SetText(NumberFormat.Dollars(progress.Dollars));
             string idle = session.IdleActive ? $"Amos +{NumberFormat.DollarsPerSecond(session.IdleRate)}" : "No crew yet";
-            statusLabel.SetText($"{session.RegionName}  |  {idle}");
+            string boost = session.BoostMultiplier > 1
+                ? $"  |  x{session.BoostMultiplier:0} {CandidateModal.Clock(session.BoostSecondsLeft)}" : "";
+            statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}");
+            dailyLabel.SetText(daily.AnythingToCollect() ? "Daily  (!)" : "Daily");
             gemsLabel.SetText(Effects.Gems(progress.Gems));
             RefreshGoal();
 
@@ -408,6 +421,18 @@ namespace NuggetCreek.Game
             return "All launch creeks unlocked";
         }
 
+        /// <summary>Feeds trusted time to the session and rolls the game day (design doc 7.1, 13.1).</summary>
+        void UpdateTrustedDay()
+        {
+            session.NowUtc = clock.TrustedNowUtc;
+            if (!session.NowUtc.HasValue)
+                return;
+            double offset = System.TimeZoneInfo.Local.GetUtcOffset(System.DateTime.UtcNow).TotalSeconds;
+            long today = GameSession.DayNumber(session.NowUtc.Value, offset, session.Economy.Config.DailyRolloverHour);
+            if (session.UpdateDay(today + debugDayShift))
+                Save();
+        }
+
         string ChestChipText()
         {
             PlayerProgress progress = session.Progress;
@@ -434,7 +459,7 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 800), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 900), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
@@ -442,7 +467,8 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 4, "Lode now", MakeMotherLodeDue);
             AddDebugButton(column, 5, "Layers", OpenCollectionLayers);
             AddDebugButton(column, 6, "Chest now", AddDebugChest);
-            AddDebugButton(column, 7, "Reset", ResetGame);
+            AddDebugButton(column, 7, "Next day", () => debugDayShift++);
+            AddDebugButton(column, 8, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
