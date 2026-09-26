@@ -45,6 +45,19 @@ namespace NuggetCreek.Game
             public long guildXp;
             public int rebirths;
             public int bestRegionsUnlocked;
+            // Older saves lack the daily block; JsonUtility would read its -1 defaults as 0.
+            public bool hasDaily;
+            public long currentDay;
+            public long lastStreakClaimDay;
+            public int streakIndex;
+            public int rescueStreakIndex;
+            public int[] jobKinds;
+            public int[] jobProgress;
+            public bool[] jobClaimed;
+            public bool freeWashUsed;
+            public int adWashes;
+            public double boostMultiplier;
+            public double boostEndUtc;
             public int[] crewCandidates;
             public double candidateSecondsLeft;
             public int goalIndex;
@@ -99,6 +112,17 @@ namespace NuggetCreek.Game
                 GuildXp = data.guildXp,
                 Rebirths = data.rebirths,
                 BestRegionsUnlocked = data.bestRegionsUnlocked,
+                CurrentDay = data.hasDaily ? data.currentDay : -1,
+                LastStreakClaimDay = data.hasDaily ? data.lastStreakClaimDay : -1,
+                StreakIndex = data.streakIndex,
+                RescueStreakIndex = data.hasDaily ? data.rescueStreakIndex : -1,
+                JobKinds = data.jobKinds,
+                JobProgress = data.jobProgress,
+                JobClaimed = data.jobClaimed,
+                FreeWashUsed = data.freeWashUsed,
+                AdWashes = data.adWashes,
+                BoostMultiplier = data.boostMultiplier,
+                BoostEndUtc = data.boostEndUtc,
                 CrewCandidates = data.crewCandidates,
                 CandidateSecondsLeft = data.candidateSecondsLeft,
                 GoalIndex = data.goalIndex,
@@ -144,6 +168,18 @@ namespace NuggetCreek.Game
                 guildXp = progress.GuildXp,
                 rebirths = progress.Rebirths,
                 bestRegionsUnlocked = progress.BestRegionsUnlocked,
+                hasDaily = true,
+                currentDay = progress.CurrentDay,
+                lastStreakClaimDay = progress.LastStreakClaimDay,
+                streakIndex = progress.StreakIndex,
+                rescueStreakIndex = progress.RescueStreakIndex,
+                jobKinds = progress.JobKinds,
+                jobProgress = progress.JobProgress,
+                jobClaimed = progress.JobClaimed,
+                freeWashUsed = progress.FreeWashUsed,
+                adWashes = progress.AdWashes,
+                boostMultiplier = progress.BoostMultiplier,
+                boostEndUtc = progress.BoostEndUtc,
                 crewCandidates = progress.CrewCandidates,
                 candidateSecondsLeft = progress.CandidateSecondsLeft,
                 goalIndex = progress.GoalIndex,
