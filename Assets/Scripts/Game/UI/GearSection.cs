@@ -9,7 +9,8 @@ namespace NuggetCreek.Game.UI
 {
     /// <summary>
     /// GEAR part of the Upgrades panel (design doc 6.4): slots, owned gear with wear and level
-    /// buttons, the third slot and the Gem gear boxes. Hidden until the first chest.
+    /// buttons and the third slot. Gear boxes sell in the shop (design doc 8.2e). Hidden until
+    /// the first chest.
     /// </summary>
     public sealed class GearSection
     {
@@ -25,15 +26,12 @@ namespace NuggetCreek.Game.UI
             public Action Refresh;
         }
 
-        static readonly string[] BoxNames = { "Green Box", "Orange Box", "Red Box" };
-
         readonly GameSession session;
         readonly Transform list;
         readonly Action purchased;
         readonly List<Row> rows = new List<Row>();
         readonly List<GameObject> parts = new List<GameObject>();
         Text slotsLabel;
-        Text lastBox;
         bool? shownUnlocked;
 
         public GearSection(GameSession session, Transform list, Action purchased)
@@ -53,12 +51,6 @@ namespace NuggetCreek.Game.UI
             AddThirdSlotRow();
             for (int i = 0; i < GameCatalog.Gear.Count; i++)
                 AddGearRow(i);
-            for (int box = 0; box < session.GearBoxCount; box++)
-                AddBoxRow(box);
-
-            lastBox = Ui.Label("BoxResult", list, "", 32, TextAnchor.MiddleLeft, Palette.Gold);
-            Ui.PreferredHeight(lastBox, 120);
-            parts.Add(lastBox.gameObject);
         }
 
         public void Refresh()
@@ -129,19 +121,6 @@ namespace NuggetCreek.Game.UI
             };
         }
 
-        void AddBoxRow(int box)
-        {
-            EconomyConfig config = session.Economy.Config;
-            Row row = NewRow("Box_" + box, "", null, "", () => BuyBox(box));
-            row.Refresh = () =>
-            {
-                int start = box * 3;
-                row.Title.SetText($"{BoxNames[box]}  -  {config.GearBoxCards[box]} cards");
-                row.Detail.SetText($"At least 1 {config.GearBoxGuarantee[box]}.  C {config.GearBoxOdds[start] * 100:0}% / R {config.GearBoxOdds[start + 1] * 100:0}% / L {config.GearBoxOdds[start + 2] * 100:0}%");
-                SetButton(row.Right, row.RightLabel, Effects.Gems(config.GearBoxGems[box]), session.CanAffordGems(config.GearBoxGems[box]));
-            };
-        }
-
         bool HasFreeSlot()
         {
             for (int slot = 0; slot < session.Economy.Config.GearSlotCount; slot++)
@@ -160,21 +139,6 @@ namespace NuggetCreek.Game.UI
         {
             if (done)
                 purchased();
-        }
-
-        void BuyBox(int box)
-        {
-            List<GearCard> cards = session.BuyGearBox(box);
-            if (cards == null)
-                return;
-            var text = new StringBuilder("Got:");
-            foreach (GearCard card in cards)
-            {
-                string name = GameCatalog.Gear[card.Index].Name;
-                text.Append("  ").Append(card.IsNew ? name + " (new)" : card.LevelledUp ? name + " +1" : $"{name} +{Effects.Gems(card.Gems)}").Append(',');
-            }
-            lastBox.SetText(text.ToString().TrimEnd(','));
-            purchased();
         }
 
         Row NewRow(string name, string leftText, Action onLeft, string rightText, Action onRight)
