@@ -219,6 +219,23 @@ namespace NuggetCreek.Core
 
         public int[] WashChests = { 0, 0, 0, 0, 0, 0, 0, 1 };
 
+        // --- Onboarding locks (9.1) ---
+
+        /// <summary>Manual catches that open Upgrades (the first goal).</summary>
+        public int UpgradesUnlockCollected = 15;
+
+        /// <summary>Creeks ever open that open the Shop (Pine Hollow).</summary>
+        public int ShopUnlockRegions = 2;
+
+        /// <summary>Play time that opens Daily if the second game day has not come yet.</summary>
+        public double DailyUnlockPlaySeconds = 60 * 60;
+
+        /// <summary>Creeks ever open that open the Guild (Red Gulch).</summary>
+        public int GuildUnlockRegions = 4;
+
+        /// <summary>Creek chests Amos brings on the first real return (design doc 10).</summary>
+        public int ReturnGiftChests = 1;
+
         // --- Shop (8.2c, 8.2e) ---
 
         /// <summary>Gem price of each shop boost (Gold Wash, Extra Shift, Rich Vein).</summary>

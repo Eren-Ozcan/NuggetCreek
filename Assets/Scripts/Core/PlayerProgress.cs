@@ -103,6 +103,20 @@ namespace NuggetCreek.Core
         /// <summary>Trusted UTC second the income boost ends.</summary>
         public double BoostEndUtc;
 
+        // --- Onboarding (design doc 9.1) ---
+
+        /// <summary>Bit per <see cref="PeteLine"/> already shown.</summary>
+        public int PeteSeen;
+
+        /// <summary>The tutorial's free first candidate hire is spent.</summary>
+        public bool FreeHireUsed;
+
+        /// <summary>The second-session gift chest was given.</summary>
+        public bool ReturnGiftGiven;
+
+        /// <summary>First game day played; 0 until trusted time gives one.</summary>
+        public long FirstDay;
+
         // --- Shop (design doc 8.2e) ---
 
         /// <summary>Lifetime real-money spend in USD cents; removes forced ads at the threshold (8.3).</summary>
