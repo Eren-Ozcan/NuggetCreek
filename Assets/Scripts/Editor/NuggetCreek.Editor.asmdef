@@ -2,6 +2,7 @@
     "name": "NuggetCreek.Editor",
     "rootNamespace": "NuggetCreek.Editor",
     "references": [
+        "NuggetCreek.Core",
         "NuggetCreek.Game",
         "UnityEngine.UI"
     ],

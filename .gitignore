@@ -83,3 +83,6 @@ android-keystore/
 
 # Local Claude Code settings
 .claude/settings.local.json
+
+# Android upload keystore and its password (backup in the private pictures repo)
+/android-keystore/
