@@ -38,13 +38,22 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void LongAbsence_IsClippedToCapWithATrickleAfter()
+        public void LongAbsence_IsClippedToCap()
         {
             OfflineResult r = offline.Evaluate(Away(10 * Hour), 3 * Hour, 2);
             Assert.That(r.CreditedSeconds, Is.EqualTo(3 * Hour));
-            // 3 h at the full rate, the other 7 h at 17%.
-            Assert.That(r.Amount.ToDouble(), Is.EqualTo(2 * (3 * Hour + 0.17 * 7 * Hour)).Within(1e-6));
+            // Nothing is paid past the cap by default (design doc 3.3).
+            Assert.That(r.Amount.ToDouble(), Is.EqualTo(2 * 3 * Hour).Within(1e-6));
             Assert.That(r.CapReached);
+        }
+
+        [Test]
+        public void PastCapRate_PaysATrickleWhenTuned()
+        {
+            var tuned = new OfflineEarnings(new EconomyConfig { OfflinePastCapRate = 0.2 });
+            OfflineResult r = tuned.Evaluate(Away(10 * Hour), 3 * Hour, 2);
+            // 3 h at the full rate, the other 7 h at 20%.
+            Assert.That(r.Amount.ToDouble(), Is.EqualTo(2 * (3 * Hour + 0.2 * 7 * Hour)).Within(1e-6));
         }
 
         [Test]

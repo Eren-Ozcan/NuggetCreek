@@ -213,7 +213,7 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.RegionName, Is.EqualTo("Pine Hollow"));
             Assert.That(session.IsNextTierUnlocked, Is.True);
             Assert.That(session.BuyNextTier(), Is.True);
-            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 3300 - 820).Within(1e-6));
+            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 1600 - 400).Within(1e-6));
             Assert.That(session.IsUpgradeUnlocked(UpgradeIndex("steel_sieve")), Is.True);
             Assert.That(session.IsNextTierUnlocked, Is.False);
         }
@@ -245,11 +245,11 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.AmosNextCost.Value.ToDouble(), Is.EqualTo(70));
             Assert.That(session.BuyAmosLevel(), Is.True);
             Assert.That(session.Progress.AmosLevel, Is.EqualTo(1));
-            Assert.That(session.OfflineCapSeconds, Is.EqualTo(3600));
+            Assert.That(session.OfflineCapSeconds, Is.EqualTo(1800));
 
-            // Region 1 idle = 1.2 spawns/s * $1.35 expected catch / 3.
+            // Region 1 idle = 1.2 spawns/s * $1.43 expected catch / 12.
             BigNumber expected = economy.IdleRate(0, 0, session.Stats, 1);
-            Assert.That(expected.ToDouble(), Is.EqualTo(1.2 * 1.43 / 3).Within(1e-12));
+            Assert.That(expected.ToDouble(), Is.EqualTo(1.2 * 1.43 / 12).Within(1e-12));
             AssertClose(expected * 10, session.TickIdle(10));
         }
 
@@ -265,7 +265,7 @@ namespace NuggetCreek.Core.Tests
 
             session.UnlockNextRegion();
             Assert.That(session.AmosWaitsForRegion, Is.False);
-            AssertClose(190e3, session.AmosNextCost.Value);
+            AssertClose(49e3, session.AmosNextCost.Value);
         }
 
         [Test]
@@ -287,9 +287,9 @@ namespace NuggetCreek.Core.Tests
             OfflineResult result = session.EvaluateOffline(clock);
             Assert.That(result.Status, Is.EqualTo(OfflineStatus.Credited));
             Assert.That(result.CapReached, Is.True);
-            Assert.That(result.CreditedSeconds, Is.EqualTo(3600));
-            // The hour past the cap is paid at the trickle rate.
-            AssertClose(session.OfflineRate * (3600 + 0.17 * 2 * 3600), result.Amount);
+            Assert.That(result.CreditedSeconds, Is.EqualTo(1800));
+            // Nothing past the cap.
+            AssertClose(session.OfflineRate * 1800, result.Amount);
 
             Assert.That(session.ClaimOffline(result, 2), Is.True);
             AssertClose(result.Amount * 2, session.Progress.Dollars);

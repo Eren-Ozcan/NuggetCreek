@@ -38,10 +38,10 @@ namespace NuggetCreek.Core.Tests
             progress.NuggetCatches[0] = 12;
             GameSession session = NewSession(progress);
 
-            Assert.That(session.ClaimXp, Is.EqualTo(501));
+            Assert.That(session.ClaimXp, Is.EqualTo(861));
             Assert.That(session.Rebirth(), Is.True);
 
-            Assert.That(progress.ProspectingXp, Is.EqualTo(511));
+            Assert.That(progress.ProspectingXp, Is.EqualTo(871));
             Assert.That(progress.Rebirths, Is.EqualTo(1));
             Assert.That(progress.Dollars.IsZero, Is.True);
             Assert.That(progress.TotalEarned.IsZero, Is.True);
@@ -71,9 +71,9 @@ namespace NuggetCreek.Core.Tests
         public void MultiplierAfterRebirthCountsTheClaim()
         {
             GameSession session = NewSession(new PlayerProgress { TotalEarned = 2e15 });
-            Assert.That(session.PrestigeMultiplierAfterRebirth, Is.EqualTo(11.02).Within(1e-12));
+            Assert.That(session.PrestigeMultiplierAfterRebirth, Is.EqualTo(18.22).Within(1e-12));
             session.Rebirth();
-            Assert.That(session.PrestigeMultiplier, Is.EqualTo(11.02).Within(1e-12));
+            Assert.That(session.PrestigeMultiplier, Is.EqualTo(18.22).Within(1e-12));
         }
 
         [Test]
@@ -112,8 +112,8 @@ namespace NuggetCreek.Core.Tests
         {
             var progress = new PlayerProgress { AmosLevel = 1, ManualCollected = 100 };
             GameSession session = NewSession(progress);
-            // 10 h away with a 1 h cap: 1 h at the full rate, 9 h at the trickle.
-            BigNumber perDay = session.IncomePerSecond * (28 * 60) + session.OfflineRate * (3600 + 0.17 * 9 * 3600);
+            // 10 h away with a 30 min cap: only the cap is paid.
+            BigNumber perDay = session.IncomePerSecond * (28 * 60) + session.OfflineRate * 1800;
             double expected = (session.NextRegionCost.Value / perDay).ToDouble() * 24;
             Assert.That(session.HoursToNextTarget, Is.EqualTo(expected).Within(1e-9));
         }
@@ -182,7 +182,7 @@ namespace NuggetCreek.Core.Tests
 
             session.Progress.GuildLevel = 100;
             session.RebuildStats();
-            Assert.That(session.ClaimXp, Is.EqualTo(751), "501 x 1.5");
+            Assert.That(session.ClaimXp, Is.EqualTo(1291), "861 x 1.5");
         }
 
         [Test]
@@ -206,19 +206,19 @@ namespace NuggetCreek.Core.Tests
 
             Assert.That(session.RankUpPerk(nightWatch), Is.True);
             Assert.That(session.PerkPoints, Is.EqualTo(3), "Night Watch costs 2");
-            Assert.That(session.OfflineCapSeconds, Is.EqualTo(3 * 3600));
+            Assert.That(session.OfflineCapSeconds, Is.EqualTo(1.5 * 3600));
 
             Assert.That(session.RankUpPerk(stream), Is.True);
             Assert.That(session.RankUpPerk(stream), Is.True);
             Assert.That(session.RankUpPerk(stream), Is.True);
             Assert.That(session.PerkPoints, Is.EqualTo(0));
             Assert.That(session.RankUpPerk(stream), Is.False);
-            Assert.That(session.Stats[Stat.IdleSpeed], Is.EqualTo(0.45).Within(1e-12));
+            Assert.That(session.Stats[Stat.AllIncome], Is.EqualTo(0.45).Within(1e-12));
 
             session.ResetPerks();
             Assert.That(session.PerkPoints, Is.EqualTo(5));
-            Assert.That(session.Stats[Stat.IdleSpeed], Is.EqualTo(0));
-            Assert.That(session.OfflineCapSeconds, Is.EqualTo(2 * 3600));
+            Assert.That(session.Stats[Stat.AllIncome], Is.EqualTo(0));
+            Assert.That(session.OfflineCapSeconds, Is.EqualTo(3600));
         }
 
         [Test]
@@ -238,7 +238,7 @@ namespace NuggetCreek.Core.Tests
             var stats = new StatSheet();
             stats.Add(Stat.OfflineCapHours, 4);
             Assert.That(economy.OfflineCapSeconds(0, stats), Is.EqualTo(0));
-            Assert.That(economy.OfflineCapSeconds(1, stats), Is.EqualTo(5 * 3600));
+            Assert.That(economy.OfflineCapSeconds(1, stats), Is.EqualTo(4.5 * 3600));
         }
 
         [Test]

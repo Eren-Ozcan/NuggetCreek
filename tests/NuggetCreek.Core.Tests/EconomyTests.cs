@@ -72,9 +72,8 @@ namespace NuggetCreek.Core.Tests
             StatSheet s = PacingModel.TypicalStats(3, 4);
             Assert.That(s[Stat.DustValue], Is.EqualTo(3.5).Within(1e-12));
             Assert.That(s[Stat.SpawnRate], Is.EqualTo(1.0).Within(1e-12));
-            Assert.That(s[Stat.IdleSpeed], Is.EqualTo(1.0).Within(1e-12));
+            Assert.That(s[Stat.AllIncome], Is.EqualTo(1.5).Within(1e-12));
             Assert.That(s[Stat.DoubleCatch], Is.EqualTo(0.1).Within(1e-12));
-            Assert.That(s[Stat.OfflineIncome], Is.EqualTo(0.5).Within(1e-12));
             Assert.That(s[Stat.NuggetChance], Is.EqualTo(0.05).Within(1e-12));
         }
 
@@ -82,8 +81,8 @@ namespace NuggetCreek.Core.Tests
         public void ActiveAndIdleRate_MatchPython()
         {
             StatSheet s = PacingModel.TypicalStats(3, 4);
-            AssertClose(477290.88000000006, economy.ActiveRate(3, 3, s, 2.5, 0.8));
-            AssertClose(318193.92000000004, economy.IdleRate(3, 3, s, 2.5, 0.8));
+            AssertClose(1193227.2000000002, economy.ActiveRate(3, 3, s, 2.5, 0.8));
+            AssertClose(99435.60000000002, economy.IdleRate(3, 3, s, 2.5, 0.8));
         }
 
         [Test]
@@ -92,25 +91,37 @@ namespace NuggetCreek.Core.Tests
             AssertClose(1608.7499999999995, pacing.FirstSessionIncome());
         }
 
-        [TestCase(0, 46949.76000000001)]
-        [TestCase(1, 2836753.92)]
-        [TestCase(2, 124929604.80000001)]
-        [TestCase(3, 12256829798.400002)]
-        [TestCase(4, 1887709941596.161)]
-        [TestCase(5, 245294748610560.1)]
+        [TestCase(0, 16061.760000000002)]
+        [TestCase(1, 1011890.88)]
+        [TestCase(2, 45535089.60000001)]
+        [TestCase(3, 5584303296.000001)]
+        [TestCase(4, 1032065715732.4805)]
+        [TestCase(5, 116228446304256.06)]
         public void DayIncome_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.DayIncome(region));
         }
 
-        [TestCase(1, 3281.8499999999985)]
-        [TestCase(2, 7849916.50899456)]
-        [TestCase(3, 1349779427.7327363)]
-        [TestCase(4, 324940814785.38245)]
-        [TestCase(5, 134990893007518.1)]
+        [TestCase(1, 1649.6122499999994)]
+        [TestCase(2, 1549613.74119552)]
+        [TestCase(3, 364965564.54758406)]
+        [TestCase(4, 65487124752.192)]
+        [TestCase(5, 34494113177497.258)]
         public void SolvedRegionCost_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.SolveRegionCost(region));
+        }
+
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        [TestCase(4)]
+        [TestCase(5)]
+        public void ActiveToAway_FortyMinutesEarnAtLeastOneDayAway(int region)
+        {
+            // Design rule: 40 min of full active play earn at least one 24 h absence (no ad
+            // double). Nothing is paid past the cap, so early creeks with short caps run higher.
+            Assert.That(pacing.ActiveToAwayRatio(region), Is.InRange(1.0, 4.5));
         }
 
         // --- Config defaults are the solved, rounded tables ---
@@ -276,13 +287,13 @@ namespace NuggetCreek.Core.Tests
         }
 
         // Design doc 5.0.3 table.
-        [TestCase(2e9, 1L)]
-        [TestCase(1e11, 5L)]
-        [TestCase(1e12, 16L)]
-        [TestCase(1e13, 46L)]
-        [TestCase(1e15, 366L)]
-        [TestCase(1e18, 8213L)]
-        [TestCase(1.99e9, 0L)]
+        [TestCase(6e8, 1L)]
+        [TestCase(1e11, 9L)]
+        [TestCase(1e12, 28L)]
+        [TestCase(1e13, 79L)]
+        [TestCase(1e15, 630L)]
+        [TestCase(1e18, 14119L)]
+        [TestCase(5.99e8, 0L)]
         [TestCase(0.0, 0L)]
         public void ProspectingXp_MatchesDesignTable(double total, long expectedXp)
         {
@@ -292,7 +303,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void ProspectingXp_EliasBonus()
         {
-            Assert.That(economy.ProspectingXp(1e12, Sheet((Stat.ProspectingXp, 1.0))), Is.EqualTo(32));
+            Assert.That(economy.ProspectingXp(1e12, Sheet((Stat.ProspectingXp, 1.0))), Is.EqualTo(56));
         }
 
         [Test]
@@ -302,11 +313,11 @@ namespace NuggetCreek.Core.Tests
         }
 
         [TestCase(0, 0.0)]
-        [TestCase(1, 3600.0)]
-        [TestCase(3, 10800.0)]
-        [TestCase(12, 43200.0)]
-        [TestCase(20, 43200.0)]
-        public void OfflineCap_OneHourPerAmosLevel(int amosLevel, double expectedSeconds)
+        [TestCase(1, 1800.0)]
+        [TestCase(3, 5400.0)]
+        [TestCase(12, 21600.0)]
+        [TestCase(20, 21600.0)]
+        public void OfflineCap_HalfHourPerAmosLevel(int amosLevel, double expectedSeconds)
         {
             Assert.That(economy.OfflineCapSeconds(amosLevel), Is.EqualTo(expectedSeconds));
         }

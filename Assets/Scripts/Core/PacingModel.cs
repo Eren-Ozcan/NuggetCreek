@@ -31,7 +31,7 @@ namespace NuggetCreek.Core
         /// solved cost is scaled to land on its target day. Mirrors BOT_CALIBRATION in
         /// tools/economy_tune.py.
         /// </summary>
-        public static readonly double[] BotCalibration = { 1.0, 3.4, 7.817, 7.503, 8.837, 9.932, 9.932 };
+        public static readonly double[] BotCalibration = { 1.0, 1.709, 4.326, 5.566, 3.909, 4.642, 4.642 };
 
         static readonly Dictionary<int, double> PrestigeAt = new Dictionary<int, double> { { 4, 2.5 }, { 5, 6.0 }, { 6, 15.0 } };
 
@@ -79,6 +79,27 @@ namespace NuggetCreek.Core
             BigNumber active = economy.ActiveRate(regionIndex, regionIndex, stats, prestige, spawnBase);
             BigNumber idle = economy.IdleRate(regionIndex, regionIndex, stats, prestige, spawnBase);
             return active * ActiveSecondsPerDay + idle * IdleSecondsPerDay;
+        }
+
+        public const double ActiveCompareMinutes = 40;
+        public const double AwayCompareHours = 24;
+
+        /// <summary>
+        /// Dollars from ActiveCompareMinutes of full active play divided by one
+        /// AwayCompareHours absence (no ad double), for a typical player in regionIndex with
+        /// Amos at the region's level cap. The design rule keeps this at 1 or more at every creek.
+        /// </summary>
+        public double ActiveToAwayRatio(int regionIndex)
+        {
+            StatSheet stats = TypicalStatsFor(regionIndex);
+            double prestige = PrestigeFor(regionIndex);
+            double spawnBase = economy.SpawnBaseFor(regionIndex);
+            BigNumber active = economy.ActiveRate(regionIndex, regionIndex, stats, prestige, spawnBase) * (ActiveCompareMinutes * 60);
+            double cap = economy.OfflineCapSeconds(economy.AmosMaxLevel(regionIndex + 1), stats);
+            double away = AwayCompareHours * 3600;
+            double paid = Math.Min(away, cap) + Math.Max(0, away - cap) * economy.Config.OfflinePastCapRate;
+            BigNumber offline = economy.OfflineRate(regionIndex, regionIndex, stats, prestige) * paid;
+            return active.ToDouble() / offline.ToDouble();
         }
 
         /// <summary>Uninterrupted opening session in region 1: first quarter with nothing

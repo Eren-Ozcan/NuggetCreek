@@ -277,8 +277,11 @@ namespace NuggetCreek.Core
         /// <summary>Store transaction ids kept to reject a repeated grant.</summary>
         public int TransactionMemory = 50;
 
-        /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
-        public double ActiveIdleRatio = 3.0;
+        /// <summary>
+        /// Active income divided by this gives idle income. Chosen so 40 minutes of active
+        /// play earn at least one 24 h absence (PacingModel.ActiveToAwayRatio). RC: active_idle_ratio.
+        /// </summary>
+        public double ActiveIdleRatio = 12;
 
         /// <summary>Base collectible value multiplier per region. RC: value_growth.</summary>
         public double ValueGrowth = 15.0;
@@ -289,20 +292,20 @@ namespace NuggetCreek.Core
         // --- Progression tables (5.0.4, 6.1, 6.2), solved by tools/economy_tune.py ---
 
         /// <summary>Region unlock costs for the 6 launch regions; index 0 is free.</summary>
-        public double[] RegionUnlockCosts = { 0, 3.3e3, 7.8e6, 1.3e9, 320e9, 130e12 };
+        public double[] RegionUnlockCosts = { 0, 1.6e3, 1.5e6, 360e6, 65e9, 34e12 };
 
         /// <summary>Sluice tier costs for the 8 launch tiers; index 0 is the starting sluice.</summary>
-        public double[] TierCosts = { 0, 820, 2e6, 320e6, 80e9, 32e12, 7.2e15, 1.6e18 };
+        public double[] TierCosts = { 0, 400, 380e3, 90e6, 16e9, 8.5e12, 1.6e15, 310e15 };
 
         /// <summary>Level 1 price of each tier's two upgrades (3% of the tier cost, floored at 2x the previous).</summary>
-        public double[] UpgradeBaseCosts = { 30, 60, 60e3, 9.6e6, 2.4e9, 960e9, 220e12, 48e15 };
+        public double[] UpgradeBaseCosts = { 30, 60, 11e3, 2.7e6, 480e6, 260e9, 48e12, 9.3e15 };
 
         /// <summary>Upgrade price growth per level. RC: upgrade_growth.</summary>
         public double UpgradeCostGrowth = 1.22;
 
         // --- Prestige (5.0.3) ---
 
-        public double PrestigeXpDivisor = 2e9;
+        public double PrestigeXpDivisor = 6e8;
         public double PrestigeXpExponent = 0.45;
         public double PrestigeBonusPerXp = 0.02;
 
@@ -313,12 +316,13 @@ namespace NuggetCreek.Core
 
         /// <summary>Amos level costs for L2..L12: 45 minutes of typical idle income when the
         /// level unlocks, the second level of each region pair at 1.5x.</summary>
-        public double[] AmosLevelCosts = { 4.6e3, 190e3, 290e3, 8.8e6, 13e6, 860e6, 1.3e9, 130e9, 200e9, 17e12, 26e12 };
+        public double[] AmosLevelCosts = { 1.2e3, 49e3, 73e3, 2.2e6, 3.3e6, 270e6, 400e6, 50e9, 74e9, 5.6e12, 8.4e12 };
 
-        public double OfflineCapHoursPerAmosLevel = 1;
+        /// <summary>Offline cap: 30 minutes when Amos joins, 30 more per level, 6 h at level 12.</summary>
+        public double OfflineCapHoursPerAmosLevel = 0.5;
 
-        /// <summary>Share of the offline rate paid for time past the cap (design doc 3.3, measured ~17% on device).</summary>
-        public double OfflinePastCapRate = 0.17;
+        /// <summary>Share of the offline rate paid for time past the cap; 0 = accrual stops at the cap (design doc 3.3).</summary>
+        public double OfflinePastCapRate = 0;
         public int AmosMaxLevel = 12;
         public int AmosLevelsPerRegion = 2;
 

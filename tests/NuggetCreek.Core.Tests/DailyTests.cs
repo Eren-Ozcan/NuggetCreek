@@ -229,7 +229,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void OfflinePaysTheBoostForTheCoveredPart()
         {
-            var progress = new PlayerProgress { ManualCollected = 100, AmosLevel = 3 };
+            var progress = new PlayerProgress { ManualCollected = 100, AmosLevel = 4 }; // 2 h cap
             GameSession session = NewSession(progress);
             session.ApplyBoost(2, 3600); // ends at Start + 1 h
             BigNumber rate = session.OfflineRate;

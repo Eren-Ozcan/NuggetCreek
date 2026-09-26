@@ -154,11 +154,11 @@ namespace NuggetCreek.Core
         {
             new UpgradeDefinition("sturdy_shovel", "Sturdy Shovel", 0, Stat.DustValue, 0.20, 10),
             new UpgradeDefinition("creek_scatter", "Creek Scatter", 0, Stat.SpawnRate, 0.25, 4),
-            new UpgradeDefinition("steel_sieve", "Steel Sieve", 1, Stat.IdleSpeed, 0.10, 10),
+            new UpgradeDefinition("steel_sieve", "Steel Sieve", 1, Stat.AllIncome, 0.10, 10),
             new UpgradeDefinition("wide_pan", "Wide Pan", 1, Stat.CollectRadius, 0.08, 5),
             new UpgradeDefinition("water_channel", "Water Channel", 2, Stat.DoubleCatch, 0.01, 10),
             new UpgradeDefinition("dust_value", "Dust Value", 2, Stat.DustValue, 0.15, 10),
-            new UpgradeDefinition("night_shift", "Night Shift", 3, Stat.OfflineIncome, 0.10, 10),
+            new UpgradeDefinition("night_shift", "Night Shift", 3, Stat.AllIncome, 0.10, 10),
             new UpgradeDefinition("rich_sand", "Rich Sand", 3, Stat.NuggetChance, 0.01, 10),
             new UpgradeDefinition("fine_riffle", "Fine Riffle", 4, Stat.NuggetValue, 0.20, 10),
             new UpgradeDefinition("sorting", "Sorting", 4, Stat.DustValue, 0.30, 10),
@@ -166,7 +166,7 @@ namespace NuggetCreek.Core
             new UpgradeDefinition("vein_detector", "Vein Detector", 5, Stat.MotherLodeReward, 0.10, 10),
             new UpgradeDefinition("steamer_line", "Steamer Line", 6, Stat.AllIncome, 0.10, 10),
             new UpgradeDefinition("groundwork", "Groundwork", 6, Stat.NuggetChance, 0.015, 10),
-            new UpgradeDefinition("passive_sluices", "Passive Sluices", 7, Stat.IdleSpeed, 0.15, 10),
+            new UpgradeDefinition("passive_sluices", "Passive Sluices", 7, Stat.AllIncome, 0.15, 10),
             new UpgradeDefinition("big_pan", "Big Pan", 7, Stat.CollectRadius, 0.05, 10),
         };
 
@@ -243,8 +243,8 @@ namespace NuggetCreek.Core
         /// <summary>The 12 Guild perks (design doc 6.6); Perk Points come from Guild levels.</summary>
         public static readonly IReadOnlyList<PerkDefinition> Perks = new[]
         {
-            new PerkDefinition("night_watch", "Night Watch", Stat.OfflineCapHours, 1, 4, 2),
-            new PerkDefinition("steady_stream", "Steady Stream", Stat.IdleSpeed, 0.15, 10, 1),
+            new PerkDefinition("night_watch", "Night Watch", Stat.OfflineCapHours, 0.5, 4, 2),
+            new PerkDefinition("steady_stream", "Steady Stream", Stat.AllIncome, 0.15, 10, 1),
             new PerkDefinition("quick_hands", "Quick Hands", Stat.CollectibleLifetime, 0.2, 5, 1),
             new PerkDefinition("deep_vein", "Deep Vein", Stat.VeinMaxLevel, 3, 10, 1),
             new PerkDefinition("sure_grip", "Sure Grip", Stat.VeinCatchesPerLevel, -2, 4, 2),
