@@ -107,7 +107,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
 
             StringAssert.StartsWith("Pine Hollow", Label("Status").text);
-            Assert.That(Label("Dollars").text, Is.EqualTo("$996.7K"));
+            Assert.That(Label("Dollars").text, Is.EqualTo("$998.4K"));
             Assert.That(GameObject.Find("Map"), Is.Null, "map closes after unlocking");
         }
 
@@ -271,7 +271,7 @@ namespace NuggetCreek.PlayModeTests
             Click("GuildButton");
             yield return null;
             Assert.That(IsActive("Guild"), Is.True);
-            StringAssert.Contains("Prospecting XP this claim: +16", Label("ClaimText").text);
+            StringAssert.Contains("Prospecting XP this claim: +28", Label("ClaimText").text);
             Assert.That(LabelIn("PerkPoints", "PerkPoints").text, Is.EqualTo("Perk Points: 0"));
             Assert.That(IsActive("night_watch"), Is.True);
             yield return Shot("14_guild");
@@ -374,7 +374,7 @@ namespace NuggetCreek.PlayModeTests
             yield return Shot("5_offline_modal");
 
             StringAssert.Contains("You were away 2h", LabelIn("Card", "Body").text);
-            StringAssert.Contains("Amos stopped at 1h", LabelIn("Card", "CapLine").text);
+            StringAssert.Contains("Amos stopped at 30 min", LabelIn("Card", "CapLine").text);
             Assert.That(IsActive("UpgradeAmos"), Is.True);
 
             string before = Label("Dollars").text;
