@@ -41,11 +41,30 @@ namespace NuggetCreek.Balance
                 }
                 return 0;
             }
+            if (args.Contains("--ratio"))
+            {
+                // Design rule: 40 min of active play earns at least one 24 h absence (no ad double).
+                var model = new PacingModel(new Economy(new EconomyConfig()));
+                for (int region = 0; region < new EconomyConfig().RegionCount; region++)
+                    Console.WriteLine($"{GameCatalog.RegionNames[region],-14}{model.ActiveToAwayRatio(region),8:0.00}");
+                var amos = Enumerable.Range(2, new EconomyConfig().AmosMaxLevel - 1)
+                    .Select(level => PacingModel.RoundSignificant(model.SolveAmosLevelCost(level).ToDouble()).ToString("G3"));
+                Console.WriteLine("AmosLevelCosts = { " + string.Join(", ", amos) + " }");
+                return 0;
+            }
             if (args.Contains("--calibrate"))
             {
                 double divisor = ArgDouble(args, "--divisor", new EconomyConfig().PrestigeXpDivisor);
                 Console.WriteLine($"Calibrating creek costs for the target player (watches ads), prestige divisor {divisor:G3}...");
-                Action<EconomyConfig> prestige = c => c.PrestigeXpDivisor = divisor;
+                double ratio = ArgDouble(args, "--active-ratio", new EconomyConfig().ActiveIdleRatio);
+                double pastCap = ArgDouble(args, "--past-cap", new EconomyConfig().OfflinePastCapRate);
+                Console.WriteLine($"active/idle ratio {ratio}, past-cap rate {pastCap:0%}");
+                Action<EconomyConfig> prestige = c =>
+                {
+                    c.PrestigeXpDivisor = divisor;
+                    c.ActiveIdleRatio = ratio;
+                    c.OfflinePastCapRate = pastCap;
+                };
                 var calibrator = new Calibrator(new BotProfile { Name = "calibration" }, seeds, prestige);
                 double[] scales = calibrator.Solve();
                 Console.WriteLine("scales: " + string.Join(", ", scales.Skip(1).Select(s => s.ToString("0.000"))));
