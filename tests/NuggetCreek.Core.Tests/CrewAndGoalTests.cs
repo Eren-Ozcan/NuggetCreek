@@ -95,7 +95,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void HiringCostsGemsAndClosesTheEvent()
         {
-            GameSession session = NewSession(gems: 25);
+            GameSession session = NewSession(gems: 25, progress: new PlayerProgress { FreeHireUsed = true });
             session.OfferCandidates();
             int chosen = session.Candidates[0];
 
@@ -111,7 +111,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void HiringNeedsEnoughGemsAndAnOfferedCandidate()
         {
-            GameSession session = NewSession(gems: 9);
+            GameSession session = NewSession(gems: 9, progress: new PlayerProgress { FreeHireUsed = true });
             session.OfferCandidates();
             int offered = session.Candidates[0];
             int notOffered = Enumerable.Range(0, GameCatalog.Crew.Count).First(i => !session.Candidates.Contains(i));
