@@ -219,6 +219,36 @@ namespace NuggetCreek.Core
 
         public int[] WashChests = { 0, 0, 0, 0, 0, 0, 0, 1 };
 
+        // --- Shop (8.2c, 8.2e) ---
+
+        /// <summary>Gem price of each shop boost (Gold Wash, Extra Shift, Rich Vein).</summary>
+        public int ShopBoostGems = 5;
+
+        /// <summary>A boost shows OUT OF STOCK this long after it is bought.</summary>
+        public double ShopBoostCooldownSeconds = 60;
+
+        public double GoldWashMultiplier = 7;
+
+        public double GoldWashSeconds = 60;
+
+        /// <summary>Extra Shift pays this many seconds of idle income at once.</summary>
+        public double ExtraShiftSeconds = 2 * 3600;
+
+        public double StarterOfferHours = 72;
+
+        public double WelcomeOfferHours = 24;
+
+        /// <summary>Creek index (0-based) from which New Creek Welcome is the Large pack.</summary>
+        public int WelcomeLargeFromRegion = 3;
+
+        public double DailyOfferHours = 6;
+
+        /// <summary>Lifetime spend that turns forced ads off for good (8.3): one 9.99 purchase or two 4.99 ones.</summary>
+        public int RemoveAdsThresholdCents = 998;
+
+        /// <summary>Store transaction ids kept to reject a repeated grant.</summary>
+        public int TransactionMemory = 50;
+
         /// <summary>Active income divided by this gives idle income. RC: active_idle_ratio.</summary>
         public double ActiveIdleRatio = 3.0;
 
