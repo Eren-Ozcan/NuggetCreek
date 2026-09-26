@@ -361,6 +361,8 @@ namespace NuggetCreek.Core
                 return false;
             Progress.RegionIndex = Progress.RegionsUnlocked;
             Progress.RegionsUnlocked++;
+            if (Progress.RegionsUnlocked > Progress.BestRegionsUnlocked)
+                OfferWelcome(Progress.RegionIndex);
             Progress.BestRegionsUnlocked = Math.Max(Progress.BestRegionsUnlocked, Progress.RegionsUnlocked);
             if (Progress.RegionIndex >= Config.CrewCandidateFirstRegion)
                 OfferCandidates();

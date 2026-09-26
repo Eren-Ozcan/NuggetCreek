@@ -84,6 +84,7 @@ namespace NuggetCreek.Core
 
             Progress.FreeWashUsed = false;
             Progress.AdWashes = 0;
+            StartDayOffers();
             return true;
         }
 
@@ -234,8 +235,8 @@ namespace NuggetCreek.Core
             Progress.BoostEndUtc = now + seconds;
         }
 
-        /// <summary>Prestige multiplier times the running boost: applies to swipe, idle, chests and events.</summary>
-        public double IncomeMultiplier => PrestigeMultiplier * BoostMultiplier;
+        /// <summary>Prestige multiplier times the running boosts: applies to swipe, idle, chests and events.</summary>
+        public double IncomeMultiplier => PrestigeMultiplier * BoostMultiplier * GoldWashMultiplier;
 
         /// <summary>Extra offline Dollars for the part of an absence a boost covered.</summary>
         BigNumber OfflineBoostBonus(double leftUtc, double creditedSeconds)
