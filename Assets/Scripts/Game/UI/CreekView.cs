@@ -97,10 +97,14 @@ namespace NuggetCreek.Game.UI
             UpdateAmos(deltaTime, idleEarned);
             UpdateVein();
 
+            // A Giant bought with Rich Vein waits until no menu covers the creek.
+            if (InputEnabled && session.TakeBoughtGiant())
+                Spawn(CollectibleKind.GiantNugget);
+
             spawnIn -= deltaTime;
             if (spawnIn <= 0)
             {
-                Spawn();
+                Spawn(session.RollKind(UnityEngine.Random.value));
                 ScheduleNextSpawn();
             }
 
@@ -117,9 +121,8 @@ namespace NuggetCreek.Game.UI
             spawnIn = (float)(1 / rate) * UnityEngine.Random.Range(0.6f, 1.4f);
         }
 
-        void Spawn()
+        void Spawn(CollectibleKind kind)
         {
-            CollectibleKind kind = session.RollKind(UnityEngine.Random.value);
             Image image = Ui.Image(kind.ToString(), area, ColorOf(kind), Ui.Circle);
             image.raycastTarget = false;
             float size = SizeOf(kind);

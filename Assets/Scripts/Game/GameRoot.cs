@@ -9,8 +9,8 @@ namespace NuggetCreek.Game
 {
     /// <summary>
     /// Greybox entry point: owns the session, builds the UI in code, runs idle income,
-    /// goals, crew candidates and the Mother Lode, saves, and handles the offline return
-    /// (design doc 3.2, 3.3, 3.4, 6.3, 13.1).
+    /// goals, crew candidates, the Mother Lode and the shop, saves, and handles the offline
+    /// return (design doc 3.2, 3.3, 3.4, 6.3, 8.2e, 13.1).
     /// </summary>
     public sealed class GameRoot : MonoBehaviour
     {
@@ -20,6 +20,9 @@ namespace NuggetCreek.Game
         GameSession session;
         readonly GameClock clock = new GameClock();
         IRewardedAds ads;
+        IStore store;
+        ShopPanel shop;
+        Text shopLabel;
         LateDoubleOffer lateDouble;
 
         CreekView creek;
@@ -87,10 +90,12 @@ namespace NuggetCreek.Game
             float dt = Time.deltaTime;
             UpdateTrustedDay();
             ads.Tick(Time.unscaledDeltaTime);
+            store.Tick(Time.unscaledDeltaTime);
+            session.TickShop(dt);
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen;
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen || shop.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -118,6 +123,7 @@ namespace NuggetCreek.Game
             chestModal.Refresh();
             guild.Refresh();
             daily.Refresh();
+            shop.Refresh();
             candidateModal.Refresh();
 
             autosaveIn -= Time.unscaledDeltaTime;
@@ -209,6 +215,8 @@ namespace NuggetCreek.Game
         {
             Canvas canvas = Ui.CreateCanvas("UI", 0);
             Transform root = canvas.transform;
+            // Its purchase sheet puts itself on top when it opens.
+            store = new FakeStore(root);
             const float topHeight = 300;
             const float bottomHeight = 220;
 
@@ -239,10 +247,13 @@ namespace NuggetCreek.Game
 
             RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
                 .Place(Vector2.zero, new Vector2(1, 0), Vector2.zero, new Vector2(0, bottomHeight));
-            Button mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 48);
-            mapButton.AsRect().Place(Vector2.zero, new Vector2(0.5f, 1), new Vector2(30, 30), new Vector2(-15, -30));
-            Button upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 48);
-            upgradesButton.AsRect().Place(new Vector2(0.5f, 0), Vector2.one, new Vector2(15, 30), new Vector2(-30, -30));
+            // Map / Upgrades / Shop (design doc 12.2).
+            Button mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
+            mapButton.AsRect().Place(Vector2.zero, new Vector2(1 / 3f, 1), new Vector2(30, 30), new Vector2(-10, -30));
+            Button upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 44);
+            upgradesButton.AsRect().Place(new Vector2(1 / 3f, 0), new Vector2(2 / 3f, 1), new Vector2(10, 30), new Vector2(-10, -30));
+            Button shopButton = Ui.Button("ShopButton", bottom, "Shop", Palette.GemButton, OpenShop, out shopLabel, 44);
+            shopButton.AsRect().Place(new Vector2(2 / 3f, 0), Vector2.one, new Vector2(10, 30), new Vector2(-30, -30));
 
             lateDoubleChip = Ui.Button("LateDouble", root, "Double your last haul?", Palette.Ad, WatchLateDouble, out _, 34);
             lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, 100), new Vector2(0, -topHeight - 20));
@@ -299,6 +310,13 @@ namespace NuggetCreek.Game
             offlineModal.Claimed += Save;
             candidateModal = new CandidateModal(session, root);
             candidateModal.Hired += Save;
+            shop = new ShopPanel(session, store, root);
+            shop.Purchased += Save;
+            shop.SummonLodeRequested += () =>
+            {
+                shop.Close();
+                SummonMotherLode();
+            };
         }
 
         void OpenUpgrades(bool focusAmos)
@@ -306,6 +324,7 @@ namespace NuggetCreek.Game
             if (motherLode.IsActive)
                 return;
             map.Close();
+            shop.Close();
             upgrades.Open(focusAmos);
         }
 
@@ -314,7 +333,17 @@ namespace NuggetCreek.Game
             if (motherLode.IsActive)
                 return;
             upgrades.Close();
+            shop.Close();
             map.Open();
+        }
+
+        void OpenShop()
+        {
+            if (motherLode.IsActive)
+                return;
+            upgrades.Close();
+            map.Close();
+            shop.Open();
         }
 
         void RefreshHud()
@@ -324,7 +353,9 @@ namespace NuggetCreek.Game
             string idle = session.IdleActive ? $"Amos +{NumberFormat.DollarsPerSecond(session.IdleRate)}" : "No crew yet";
             string boost = session.BoostMultiplier > 1
                 ? $"  |  x{session.BoostMultiplier:0} {CandidateModal.Clock(session.BoostSecondsLeft)}" : "";
-            statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}");
+            string goldWash = progress.GoldWashSecondsLeft > 0
+                ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
+            statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
             dailyLabel.SetText(daily.AnythingToCollect() ? "Daily  (!)" : "Daily");
             gemsLabel.SetText(Effects.Gems(progress.Gems));
             RefreshGoal();
@@ -333,6 +364,7 @@ namespace NuggetCreek.Game
             bool mapBadge = session.CanAfford(session.NextRegionCost);
             upgradesLabel.SetText(upgradeBadge ? "Upgrades  (!)" : "Upgrades");
             mapLabel.SetText(mapBadge ? "Map  (!)" : "Map");
+            shopLabel.SetText(shop.HasTimedOffer() ? "Shop  (!)" : "Shop");
             collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
@@ -365,6 +397,7 @@ namespace NuggetCreek.Game
                 return;
             upgrades.Close();
             map.Close();
+            shop.Close();
             candidateModal.Close();
             motherLode.Begin(run);
         }
@@ -428,6 +461,7 @@ namespace NuggetCreek.Game
             if (!session.NowUtc.HasValue)
                 return;
             double offset = System.TimeZoneInfo.Local.GetUtcOffset(System.DateTime.UtcNow).TotalSeconds;
+            session.UtcOffsetSeconds = offset;
             long today = GameSession.DayNumber(session.NowUtc.Value, offset, session.Economy.Config.DailyRolloverHour);
             if (session.UpdateDay(today + debugDayShift))
                 Save();
