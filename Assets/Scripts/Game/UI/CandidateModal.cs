@@ -88,7 +88,8 @@ namespace NuggetCreek.Game.UI
                 slot.Root.name = "Candidate_" + crew.Id;
                 slot.Name.SetText(crew.Name);
                 slot.Effect.SetText($"{Effects.PerLevel(crew.Stat, crew.PerLevel)} per level, up to Lv {GameCatalog.CrewMaxLevel}.");
-                slot.HireLabel.SetText("Hire  " + Effects.Gems(cost ?? 0));
+                // The tutorial pays for the first hire (design doc 9.1).
+                slot.HireLabel.SetText(cost == 0 ? "Hire  Free" : "Hire  " + Effects.Gems(cost ?? 0));
                 bool affordable = session.CanAffordGems(cost);
                 if (slot.Hire.interactable != affordable)
                     slot.Hire.interactable = affordable;
