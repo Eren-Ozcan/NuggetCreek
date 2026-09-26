@@ -197,15 +197,17 @@ namespace NuggetCreek.Game.UI
                 if (level == 0)
                 {
                     row.Title.SetText("Amos");
-                    row.Detail.SetText("\"I'll keep panning while you're gone.\" Starts idle income, 1h away cap.");
+                    string firstCap = NumberFormat.Hours(session.Economy.OfflineCapSeconds(1, session.Stats) / 3600);
+                    row.Detail.SetText($"\"I'll keep panning while you're gone.\" Starts idle income, {firstCap} away cap.");
                     SetBuy(row, session.AmosNextCost, null, true, "Hire ");
                     return;
                 }
                 row.Title.SetText($"Amos  Lv {level}");
-                string cap = $"Away cap {level}h.";
+                string cap = $"Away cap {NumberFormat.Hours(session.OfflineCapSeconds / 3600)}.";
                 if (session.AmosNextCost.HasValue)
                 {
-                    row.Detail.SetText($"{cap} Next level: {level + 1}h.");
+                    string next = NumberFormat.Hours(session.Economy.OfflineCapSeconds(level + 1, session.Stats) / 3600);
+                    row.Detail.SetText($"{cap} Next level: {next}.");
                     SetBuy(row, session.AmosNextCost, null, true);
                 }
                 else if (session.AmosWaitsForRegion)
@@ -304,7 +306,7 @@ namespace NuggetCreek.Game.UI
                 case Stat.VeinMaxLevel:
                     return $"{sign}{amount:0} {Name(stat)}";
                 case Stat.OfflineCapHours:
-                    return $"{sign}{amount:0}h {Name(stat)}";
+                    return $"{sign}{NumberFormat.Hours(amount)} {Name(stat)}";
                 case Stat.VeinCatchesPerLevel:
                     return $"{sign}{amount:0} {Name(stat)}";
                 case Stat.CollectibleLifetime:

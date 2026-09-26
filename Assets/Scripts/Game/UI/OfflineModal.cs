@@ -111,8 +111,8 @@ namespace NuggetCreek.Game.UI
             body.SetText($"You were away {TextFormat.Duration(payable.ElapsedSeconds)}.\nAmos kept panning:");
             amount.SetText(NumberFormat.Dollars(payable.Amount));
             bool capped = payable.CapReached;
-            int capHours = session.Progress.AmosLevel;
-            capLine.SetText(capped ? $"Amos stopped at {capHours}h. Level him up to keep digging longer." : "");
+            string cap = NumberFormat.Hours(session.OfflineCapSeconds / 3600);
+            capLine.SetText(capped ? $"Amos stopped at {cap}. Level him up to keep digging longer." : "");
             upgradeAmos.SetActive(capped);
             claim.SetActive(true);
             doubleButton.SetActive(true);
