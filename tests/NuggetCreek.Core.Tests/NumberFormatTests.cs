@@ -39,6 +39,15 @@ namespace NuggetCreek.Core.Tests
             Assert.That(NumberFormat.DollarsPerSecond(value), Is.EqualTo(expected));
         }
 
+        [TestCase(0.5, "30 min")]
+        [TestCase(1.0, "1h")]
+        [TestCase(1.5, "1.5h")]
+        [TestCase(6.0, "6h")]
+        public void Hours(double hours, string expected)
+        {
+            Assert.That(NumberFormat.Hours(hours), Is.EqualTo(expected));
+        }
+
         [Test]
         public void NeverUsesScientificNotation()
         {

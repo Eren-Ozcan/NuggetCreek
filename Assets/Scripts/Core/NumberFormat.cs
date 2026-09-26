@@ -35,6 +35,14 @@ namespace NuggetCreek.Core
             return Dollars(value) + "/s";
         }
 
+        /// <summary>Short duration for caps and perks: "30 min", "1h", "1.5h".</summary>
+        public static string Hours(double hours)
+        {
+            if (hours < 1)
+                return Math.Round(hours * 60).ToString("0", CultureInfo.InvariantCulture) + " min";
+            return Math.Round(hours, 1, MidpointRounding.ToEven).ToString("0.#", CultureInfo.InvariantCulture) + "h";
+        }
+
         /// <summary>Same notation as <see cref="Dollars"/> without the currency sign.</summary>
         public static string Abbreviate(BigNumber value)
         {
