@@ -23,6 +23,12 @@ namespace NuggetCreek.Game
         IStore store;
         ShopPanel shop;
         Text shopLabel;
+        PeteBanner pete;
+        Button upgradesButton;
+        Button mapButton;
+        Button shopButton;
+        Button dailyButton;
+        Button guildButton;
         LateDoubleOffer lateDouble;
 
         CreekView creek;
@@ -125,6 +131,8 @@ namespace NuggetCreek.Game
             daily.Refresh();
             shop.Refresh();
             candidateModal.Refresh();
+
+            pete.Refresh(modalOpen || motherLode.IsActive || offlineModal.IsOpen);
 
             autosaveIn -= Time.unscaledDeltaTime;
             if (autosaveIn <= 0)
@@ -235,10 +243,10 @@ namespace NuggetCreek.Game
             gemsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -80), new Vector2(0, -24));
             statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
             statusLabel.rectTransform.Place(new Vector2(0, 0.22f), new Vector2(1, 0.45f));
-            Button guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
+            guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
             guildButton.AsRect().Box(Vector2.one, new Vector2(220, 70), new Vector2(-20, -20));
 
-            Button dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
+            dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
             dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, 70), new Vector2(20, -95));
 
             goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
@@ -248,11 +256,11 @@ namespace NuggetCreek.Game
             RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
                 .Place(Vector2.zero, new Vector2(1, 0), Vector2.zero, new Vector2(0, bottomHeight));
             // Map / Upgrades / Shop (design doc 12.2).
-            Button mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
+            mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
             mapButton.AsRect().Place(Vector2.zero, new Vector2(1 / 3f, 1), new Vector2(30, 30), new Vector2(-10, -30));
-            Button upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 44);
+            upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 44);
             upgradesButton.AsRect().Place(new Vector2(1 / 3f, 0), new Vector2(2 / 3f, 1), new Vector2(10, 30), new Vector2(-10, -30));
-            Button shopButton = Ui.Button("ShopButton", bottom, "Shop", Palette.GemButton, OpenShop, out shopLabel, 44);
+            shopButton = Ui.Button("ShopButton", bottom, "Shop", Palette.GemButton, OpenShop, out shopLabel, 44);
             shopButton.AsRect().Place(new Vector2(2 / 3f, 0), Vector2.one, new Vector2(10, 30), new Vector2(-30, -30));
 
             lateDoubleChip = Ui.Button("LateDouble", root, "Double your last haul?", Palette.Ad, WatchLateDouble, out _, 34);
@@ -278,6 +286,8 @@ namespace NuggetCreek.Game
             summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, 100), new Vector2(-20, bottomHeight + 20));
             summonLabel.SetText($"Mother Lode  {Effects.Gems(session.Economy.Config.MotherLodeSummonGems)}");
             summonLode.SetActive(false);
+
+            pete = new PeteBanner(session, root, bottomHeight);
 
             // Before the panels so full-screen modals cover them.
             if (Debug.isDebugBuild)
@@ -307,7 +317,12 @@ namespace NuggetCreek.Game
                 lateDouble.ArmAfterClaim(Time.realtimeSinceStartup, amount);
                 ads.Load();
             };
-            offlineModal.Claimed += Save;
+            offlineModal.Claimed += () =>
+            {
+                // Second session (design doc 10): Amos brings a chest after the first real haul.
+                session.GiveReturnGift();
+                Save();
+            };
             candidateModal = new CandidateModal(session, root);
             candidateModal.Hired += Save;
             shop = new ShopPanel(session, store, root);
@@ -356,20 +371,20 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
-            dailyLabel.SetText(daily.AnythingToCollect() ? "Daily  (!)" : "Daily");
+            SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily: tomorrow");
             gemsLabel.SetText(Effects.Gems(progress.Gems));
             RefreshGoal();
 
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
-            upgradesLabel.SetText(upgradeBadge ? "Upgrades  (!)" : "Upgrades");
-            mapLabel.SetText(mapBadge ? "Map  (!)" : "Map");
-            shopLabel.SetText(shop.HasTimedOffer() ? "Shop  (!)" : "Shop");
+            SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, upgradeBadge ? "Upgrades  (!)" : "Upgrades", "Upgrades\nswipe 15 by hand");
+            SetLock(mapButton, mapLabel, Feature.Map, mapBadge ? "Map  (!)" : "Map", "Map\nhire Amos first");
+            SetLock(shopButton, shopLabel, Feature.Shop, shop.HasTimedOffer() ? "Shop  (!)" : "Shop", "Shop\nreach Pine Hollow");
             collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
             chestChipLabel.SetText(ChestChipText());
-            guildLabel.SetText($"Guild Lv {session.GuildLevel}");
+            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", "Guild: Red Gulch");
             claimChip.SetActive(session.RebirthSuggested && !guild.IsOpen && !motherLode.IsActive);
 
             float now = Time.realtimeSinceStartup;
@@ -387,6 +402,15 @@ namespace NuggetCreek.Game
                 summonLode.interactable = canSummon;
             if (session.HasCandidates)
                 crewChipLabel.SetText($"New crew  {CandidateModal.Clock(progress.CandidateSecondsLeft)}");
+        }
+
+        /// <summary>A locked button stays visible and says what opens it (design doc 9.1, 12.2).</summary>
+        void SetLock(Button button, Text label, Feature feature, string open, string locked)
+        {
+            bool unlocked = session.IsUnlocked(feature);
+            label.SetText(unlocked ? open : locked);
+            if (button.interactable != unlocked)
+                button.interactable = unlocked;
         }
 
         // --- Mother Lode ---
@@ -493,7 +517,7 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 900), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1000), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+50 Gems", () => session.EarnGems(50));
@@ -502,7 +526,8 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 5, "Layers", OpenCollectionLayers);
             AddDebugButton(column, 6, "Chest now", AddDebugChest);
             AddDebugButton(column, 7, "Next day", () => debugDayShift++);
-            AddDebugButton(column, 8, "Reset", ResetGame);
+            AddDebugButton(column, 8, "Skip intro", () => session.IntroSkipped = true);
+            AddDebugButton(column, 9, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
