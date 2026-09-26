@@ -103,6 +103,47 @@ namespace NuggetCreek.Core
         /// <summary>Trusted UTC second the income boost ends.</summary>
         public double BoostEndUtc;
 
+        // --- Shop (design doc 8.2e) ---
+
+        /// <summary>Lifetime real-money spend in USD cents; removes forced ads at the threshold (8.3).</summary>
+        public long SpentCents;
+
+        public bool AdsRemoved;
+
+        /// <summary>The one-time "ads are off" card has not been shown yet.</summary>
+        public bool AdsRemovedNoticePending;
+
+        /// <summary>Trusted UTC second the Starter Pack stops selling; 0 until trusted time first arrives.</summary>
+        public double StarterEndUtc;
+
+        public bool StarterBought;
+
+        /// <summary>New Creek Welcome on sale: 0 none, 1 Small, 2 Large.</summary>
+        public int WelcomeOffer;
+
+        public double WelcomeEndUtc;
+
+        /// <summary>Trusted UTC second today's Daily Offer ends.</summary>
+        public double DailyOfferEndUtc;
+
+        /// <summary>Game day the Daily Offer was last bought; 0 = never.</summary>
+        public long DailyOfferBoughtDay;
+
+        /// <summary>Friday game day of the weekend the packs in WeekendBoughtMask were bought.</summary>
+        public long WeekendBoughtId;
+
+        /// <summary>Bit per weekend pack (Small, Medium, Large) bought this weekend.</summary>
+        public int WeekendBoughtMask;
+
+        /// <summary>Gold Wash boost time left, counted while the game is open.</summary>
+        public double GoldWashSecondsLeft;
+
+        /// <summary>Giant Nuggets bought with Rich Vein and not spawned yet.</summary>
+        public int PendingGiantNuggets;
+
+        /// <summary>Most recent store transaction ids, so a purchase is never granted twice.</summary>
+        public string[] Transactions = new string[0];
+
         /// <summary>Crew indices on offer right now; empty when no candidate event is open.</summary>
         public int[] CrewCandidates = new int[0];
 
@@ -181,6 +222,13 @@ namespace NuggetCreek.Core
             if (CrewCandidates.Length == 0)
                 CandidateSecondsLeft = 0;
             Gems = Math.Max(0, Gems);
+            SpentCents = Math.Max(0, SpentCents);
+            WelcomeOffer = Math.Max(0, Math.Min(WelcomeOffer, 2));
+            WeekendBoughtMask &= 7;
+            GoldWashSecondsLeft = Math.Max(0, GoldWashSecondsLeft);
+            PendingGiantNuggets = Math.Max(0, PendingGiantNuggets);
+            if (Transactions == null)
+                Transactions = new string[0];
             PlaySeconds = Math.Max(0, PlaySeconds);
             CollectedSinceMotherLode = Math.Max(0, CollectedSinceMotherLode);
             SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
