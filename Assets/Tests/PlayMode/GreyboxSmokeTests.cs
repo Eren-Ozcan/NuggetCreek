@@ -288,6 +288,46 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ShopSellsGemsThroughTheTestSheetAndBoostsForGems()
+        {
+            Click("ShopButton");
+            yield return null;
+            Assert.That(IsActive("Shop"), Is.True);
+            Assert.That(IsActive("Offer_RemoveAds"), Is.True);
+            StringAssert.Contains("$9.98 more in any purchase removes ads", Label("AdsLine").text);
+            yield return Shot("16_shop_offers");
+
+            Click("TabGems");
+            yield return null;
+            ClickIn("Gems_nc.gems.handful", "Buy");
+            yield return null;
+            Assert.That(IsActive("StoreSheet"), Is.True);
+            ClickIn("StoreSheet", "Cancel");
+            yield return null;
+            Assert.That(IsActive("StoreSheet"), Is.False);
+            Assert.That(Label("Gems").text, Is.EqualTo("0 Gems"), "a cancelled sheet grants nothing");
+
+            ClickIn("Gems_nc.gems.handful", "Buy");
+            yield return null;
+            yield return Shot("17_shop_test_sheet");
+            ClickIn("StoreSheet", "Buy");
+            yield return WaitFor(() => !IsActive("StoreSheet"), 3);
+            Assert.That(Label("Gems").text, Is.EqualTo("40 Gems"));
+            StringAssert.Contains("You got: 40 Gems", Label("ShopResult").text);
+
+            Click("TabGemShop");
+            yield return null;
+            ClickIn("Boost_RichVein", "Buy");
+            yield return null;
+            Assert.That(Label("Gems").text, Is.EqualTo("35 Gems"));
+            StringAssert.StartsWith("OUT OF STOCK", LabelIn("Boost_RichVein", "Label").text);
+            yield return Shot("18_shop_gem_shop");
+
+            Click("Close");
+            yield return WaitFor(() => IsActive("GiantNugget"), 2);
+        }
+
+        [UnityTest]
         public IEnumerator OfflineReturnPaysAfterTrustedTime()
         {
             Click("+$1K");
