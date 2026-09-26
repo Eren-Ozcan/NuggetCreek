@@ -58,6 +58,20 @@ namespace NuggetCreek.Game
             public int adWashes;
             public double boostMultiplier;
             public double boostEndUtc;
+            public long spentCents;
+            public bool adsRemoved;
+            public bool adsRemovedNoticePending;
+            public double starterEndUtc;
+            public bool starterBought;
+            public int welcomeOffer;
+            public double welcomeEndUtc;
+            public double dailyOfferEndUtc;
+            public long dailyOfferBoughtDay;
+            public long weekendBoughtId;
+            public int weekendBoughtMask;
+            public double goldWashSecondsLeft;
+            public int pendingGiantNuggets;
+            public string[] transactions;
             public int[] crewCandidates;
             public double candidateSecondsLeft;
             public int goalIndex;
@@ -123,6 +137,20 @@ namespace NuggetCreek.Game
                 AdWashes = data.adWashes,
                 BoostMultiplier = data.boostMultiplier,
                 BoostEndUtc = data.boostEndUtc,
+                SpentCents = data.spentCents,
+                AdsRemoved = data.adsRemoved,
+                AdsRemovedNoticePending = data.adsRemovedNoticePending,
+                StarterEndUtc = data.starterEndUtc,
+                StarterBought = data.starterBought,
+                WelcomeOffer = data.welcomeOffer,
+                WelcomeEndUtc = data.welcomeEndUtc,
+                DailyOfferEndUtc = data.dailyOfferEndUtc,
+                DailyOfferBoughtDay = data.dailyOfferBoughtDay,
+                WeekendBoughtId = data.weekendBoughtId,
+                WeekendBoughtMask = data.weekendBoughtMask,
+                GoldWashSecondsLeft = data.goldWashSecondsLeft,
+                PendingGiantNuggets = data.pendingGiantNuggets,
+                Transactions = data.transactions,
                 CrewCandidates = data.crewCandidates,
                 CandidateSecondsLeft = data.candidateSecondsLeft,
                 GoalIndex = data.goalIndex,
@@ -180,6 +208,20 @@ namespace NuggetCreek.Game
                 adWashes = progress.AdWashes,
                 boostMultiplier = progress.BoostMultiplier,
                 boostEndUtc = progress.BoostEndUtc,
+                spentCents = progress.SpentCents,
+                adsRemoved = progress.AdsRemoved,
+                adsRemovedNoticePending = progress.AdsRemovedNoticePending,
+                starterEndUtc = progress.StarterEndUtc,
+                starterBought = progress.StarterBought,
+                welcomeOffer = progress.WelcomeOffer,
+                welcomeEndUtc = progress.WelcomeEndUtc,
+                dailyOfferEndUtc = progress.DailyOfferEndUtc,
+                dailyOfferBoughtDay = progress.DailyOfferBoughtDay,
+                weekendBoughtId = progress.WeekendBoughtId,
+                weekendBoughtMask = progress.WeekendBoughtMask,
+                goldWashSecondsLeft = progress.GoldWashSecondsLeft,
+                pendingGiantNuggets = progress.PendingGiantNuggets,
+                transactions = progress.Transactions,
                 crewCandidates = progress.CrewCandidates,
                 candidateSecondsLeft = progress.CandidateSecondsLeft,
                 goalIndex = progress.GoalIndex,
