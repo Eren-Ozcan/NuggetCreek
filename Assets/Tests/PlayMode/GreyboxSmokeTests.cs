@@ -258,6 +258,36 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator DailyStreakJobsAndWashRunOnTrustedDays()
+        {
+            Click("DailyButton");
+            yield return null;
+            Assert.That(IsActive("Daily"), Is.True);
+            // Needs the network for trusted time; nothing daily opens before it.
+            yield return WaitFor(() => Label("StreakText").text.StartsWith("Day 1/30"), 15);
+            StringAssert.Contains("5 Gems", Label("StreakText").text);
+
+            Click("ClaimStreak");
+            yield return null;
+            Assert.That(Label("Gems").text, Is.EqualTo("5 Gems"));
+            Assert.That(LabelIn("ClaimStreak", "Label").text, Is.EqualTo("Come back tomorrow"));
+
+            Click("Wash");
+            yield return null;
+            StringAssert.StartsWith("The pan shows:", Label("WashResult").text);
+            yield return Shot("15_daily");
+
+            Click("Close");
+            Click("Next day");
+            yield return null;
+            yield return null;
+            Click("DailyButton");
+            yield return null;
+            StringAssert.StartsWith("Day 2/30", Label("StreakText").text);
+            Assert.That(LabelIn("ClaimStreak", "Label").text, Is.EqualTo("Claim"));
+        }
+
+        [UnityTest]
         public IEnumerator OfflineReturnPaysAfterTrustedTime()
         {
             Click("+$1K");
