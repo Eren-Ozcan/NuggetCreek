@@ -481,8 +481,15 @@ namespace NuggetCreek.Core
             }
         }
 
-        /// <summary>Gem price of the next hire, whoever it is; null once everyone is hired.</summary>
-        public int? CrewHireCost => Economy.CrewHireCost(CrewHiredCount);
+        /// <summary>Gem price of the next candidate hire; 0 for the tutorial's free first one, null once everyone is hired.</summary>
+        public int? CrewHireCost
+        {
+            get
+            {
+                int? cost = Economy.CrewHireCost(CrewHiredCount);
+                return cost.HasValue && FreeHireReady ? 0 : cost;
+            }
+        }
 
         /// <summary>Gem price of the next level for this member; null when not hired or maxed.</summary>
         public int? CrewLevelUpCost(int index)
@@ -532,6 +539,7 @@ namespace NuggetCreek.Core
             if (Array.IndexOf(Progress.CrewCandidates, crewIndex) < 0 || !TrySpendGems(CrewHireCost))
                 return false;
             Progress.CrewLevels[crewIndex] = 1;
+            Progress.FreeHireUsed = true;
             CloseCandidates();
             RebuildStats();
             return true;

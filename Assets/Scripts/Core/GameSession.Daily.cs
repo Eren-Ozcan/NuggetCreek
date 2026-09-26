@@ -57,6 +57,8 @@ namespace NuggetCreek.Core
             if (today <= Progress.CurrentDay)
                 return false;
             Progress.CurrentDay = today;
+            if (Progress.FirstDay <= 0)
+                Progress.FirstDay = today;
 
             if (Progress.LastStreakClaimDay >= 0)
             {
