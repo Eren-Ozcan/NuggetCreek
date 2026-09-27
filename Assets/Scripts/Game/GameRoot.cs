@@ -76,7 +76,8 @@ namespace NuggetCreek.Game
         Button crewChip;
         Text crewChipLabel;
         Button summonLode;
-        Button privacyButton;
+        PrivacyGate gate;
+        SettingsPanel settings;
 
         float autosaveIn = AutosaveSeconds;
         bool returnPending;
@@ -99,8 +100,12 @@ namespace NuggetCreek.Game
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             // Server values fetched last session apply now, before anything reads the config.
             EconomyConfig config = RemoteConfigCache.BuildConfig();
-            FirebaseServices.Start();
             session = new GameSession(new Economy(config), SaveStore.Load());
+            // Nothing that collects data starts before the first-launch age answer (design doc 14.2).
+            if (!Compliance.NeedsGate(session.Progress))
+                FirebaseServices.Start(Compliance.Audience(session.Progress.AgeBand));
+            Haptics.Mode = session.Progress.Vibration;
+            Ui.TextScale = Compliance.TextScale(DeviceSettings.FontScale());
             session.Events = new AnalyticsSink(session);
             FirebaseServices.Events = session.Events;
             session.BeginSession();
@@ -123,7 +128,10 @@ namespace NuggetCreek.Game
         {
             clock.TrustedTimeArrived += OnTrustedTime;
             StartCoroutine(clock.FetchTrustedTime());
-            admob?.Start();
+            if (Compliance.NeedsGate(session.Progress))
+                gate.Open();
+            else
+                admob?.Start(Compliance.Audience(session.Progress.AgeBand));
             ReturnFromNotifications();
             // Preload before the offline modal opens so most returns open on Ready (3.3.1 rule 3).
             ads.Load();
@@ -148,7 +156,8 @@ namespace NuggetCreek.Game
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
-            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen || shop.IsOpen;
+            bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen || shop.IsOpen
+                || gate.IsOpen || settings.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -180,6 +189,7 @@ namespace NuggetCreek.Game
             guild.Refresh();
             daily.Refresh();
             shop.Refresh();
+            settings.Refresh();
             candidateModal.Refresh();
 
             pete.Refresh(modalOpen || motherLode.IsActive || offlineModal.IsOpen);
@@ -459,10 +469,9 @@ namespace NuggetCreek.Game
             guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
             guildButton.AsRect().Box(Vector2.one, new Vector2(220, 70), new Vector2(-20, -20));
 
-            // Consent choices (studio ad policy rule 8); only where the law asks for a way back.
-            privacyButton = Ui.Button("PrivacyButton", top, "Privacy", Palette.ButtonAlt, () => admob?.ShowPrivacyOptions(), out _, 26);
-            privacyButton.AsRect().Box(Vector2.one, new Vector2(160, 50), new Vector2(-20, -100));
-            privacyButton.SetActive(false);
+            // Holds the consent choices (studio ad policy rule 8) and the accessibility options.
+            Ui.Button("SettingsButton", top, "Settings", Palette.ButtonAlt, OpenSettings, out _, 26).AsRect()
+                .Box(Vector2.one, new Vector2(160, 50), new Vector2(-20, -100));
 
             dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
             dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, 70), new Vector2(20, -95));
@@ -532,7 +541,11 @@ namespace NuggetCreek.Game
             upgrades.Closed += () => offlineModal.Unhide();
             map = new MapPanel(session, root);
             // A creek unlock may bring crew candidates (design doc 6.3); show them right away.
-            map.RegionChanged += () => candidateModal.Open();
+            map.RegionChanged += () =>
+            {
+                Haptics.Important();
+                candidateModal.Open();
+            };
             offlineModal = new OfflineModal(session, ads, root);
             offlineModal.UpgradeAmosRequested += () =>
             {
@@ -553,7 +566,11 @@ namespace NuggetCreek.Game
             };
             candidateModal = new CandidateModal(session, root);
             notifAsk = new NotifAskCard(root);
-            candidateModal.Hired += Save;
+            candidateModal.Hired += () =>
+            {
+                Haptics.Important();
+                Save();
+            };
             shop = new ShopPanel(session, store, root);
             shop.Purchased += () =>
             {
@@ -565,6 +582,47 @@ namespace NuggetCreek.Game
                 shop.Close();
                 SummonMotherLode();
             };
+            settings = new SettingsPanel(session.Progress, () => admob != null && admob.PrivacyOptionsRequired, root);
+            settings.Changed += Save;
+            settings.PrivacyChoicesRequested += () => admob?.ShowPrivacyOptions();
+            settings.DeleteConfirmed += DeleteMyData;
+            // Last, so it covers everything on a first launch.
+            gate = new PrivacyGate(root);
+            gate.Accepted += AcceptGate;
+        }
+
+        // --- Privacy (design doc 14.2) ---
+
+        void AcceptGate(AgeBand band)
+        {
+            Compliance.Accept(session.Progress, band);
+            Save();
+            DataAudience audience = Compliance.Audience(band);
+            FirebaseServices.Start(audience);
+            admob?.Start(audience);
+            session.Events.Emit("privacy_accept", ("age_band", band == AgeBand.Adult ? "adult" : band == AgeBand.Teen ? "teen" : "child"));
+        }
+
+        void OpenSettings()
+        {
+            if (motherLode.IsActive)
+                return;
+            upgrades.Close();
+            map.Close();
+            shop.Close();
+            settings.Open();
+        }
+
+        /// <summary>
+        /// Deletes the save, the analytics data and the consent answer, then starts over at the
+        /// first-launch screen. Purchases stay with the store account and come back on restore.
+        /// </summary>
+        void DeleteMyData()
+        {
+            notifications.CancelAll();
+            FirebaseServices.DeleteData();
+            admob?.ResetConsent();
+            ResetGame();
         }
 
         void OpenUpgrades(bool focusAmos)
@@ -605,9 +663,6 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
-            bool privacy = admob != null && admob.PrivacyOptionsRequired;
-            if (privacyButton.gameObject.activeSelf != privacy)
-                privacyButton.SetActive(privacy);
             SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily: tomorrow");
             gemsLabel.SetText(Effects.Gems(progress.Gems));
             RefreshGoal();
@@ -689,6 +744,7 @@ namespace NuggetCreek.Game
             map.Close();
             shop.Close();
             candidateModal.Close();
+            Haptics.Important();
             motherLode.Begin(run);
         }
 
@@ -815,7 +871,7 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 6, "Layers", OpenCollectionLayers);
             AddDebugButton(column, 7, "Chest now", AddDebugChest);
             AddDebugButton(column, 8, "Next day", () => debugDayShift++);
-            AddDebugButton(column, 9, "Skip intro", () => session.IntroSkipped = true);
+            AddDebugButton(column, 9, "Skip intro", SkipIntro);
             AddDebugButton(column, 10, "Interstitial", DebugInterstitial);
             AddDebugButton(column, 11, AdMobAds.DebugEea ? "EEA: on" : "EEA: off", ToggleDebugEea);
             AddDebugButton(column, 12, "Notif 1m", () => debugNotifSoon = true);
@@ -827,6 +883,13 @@ namespace NuggetCreek.Game
         {
             Button button = Ui.Button(text, column, text, new Color(0, 0, 0, 0.45f), onClick, out _, 30);
             button.AsRect().Box(new Vector2(1, 1), new Vector2(200, 84), new Vector2(0, -index * 96));
+        }
+
+        /// <summary>Skips the locks and the first-launch screen for this session; nothing is accepted.</summary>
+        void SkipIntro()
+        {
+            session.IntroSkipped = true;
+            gate.Dismiss();
         }
 
         /// <summary>Consent form test (debug builds): takes effect on the next launch.</summary>
