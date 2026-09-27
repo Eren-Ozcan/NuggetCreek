@@ -21,6 +21,9 @@ namespace NuggetCreek.Game.UI
         readonly Text combo;
         readonly Text hits;
         readonly Text prompt;
+        readonly Text title;
+        readonly Image bossBar;
+        readonly RectTransform bossBarBack;
         readonly RectTransform result;
         readonly Text resultAmount;
 
@@ -39,10 +42,16 @@ namespace NuggetCreek.Game.UI
             root = Ui.Image("MotherLode", canvas, new Color(0.05f, 0.04f, 0.03f, 0.88f)).rectTransform;
             root.Place(area.anchorMin, area.anchorMax, area.offsetMin, area.offsetMax);
 
-            Text title = Ui.Label("Title", root, "MOTHER LODE!", 64, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            title = Ui.Label("Title", root, "MOTHER LODE!", 64, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -140), new Vector2(0, -30));
             timer = Ui.Label("Timer", root, "", 44, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             timer.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -220), new Vector2(0, -140));
+
+            // Boss health (design doc 3.4.1): shrinks as the combo hits land.
+            bossBarBack = Ui.Image("BossBar", root, Palette.Row).rectTransform;
+            bossBarBack.Place(new Vector2(0, 1), Vector2.one, new Vector2(80, -290), new Vector2(-80, -240));
+            bossBar = Ui.Image("Health", bossBarBack, Palette.GiantNugget);
+            bossBar.rectTransform.Fill();
 
             vein = Ui.Image("Vein", root, Palette.Nugget, Ui.Circle).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(VeinSize, VeinSize), new Vector2(0, 40));
@@ -76,6 +85,8 @@ namespace NuggetCreek.Game.UI
             result.SetActive(false);
             vein.SetActive(true);
             SetRunLabelsActive(true);
+            bossBarBack.SetActive(run.IsBossFight);
+            title.SetText(run.IsBossFight ? $"BOSS: {GameCatalog.Nuggets[GameCatalog.BossNugget(run.BossRegion)].Name.ToUpperInvariant()}" : "MOTHER LODE!");
             RefreshLabels();
         }
 
@@ -110,8 +121,14 @@ namespace NuggetCreek.Game.UI
             int gems = session.Economy.Config.MotherLodeGemReward;
             vein.SetActive(false);
             SetRunLabelsActive(false);
+            bossBarBack.SetActive(false);
             result.SetActive(true);
-            resultAmount.SetText($"+{NumberFormat.Dollars(reward)}\n+{Effects.Gems(gems)}\n\n{hitCount} hits, best combo x{peak}");
+            string haul = $"+{NumberFormat.Dollars(reward)}\n+{Effects.Gems(gems)}\n\n{hitCount} hits, best combo x{peak}";
+            if (run.DroppedNugget >= 0)
+                haul = $"NEW BOSS NUGGET: {GameCatalog.Nuggets[run.DroppedNugget].Name}\n" + haul;
+            else if (run.IsBossFight)
+                haul = "The boss got away. Grow stronger and try again.\n" + haul;
+            resultAmount.SetText(haul);
             Finished?.Invoke();
         }
 
@@ -133,6 +150,11 @@ namespace NuggetCreek.Game.UI
             timer.SetText($"{Mathf.CeilToInt((float)run.SecondsLeft)}s");
             combo.SetText($"x{run.Combo}");
             hits.SetText($"{run.Hits} hits");
+            if (run.IsBossFight)
+            {
+                float left = 1 - Mathf.Clamp01((float)(run.BossDamage / run.BossHealth));
+                bossBar.rectTransform.anchorMax = new Vector2(left, 1);
+            }
         }
 
         void HandleSwipe()
