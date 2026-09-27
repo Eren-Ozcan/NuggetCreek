@@ -103,6 +103,11 @@ namespace NuggetCreek.Game
             public double lastDeviceUtc;
             public double lastMonotonicSeconds;
             public double lastBootUtc;
+            public int ageBand;
+            public int termsAccepted;
+            // Saves from before the setting keep vibration on.
+            public int vibration = (int)VibrationMode.All;
+            public bool highContrast;
         }
 
         public static bool HasSave => PlayerPrefs.HasKey(Key);
@@ -201,6 +206,10 @@ namespace NuggetCreek.Game
                 LastDeviceUtc = data.lastDeviceUtc,
                 LastMonotonicSeconds = data.lastMonotonicSeconds,
                 LastBootUtc = data.lastBootUtc,
+                AgeBand = (AgeBand)data.ageBand,
+                TermsAccepted = data.termsAccepted,
+                Vibration = (VibrationMode)data.vibration,
+                HighContrast = data.highContrast,
             };
             SaveMigration.Upgrade(progress, data.version);
             progress.Normalize();
@@ -290,6 +299,10 @@ namespace NuggetCreek.Game
                 lastDeviceUtc = progress.LastDeviceUtc,
                 lastMonotonicSeconds = progress.LastMonotonicSeconds,
                 lastBootUtc = progress.LastBootUtc,
+                ageBand = (int)progress.AgeBand,
+                termsAccepted = progress.TermsAccepted,
+                vibration = (int)progress.Vibration,
+                highContrast = progress.HighContrast,
             };
             PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(JsonUtility.ToJson(data), SaveKey.Current()));
             PlayerPrefs.Save();
