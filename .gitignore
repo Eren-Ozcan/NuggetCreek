@@ -104,3 +104,6 @@ android-keystore/
 /Assets/Plugins/Android/FirebaseApp.androidlib.meta
 /Assets/Plugins/Android/FirebaseCrashlytics.androidlib/
 /Assets/Plugins/Android/FirebaseCrashlytics.androidlib.meta
+
+# Created by the Firebase plugin for the ignored desktop config; empty in git
+/Assets/StreamingAssets.meta
