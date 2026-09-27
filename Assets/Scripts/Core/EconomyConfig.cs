@@ -416,6 +416,24 @@ namespace NuggetCreek.Core
         [RemoteKey("late_double_window_s")]
         public double LateDoubleWindowSeconds = 5 * 60;
 
+        // --- Interstitials (8.4) ---
+
+        /// <summary>1 lets forced ads play; 0 turns them off for everyone.</summary>
+        public int InterstitialEnabled = 1;
+
+        /// <summary>
+        /// Shortest gap after any full screen ad, rewarded included (4 minutes).
+        /// RC: interstitial_cooldown_s.
+        /// </summary>
+        [RemoteKey("interstitial_cooldown_s")]
+        public double InterstitialCooldownSeconds = 4 * 60;
+
+        /// <summary>Forced ads start only once the player has gone past this creek.</summary>
+        public int InterstitialUnlockRegion = 3;
+
+        /// <summary>The first 20 minutes of play never show a forced ad.</summary>
+        public double InterstitialMinPlaySeconds = 20 * 60;
+
         public int RegionCount => RegionUnlockCosts.Length;
         public int TierCount => TierCosts.Length;
     }

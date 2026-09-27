@@ -139,6 +139,12 @@ namespace NuggetCreek.Core
         /// <summary>Trusted UTC second the Starter Pack stops selling; 0 until trusted time first arrives.</summary>
         public double StarterEndUtc;
 
+        /// <summary>
+        /// Device UTC second the last full screen ad (interstitial or rewarded) opened; the
+        /// shared forced-ad cooldown counts from here.
+        /// </summary>
+        public double LastFullScreenAdUtc;
+
         public bool StarterBought;
 
         /// <summary>New Creek Welcome on sale: 0 none, 1 Small, 2 Large.</summary>

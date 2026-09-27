@@ -417,6 +417,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.TierIndex++;
             Emit("tier_up", ("new_tier", Progress.TierIndex + 1));
+            MarkNaturalBreak("tier_up");
             return true;
         }
 
@@ -440,6 +441,7 @@ namespace NuggetCreek.Core
             if (IsCandidateRegion(Progress.RegionIndex))
                 OfferCandidates();
             Emit("region_unlock", ("region", Progress.RegionIndex + 1));
+            MarkNaturalBreak("region_unlock");
             return true;
         }
 

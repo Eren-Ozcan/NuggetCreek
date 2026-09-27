@@ -20,6 +20,9 @@ namespace NuggetCreek.Core.Tests
             Assert.That(keys, Does.Contain("upgrade_growth"));
             Assert.That(keys, Does.Contain("crew_window_s"));
             Assert.That(keys, Does.Contain("rv_load_timeout_s"));
+            Assert.That(keys, Does.Contain("interstitial_enabled"));
+            Assert.That(keys, Does.Contain("interstitial_cooldown_s"));
+            Assert.That(keys, Does.Contain("interstitial_unlock_region"));
             Assert.That(keys, Does.Contain("late_double_window_s"));
             Assert.That(keys, Does.Not.Contain("tier_multiplier"));
         }
@@ -91,8 +94,8 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void UnknownKeysAreReportedNotApplied()
         {
-            RemoteConfigResult result = RemoteConfig.Apply(new EconomyConfig(), new[] { Pair("interstitial_enabled", "true") });
-            Assert.That(result.Unknown, Is.EqualTo(new[] { "interstitial_enabled" }));
+            RemoteConfigResult result = RemoteConfig.Apply(new EconomyConfig(), new[] { Pair("banner_enabled", "1") });
+            Assert.That(result.Unknown, Is.EqualTo(new[] { "banner_enabled" }));
         }
 
         [Test]

@@ -49,6 +49,7 @@ namespace NuggetCreek.Core
             Progress.TierIndex = 0;
             Array.Clear(Progress.UpgradeLevels, 0, Progress.UpgradeLevels.Length);
             RebuildStats();
+            MarkNaturalBreak("prestige");
             return true;
         }
 
