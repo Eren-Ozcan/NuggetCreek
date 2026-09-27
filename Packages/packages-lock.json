@@ -1,5 +1,43 @@
 {
   "dependencies": {
+    "com.google.external-dependency-manager": {
+      "version": "file:firebase/com.google.external-dependency-manager-1.2.186.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {}
+    },
+    "com.google.firebase.analytics": {
+      "version": "file:firebase/com.google.firebase.analytics-13.17.0.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.google.firebase.app": "13.17.0"
+      }
+    },
+    "com.google.firebase.app": {
+      "version": "file:firebase/com.google.firebase.app-13.17.0.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.186"
+      }
+    },
+    "com.google.firebase.crashlytics": {
+      "version": "file:firebase/com.google.firebase.crashlytics-13.17.0.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.google.firebase.app": "13.17.0"
+      }
+    },
+    "com.google.firebase.remote-config": {
+      "version": "file:firebase/com.google.firebase.remote-config-13.17.0.tgz",
+      "depth": 0,
+      "source": "local-tarball",
+      "dependencies": {
+        "com.google.firebase.app": "13.17.0"
+      }
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 0,

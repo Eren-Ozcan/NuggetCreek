@@ -86,3 +86,21 @@ android-keystore/
 
 # Android upload keystore and its password (backup in the private pictures repo)
 /android-keystore/
+
+# Firebase Unity SDK tarballs (62 MB); fetched by scripts/fetch-firebase.sh
+/Packages/firebase/
+
+# Firebase AARs the External Dependency Manager copies from the packages on every resolve
+/Assets/GeneratedLocalRepo/
+/Assets/GeneratedLocalRepo.meta
+
+# Firebase config holds the project API key; the repo is public, backup lives in the private
+# pictures repo. The androidlib folders are regenerated from google-services.json on import.
+/Assets/google-services.json
+/Assets/google-services.json.meta
+/Assets/StreamingAssets/google-services-desktop.json
+/Assets/StreamingAssets/google-services-desktop.json.meta
+/Assets/Plugins/Android/FirebaseApp.androidlib/
+/Assets/Plugins/Android/FirebaseApp.androidlib.meta
+/Assets/Plugins/Android/FirebaseCrashlytics.androidlib/
+/Assets/Plugins/Android/FirebaseCrashlytics.androidlib.meta
