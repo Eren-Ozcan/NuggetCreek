@@ -90,6 +90,9 @@ namespace NuggetCreek.Game
             session.Events = new AnalyticsSink(session);
             FirebaseServices.Events = session.Events;
             session.BeginSession();
+            if (SaveStore.LoadIssue.HasValue)
+                session.Events.Emit("save_error",
+                    ("stage", SaveStore.LoadIssue.Value.Stage), ("code", SaveStore.LoadIssue.Value.Code));
             ads = new FakeRewardedAds();
             ads.Rewarded += placement => session.Events.Emit("ad_rewarded", ("placement", placement));
             lateDouble = new LateDoubleOffer(config);
