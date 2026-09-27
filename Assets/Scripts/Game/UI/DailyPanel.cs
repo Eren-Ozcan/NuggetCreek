@@ -226,7 +226,7 @@ namespace NuggetCreek.Game.UI
 
         void Rescue()
         {
-            ads.Show(rewarded =>
+            ads.Show("streak_rescue", rewarded =>
             {
                 if (rewarded)
                     session.RescueStreak();
@@ -242,7 +242,7 @@ namespace NuggetCreek.Game.UI
                 ShowWash(session.Wash(false));
                 return;
             }
-            ads.Show(rewarded =>
+            ads.Show("daily_wash", rewarded =>
             {
                 if (rewarded)
                     ShowWash(session.Wash(true));

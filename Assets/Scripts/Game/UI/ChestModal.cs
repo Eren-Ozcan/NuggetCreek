@@ -142,7 +142,7 @@ namespace NuggetCreek.Game.UI
         void WatchDouble()
         {
             ChestReward target = shown;
-            ads.Show(rewarded =>
+            ads.Show("chest_open", rewarded =>
             {
                 if (rewarded)
                     session.DoubleChest(target);

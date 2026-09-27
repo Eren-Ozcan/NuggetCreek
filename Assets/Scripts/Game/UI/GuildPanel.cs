@@ -193,7 +193,7 @@ namespace NuggetCreek.Game.UI
 
         void WatchAd()
         {
-            ads.Show(rewarded =>
+            ads.Show("guild_xp", rewarded =>
             {
                 if (rewarded)
                     session.AddGuildAdXp();

@@ -1,3 +1,4 @@
+using System;
 using System.Globalization;
 using NuggetCreek.Core;
 using NuggetCreek.Game.UI;
@@ -69,6 +70,10 @@ namespace NuggetCreek.Game
         double returnMonotonic;
         float returnWaitStarted;
         bool resetting;
+        bool loadLogged;
+        float foregroundSince;
+        DateTime pausedAtUtc;
+        bool wasPaused;
 
         void Awake()
         {
@@ -76,9 +81,15 @@ namespace NuggetCreek.Game
             // The game is English only (design doc 0): format numbers the same on every device locale.
             CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
-            var config = new EconomyConfig();
+            // Server values fetched last session apply now, before anything reads the config.
+            EconomyConfig config = RemoteConfigCache.BuildConfig();
+            FirebaseServices.Start();
             session = new GameSession(new Economy(config), SaveStore.Load());
+            session.Events = new AnalyticsSink(session);
+            FirebaseServices.Events = session.Events;
+            session.BeginSession();
             ads = new FakeRewardedAds();
+            ads.Rewarded += placement => session.Events.Emit("ad_rewarded", ("placement", placement));
             lateDouble = new LateDoubleOffer(config);
             BuildUi();
         }
@@ -95,6 +106,11 @@ namespace NuggetCreek.Game
 
         void Update()
         {
+            if (!loadLogged)
+            {
+                loadLogged = true;
+                session.Events.Emit("game_loaded", ("load_ms", (long)(Time.realtimeSinceStartup * 1000)), ("cold", 1));
+            }
             float dt = Time.deltaTime;
             UpdateTrustedDay();
             ads.Tick(Time.unscaledDeltaTime);
@@ -146,10 +162,17 @@ namespace NuggetCreek.Game
             if (paused)
             {
                 motherLode.FinishNow();
+                session.Events.Emit("session_end", session.EndSessionParameters(Time.realtimeSinceStartup - foregroundSince));
+                pausedAtUtc = DateTime.UtcNow;
+                wasPaused = true;
                 Save();
             }
             else if (!returnPending && !offlineModal.HasUnclaimed)
             {
+                foregroundSince = Time.realtimeSinceStartup;
+                // Unity also reports an unpause at launch; only a real return counts.
+                if (wasPaused)
+                    session.Events.Emit("app_resume", ("away_s", (long)(DateTime.UtcNow - pausedAtUtc).TotalSeconds));
                 ads.Load();
                 BeginReturn();
             }
@@ -365,6 +388,7 @@ namespace NuggetCreek.Game
             upgrades.Close();
             map.Close();
             shop.Open();
+            session.Events.Emit("shop_open", ("from", "hud"));
         }
 
         void RefreshHud()
@@ -470,7 +494,7 @@ namespace NuggetCreek.Game
 
         void WatchGoalAd()
         {
-            ads.Show(rewarded =>
+            ads.Show("goal_bar", rewarded =>
             {
                 if (rewarded && session.ClaimGoalAd())
                     Save();
@@ -535,10 +559,10 @@ namespace NuggetCreek.Game
             BigNumber amount = lateDouble.Amount;
             lateDouble.Clear();
             lateDoubleChip.SetActive(false);
-            ads.Show(rewarded =>
+            ads.Show("late_double", rewarded =>
             {
                 if (rewarded)
-                    session.Earn(amount);
+                    session.Earn(amount, IncomeSource.Offline);
             });
         }
 

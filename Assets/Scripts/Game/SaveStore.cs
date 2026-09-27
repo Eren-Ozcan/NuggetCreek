@@ -62,6 +62,8 @@ namespace NuggetCreek.Game
             public int peteSeen;
             public bool freeHireUsed;
             public bool returnGiftGiven;
+            public int featuresAnnounced;
+            public int sessions;
             public long firstDay;
             public long spentCents;
             public bool adsRemoved;
@@ -146,6 +148,8 @@ namespace NuggetCreek.Game
                 PeteSeen = data.peteSeen,
                 FreeHireUsed = data.freeHireUsed,
                 ReturnGiftGiven = data.returnGiftGiven,
+                FeaturesAnnounced = data.featuresAnnounced,
+                Sessions = data.sessions,
                 FirstDay = data.firstDay,
                 SpentCents = data.spentCents,
                 AdsRemoved = data.adsRemoved,
@@ -222,6 +226,8 @@ namespace NuggetCreek.Game
                 peteSeen = progress.PeteSeen,
                 freeHireUsed = progress.FreeHireUsed,
                 returnGiftGiven = progress.ReturnGiftGiven,
+                featuresAnnounced = progress.FeaturesAnnounced,
+                sessions = progress.Sessions,
                 firstDay = progress.FirstDay,
                 spentCents = progress.SpentCents,
                 adsRemoved = progress.AdsRemoved,

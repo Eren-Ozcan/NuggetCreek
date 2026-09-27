@@ -187,7 +187,7 @@ namespace NuggetCreek.Game.UI
             }
             if (!machine.Press())
                 return;
-            ads.Show(rewarded =>
+            ads.Show("offline_double", rewarded =>
             {
                 machine.NotifyShowFinished(rewarded);
                 if (rewarded && session.ClaimOffline(result, 2))

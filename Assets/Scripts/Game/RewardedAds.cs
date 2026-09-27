@@ -14,8 +14,12 @@ namespace NuggetCreek.Game
 
         void Load();
 
+        /// <summary>Raised with the placement when a reward is earned (the ad_rewarded event).</summary>
+        event Action<string> Rewarded;
+
         /// <summary>Shows the loaded ad; the callback reports whether the reward was earned.</summary>
-        void Show(Action<bool> onFinished);
+        /// <param name="placement">Where the ad was offered, e.g. "offline_double" (design doc 13.4.4).</param>
+        void Show(string placement, Action<bool> onFinished);
 
         void Tick(float deltaSeconds);
     }
@@ -34,11 +38,13 @@ namespace NuggetCreek.Game
         float fillIn = -1;
         float showLeft = -1;
         Action<bool> pendingShow;
+        string pendingPlacement;
 
         public bool IsLoaded { get; private set; }
         public bool IsOnline => Application.internetReachability != NetworkReachability.NotReachable;
 
         public event Action Loaded;
+        public event Action<string> Rewarded;
 
         public void Load()
         {
@@ -47,7 +53,7 @@ namespace NuggetCreek.Game
             fillIn = UnityEngine.Random.Range(MinFillSeconds, MaxFillSeconds);
         }
 
-        public void Show(Action<bool> onFinished)
+        public void Show(string placement, Action<bool> onFinished)
         {
             if (!IsLoaded)
             {
@@ -56,6 +62,7 @@ namespace NuggetCreek.Game
             }
             IsLoaded = false;
             pendingShow = onFinished;
+            pendingPlacement = placement;
             showLeft = ShowSeconds;
         }
 
@@ -78,7 +85,10 @@ namespace NuggetCreek.Game
                 {
                     Action<bool> callback = pendingShow;
                     pendingShow = null;
-                    callback?.Invoke(UnityEngine.Random.value < RewardChance);
+                    bool rewarded = UnityEngine.Random.value < RewardChance;
+                    if (rewarded)
+                        Rewarded?.Invoke(pendingPlacement);
+                    callback?.Invoke(rewarded);
                     Load();
                 }
             }
