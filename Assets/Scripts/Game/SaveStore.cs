@@ -96,6 +96,7 @@ namespace NuggetCreek.Game
             public double notifMutedUntilUtc;
             public int notifAsks;
             public int notifAskSession;
+            public int purchases;
             public int collectedSinceMotherLode;
             public double secondsSinceMotherLode;
             public double lastSeenUtc;
@@ -193,6 +194,7 @@ namespace NuggetCreek.Game
                 NotifMutedUntilUtc = data.notifMutedUntilUtc,
                 NotifAsks = data.notifAsks,
                 NotifAskSession = data.notifAskSession,
+                Purchases = data.purchases,
                 CollectedSinceMotherLode = data.collectedSinceMotherLode,
                 SecondsSinceMotherLode = data.secondsSinceMotherLode,
                 LastSeenUtc = data.lastSeenUtc,
@@ -281,6 +283,7 @@ namespace NuggetCreek.Game
                 notifMutedUntilUtc = progress.NotifMutedUntilUtc,
                 notifAsks = progress.NotifAsks,
                 notifAskSession = progress.NotifAskSession,
+                purchases = progress.Purchases,
                 collectedSinceMotherLode = progress.CollectedSinceMotherLode,
                 secondsSinceMotherLode = progress.SecondsSinceMotherLode,
                 lastSeenUtc = progress.LastSeenUtc,
