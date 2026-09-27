@@ -25,6 +25,7 @@ namespace NuggetCreek.Game
         static readonly Queue<KeyValuePair<string, Parameter[]>> queued = new Queue<KeyValuePair<string, Parameter[]>>();
         static bool started;
         static TcfConsent? pendingConsent;
+        static readonly Dictionary<string, string> pendingProperties = new Dictionary<string, string>();
 
         public static bool Ready { get; private set; }
 
@@ -47,6 +48,9 @@ namespace NuggetCreek.Game
                 FirebaseAnalytics.SetUserProperty("build", UnityEngine.Debug.isDebugBuild ? "dev" : "release");
                 Ready = true;
                 ApplyConsent();
+                foreach (KeyValuePair<string, string> property in pendingProperties)
+                    FirebaseAnalytics.SetUserProperty(property.Key, property.Value);
+                pendingProperties.Clear();
                 while (queued.Count > 0)
                 {
                     KeyValuePair<string, Parameter[]> e = queued.Dequeue();
@@ -79,6 +83,17 @@ namespace NuggetCreek.Game
                 { ConsentType.AdUserData, c.AdUserData ? ConsentStatus.Granted : ConsentStatus.Denied },
                 { ConsentType.AdPersonalization, c.AdPersonalization ? ConsentStatus.Granted : ConsentStatus.Denied },
             });
+        }
+
+        /// <summary>Sets a user property now, or once Firebase is up.</summary>
+        public static void SetUserProperty(string name, string value)
+        {
+            if (!started)
+                return;
+            if (Ready)
+                FirebaseAnalytics.SetUserProperty(name, value);
+            else
+                pendingProperties[name] = value;
         }
 
         /// <summary>Logs one analytics event; values are long, double or string.</summary>
