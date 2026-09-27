@@ -4,8 +4,8 @@ namespace NuggetCreek.Core
 {
     /// <summary>
     /// Every tunable economy number. Defaults are the launch values from the design doc;
-    /// Remote Config overrides them at session start (never mid-session). Field comments
-    /// name the Remote Config key where one exists.
+    /// Remote Config overrides them at session start (never mid-session). Each field's key
+    /// is its snake_case name unless a RemoteKey attribute says otherwise (see RemoteConfig).
     /// </summary>
     [Serializable]
     public sealed class EconomyConfig
@@ -287,6 +287,7 @@ namespace NuggetCreek.Core
         public double ValueGrowth = 15.0;
 
         /// <summary>Income multiplier per sluice tier. RC: tier_mult.</summary>
+        [RemoteKey("tier_mult")]
         public double TierMultiplier = 1.6;
 
         // --- Progression tables (5.0.4, 6.1, 6.2), solved by tools/economy_tune.py ---
@@ -301,6 +302,7 @@ namespace NuggetCreek.Core
         public double[] UpgradeBaseCosts = { 30, 60, 11e3, 2.7e6, 480e6, 260e9, 48e12, 9.3e15 };
 
         /// <summary>Upgrade price growth per level. RC: upgrade_growth.</summary>
+        [RemoteKey("upgrade_growth")]
         public double UpgradeCostGrowth = 1.22;
 
         // --- Prestige (5.0.3) ---
@@ -340,6 +342,7 @@ namespace NuggetCreek.Core
         public int CrewCandidatesPerEvent = 2;
 
         /// <summary>How long a candidate pair stays open, counted while the game runs. RC: crew_window_s.</summary>
+        [RemoteKey("crew_window_s")]
         public double CrewCandidateWindowSeconds = 10 * 60;
 
         // --- Progress goals (5.0.6: ~8 Gems a day) ---
@@ -367,9 +370,11 @@ namespace NuggetCreek.Core
         // --- Rewarded ads (3.3.1) ---
 
         /// <summary>RC: rv_load_timeout_s.</summary>
+        [RemoteKey("rv_load_timeout_s")]
         public double RewardedLoadTimeoutSeconds = 10;
 
         /// <summary>RC: late_double_window_s.</summary>
+        [RemoteKey("late_double_window_s")]
         public double LateDoubleWindowSeconds = 5 * 60;
 
         public int RegionCount => RegionUnlockCosts.Length;

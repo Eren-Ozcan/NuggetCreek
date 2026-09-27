@@ -1,0 +1,7 @@
+<!-- RemoteConfig reads and writes EconomyConfig fields through reflection; keep them all under managed stripping. -->
+<linker>
+  <assembly fullname="NuggetCreek.Core">
+    <type fullname="NuggetCreek.Core.EconomyConfig" preserve="all" />
+    <type fullname="NuggetCreek.Core.RemoteKeyAttribute" preserve="all" />
+  </assembly>
+</linker>
