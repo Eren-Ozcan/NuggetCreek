@@ -125,6 +125,13 @@ namespace NuggetCreek.Game.UI
         {
             Image image = Ui.Image(kind.ToString(), area, ColorOf(kind), Ui.Circle);
             image.raycastTarget = false;
+            // High contrast (design doc 14.3): a dark ring sets every target off the water.
+            if (session.Progress.HighContrast)
+            {
+                var ring = image.gameObject.AddComponent<Outline>();
+                ring.effectColor = Color.black;
+                ring.effectDistance = new Vector2(5, -5);
+            }
             float size = SizeOf(kind);
             Rect bounds = area.rect;
             var position = new Vector2(
@@ -201,6 +208,7 @@ namespace NuggetCreek.Game.UI
                 int size = c.Kind == CollectibleKind.GoldDust ? 40 : c.Kind == CollectibleKind.GiantNugget ? 64 : 52;
                 ShowPopup(c.Image.rectTransform.anchoredPosition, text, critical ? size + 8 : size,
                     critical ? Palette.Critical : ColorOf(c.Kind));
+                Haptics.Tap();
                 if (c.NuggetType >= 0)
                     RecordNugget(c.NuggetType, c.Image.rectTransform.anchoredPosition);
                 Destroy(c.Image.gameObject);
@@ -217,6 +225,7 @@ namespace NuggetCreek.Game.UI
                 banner.SetText($"NEW NUGGET!  {name}");
                 banner.SetActive(true);
                 bannerLeft = BannerSeconds;
+                Haptics.Important();
                 NuggetDiscovered?.Invoke(index);
             }
             else if (result.StarsGained > 0)

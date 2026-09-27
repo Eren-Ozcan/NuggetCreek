@@ -38,6 +38,12 @@ namespace NuggetCreek.Game.UI
 
         public static Sprite Circle => circle ??= CreateCircle(128);
 
+        /// <summary>
+        /// System font scale the labels follow, 1 to 1.3 (design doc 14.3). Set before the UI
+        /// is built; text grows only where its box has room, so layouts never break.
+        /// </summary>
+        public static float TextScale { get; set; } = 1;
+
         public static Canvas CreateCanvas(string name, int sortingOrder)
         {
             var go = new GameObject(name, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -106,6 +112,12 @@ namespace NuggetCreek.Game.UI
             label.horizontalOverflow = HorizontalWrapMode.Wrap;
             label.verticalOverflow = VerticalWrapMode.Overflow;
             label.raycastTarget = false;
+            if (TextScale > 1)
+            {
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = size;
+                label.resizeTextMaxSize = Mathf.RoundToInt(size * TextScale);
+            }
             return label;
         }
 
