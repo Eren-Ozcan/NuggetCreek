@@ -14,7 +14,7 @@ namespace NuggetCreek.Game.UI
     /// </summary>
     public sealed class CreekView : MonoBehaviour
     {
-        const float DustSize = 60;
+        const float DustSize = 80;
         const float NuggetSize = 100;
         const float RichNuggetSize = 115;
         const float GiantNuggetSize = 180;
@@ -27,7 +27,8 @@ namespace NuggetCreek.Game.UI
 
         sealed class Collectible
         {
-            public Image Image;
+            public RectTransform Root;
+            public CanvasGroup Fade;
             public CollectibleKind Kind;
             public int NuggetType = -1;
             public float Age;
@@ -45,6 +46,8 @@ namespace NuggetCreek.Game.UI
 
         /// <summary>The swipe area in pixels, the space <see cref="Sweep"/> works in.</summary>
         public Vector2 AreaSize => area.rect.size;
+        Image background;
+        int backgroundRegion = -1;
         RectTransform amos;
         Text hint;
         Text vein;
@@ -71,15 +74,24 @@ namespace NuggetCreek.Game.UI
             var water = gameObject.AddComponent<Image>();
             water.color = Palette.Water;
             water.raycastTarget = false;
+            gameObject.AddComponent<RectMask2D>();
 
-            hint = Ui.Label("Hint", area, "Swipe over the glinting gold!", 44, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            // The creek painting covers the area and crops its sides on tall phones.
+            background = Ui.Image("Background", area, Color.white);
+            background.raycastTarget = false;
+            background.rectTransform.Fill();
+            var cover = background.gameObject.AddComponent<AspectRatioFitter>();
+            cover.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            UpdateBackground();
+
+            hint = Legible(Ui.Label("Hint", area, "Swipe over the glinting gold!", 44, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold));
             hint.rectTransform.Place(new Vector2(0, 0.45f), new Vector2(1, 0.55f));
 
-            vein = Ui.Label("Vein", area, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold);
+            vein = Legible(Ui.Label("Vein", area, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold));
             vein.rectTransform.Box(new Vector2(0, 1), new Vector2(520, 60), new Vector2(30, -30));
 
             // A short banner, not a modal: a new Nugget type must not stop the swipe.
-            banner = Ui.Label("NewNugget", area, "", 44, TextAnchor.MiddleCenter, Palette.GiantNugget, FontStyle.Bold);
+            banner = Legible(Ui.Label("NewNugget", area, "", 44, TextAnchor.MiddleCenter, Palette.GiantNugget, FontStyle.Bold));
             banner.rectTransform.Place(new Vector2(0, 0.78f), new Vector2(1, 0.86f));
             banner.SetActive(false);
 
@@ -96,6 +108,7 @@ namespace NuggetCreek.Game.UI
             if (session == null)
                 return;
 
+            UpdateBackground();
             hint.SetActive(session.Progress.ManualCollected < HintUntilCollected);
             UpdateAmos(deltaTime, idleEarned);
             UpdateVein();
@@ -124,33 +137,68 @@ namespace NuggetCreek.Game.UI
             spawnIn = (float)(1 / rate) * UnityEngine.Random.Range(0.6f, 1.4f);
         }
 
+        void UpdateBackground()
+        {
+            int region = session.Progress.RegionIndex;
+            if (region == backgroundRegion)
+                return;
+            backgroundRegion = region;
+            Sprite sprite = Art.Creek(region);
+            background.sprite = sprite;
+            background.enabled = sprite != null;
+            if (sprite != null)
+                background.GetComponent<AspectRatioFitter>().aspectRatio = sprite.rect.width / sprite.rect.height;
+        }
+
         void Spawn(CollectibleKind kind)
         {
-            Image image = Ui.Image(kind.ToString(), area, ColorOf(kind), Ui.Circle);
-            image.raycastTarget = false;
-            // High contrast (design doc 14.3): a dark ring sets every target off the water.
-            if (session.Progress.HighContrast)
-            {
-                var ring = image.gameObject.AddComponent<Outline>();
-                ring.effectColor = Color.black;
-                ring.effectDistance = new Vector2(5, -5);
-            }
+            int nuggetType = kind == CollectibleKind.GoldDust ? -1 : session.RollNuggetType(UnityEngine.Random.value);
+            Sprite sprite = kind == CollectibleKind.GoldDust ? Art.GoldDust : Art.Nugget(nuggetType);
             float size = SizeOf(kind);
             Rect bounds = area.rect;
             var position = new Vector2(
                 UnityEngine.Random.Range(EdgeMargin, bounds.width - EdgeMargin),
                 UnityEngine.Random.Range(EdgeMargin + 160, bounds.height - EdgeMargin));
-            image.rectTransform.Box(Vector2.zero, new Vector2(size, size), position);
-            image.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            image.rectTransform.anchoredPosition = position;
+
+            // Rich and Giant Nuggets glow behind the drawing; without art the circle is the target.
+            bool glow = sprite == null || kind == CollectibleKind.RichNugget || kind == CollectibleKind.GiantNugget;
+            Image root = Ui.Image(kind.ToString(), area, glow ? GlowOf(kind, sprite != null) : Color.clear, Ui.Circle);
+            root.raycastTarget = false;
+            root.rectTransform.Box(Vector2.zero, new Vector2(size, size), position);
+            root.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            root.rectTransform.anchoredPosition = position;
+
+            Image target = root;
+            if (sprite != null)
+            {
+                target = Ui.Image("Art", root.rectTransform, Color.white, sprite);
+                target.raycastTarget = false;
+                target.preserveAspect = true;
+                target.rectTransform.Fill(glow ? size * 0.12f : 0);
+            }
+            // High contrast (design doc 14.3): a dark edge sets every target off the water.
+            if (session.Progress.HighContrast)
+            {
+                var ring = target.gameObject.AddComponent<Outline>();
+                ring.effectColor = Color.black;
+                ring.effectDistance = new Vector2(5, -5);
+            }
 
             live.Add(new Collectible
             {
-                Image = image,
+                Root = root.rectTransform,
+                Fade = root.gameObject.AddComponent<CanvasGroup>(),
                 Kind = kind,
-                NuggetType = kind == CollectibleKind.GoldDust ? -1 : session.RollNuggetType(UnityEngine.Random.value),
+                NuggetType = nuggetType,
                 Lifetime = (float)session.CollectibleLifetimeSeconds,
             });
+        }
+
+        static Color GlowOf(CollectibleKind kind, bool behindArt)
+        {
+            Color color = ColorOf(kind);
+            color.a = behindArt ? 0.55f : 1;
+            return color;
         }
 
         void AgeCollectibles(float deltaTime)
@@ -162,18 +210,16 @@ namespace NuggetCreek.Game.UI
                 if (c.Age >= c.Lifetime)
                 {
                     if (session.LoseCollectible() && session.VeinOpen)
-                        ShowPopup(c.Image.rectTransform.anchoredPosition, "Vein lost", 34, Palette.TextMuted);
-                    Destroy(c.Image.gameObject);
+                        ShowPopup(c.Root.anchoredPosition, "Vein lost", 34, Palette.TextMuted);
+                    Destroy(c.Root.gameObject);
                     live.RemoveAt(i);
                     continue;
                 }
 
                 float popIn = Mathf.Clamp01(c.Age / 0.15f);
                 float glint = 1 + 0.08f * Mathf.Sin(c.Age * 10);
-                c.Image.rectTransform.localScale = Vector3.one * (popIn * glint);
-                Color color = c.Image.color;
-                color.a = Mathf.Clamp01((c.Lifetime - c.Age) / FadeSeconds);
-                c.Image.color = color;
+                c.Root.localScale = Vector3.one * (popIn * glint);
+                c.Fade.alpha = Mathf.Clamp01((c.Lifetime - c.Age) / FadeSeconds);
             }
         }
 
@@ -210,19 +256,19 @@ namespace NuggetCreek.Game.UI
             for (int i = live.Count - 1; i >= 0; i--)
             {
                 Collectible c = live[i];
-                if (DistanceToSegment(c.Image.rectTransform.anchoredPosition, from, point) > radius)
+                if (DistanceToSegment(c.Root.anchoredPosition, from, point) > radius)
                     continue;
                 bool doubleCatch = session.RollDoubleCatch(UnityEngine.Random.value);
                 bool critical = session.RollCritical(UnityEngine.Random.value);
                 BigNumber value = session.Collect(c.Kind, doubleCatch, critical);
                 string text = (critical ? "CRIT! +" : "+") + NumberFormat.Dollars(value) + (doubleCatch ? " x2" : "");
                 int size = c.Kind == CollectibleKind.GoldDust ? 40 : c.Kind == CollectibleKind.GiantNugget ? 64 : 52;
-                ShowPopup(c.Image.rectTransform.anchoredPosition, text, critical ? size + 8 : size,
+                ShowPopup(c.Root.anchoredPosition, text, critical ? size + 8 : size,
                     critical ? Palette.Critical : ColorOf(c.Kind));
                 Haptics.Tap();
                 if (c.NuggetType >= 0)
-                    RecordNugget(c.NuggetType, c.Image.rectTransform.anchoredPosition);
-                Destroy(c.Image.gameObject);
+                    RecordNugget(c.NuggetType, c.Root.anchoredPosition);
+                Destroy(c.Root.gameObject);
                 live.RemoveAt(i);
             }
         }
@@ -307,7 +353,7 @@ namespace NuggetCreek.Game.UI
 
         void ShowPopup(Vector2 position, string text, int size, Color color)
         {
-            Text label = Ui.Label("Popup", area, text, size, TextAnchor.MiddleCenter, color, FontStyle.Bold);
+            Text label = Legible(Ui.Label("Popup", area, text, size, TextAnchor.MiddleCenter, color, FontStyle.Bold));
             label.rectTransform.Box(Vector2.zero, new Vector2(400, 80), position);
             label.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             label.rectTransform.anchoredPosition = position;
@@ -331,6 +377,15 @@ namespace NuggetCreek.Game.UI
                 color.a = 1 - p.Age / PopupSeconds;
                 p.Label.color = color;
             }
+        }
+
+        /// <summary>A dark edge keeps light text readable on the creek painting.</summary>
+        static Text Legible(Text label)
+        {
+            var edge = label.gameObject.AddComponent<Outline>();
+            edge.effectColor = new Color(0, 0, 0, 0.75f);
+            edge.effectDistance = new Vector2(3, -3);
+            return label;
         }
 
         static float DistanceToSegment(Vector2 p, Vector2 a, Vector2 b)
