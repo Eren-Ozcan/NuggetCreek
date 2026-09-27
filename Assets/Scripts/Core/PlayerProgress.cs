@@ -131,6 +131,9 @@ namespace NuggetCreek.Core
         /// <summary>Lifetime real-money spend in USD cents; removes forced ads at the threshold (8.3).</summary>
         public long SpentCents;
 
+        /// <summary>Paid purchases granted, lifetime; gives payer_tier.</summary>
+        public int Purchases;
+
         public bool AdsRemoved;
 
         /// <summary>The one-time "ads are off" card has not been shown yet.</summary>
@@ -277,6 +280,8 @@ namespace NuggetCreek.Core
                 CandidateSecondsLeft = 0;
             Gems = Math.Max(0, Gems);
             SpentCents = Math.Max(0, SpentCents);
+            // Saves from before the purchase count: a spend means at least one purchase.
+            Purchases = Math.Max(Purchases, SpentCents > 0 ? 1 : 0);
             WelcomeOffer = Math.Max(0, Math.Min(WelcomeOffer, 2));
             WeekendBoughtMask &= 7;
             GoldWashSecondsLeft = Math.Max(0, GoldWashSecondsLeft);

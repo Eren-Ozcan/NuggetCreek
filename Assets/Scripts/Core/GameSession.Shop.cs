@@ -146,7 +146,8 @@ namespace NuggetCreek.Core
         /// Grants a paid purchase once per transaction id. A paid product is always granted, even
         /// if its offer ended while the store was processing; null means a repeated transaction.
         /// </summary>
-        public PurchaseResult GrantPurchase(ShopItem item, string transactionId)
+        /// <param name="priceLocal">What the store charged, in <paramref name="currency"/>; 0 when unknown.</param>
+        public PurchaseResult GrantPurchase(ShopItem item, string transactionId, double priceLocal = 0, string currency = null)
         {
             if (item == null || string.IsNullOrEmpty(transactionId) || Array.IndexOf(Progress.Transactions, transactionId) >= 0)
                 return null;
@@ -178,13 +179,16 @@ namespace NuggetCreek.Core
             }
 
             bool adsWereOn = !Progress.AdsRemoved;
+            bool first = Progress.Purchases == 0;
             Progress.SpentCents += item.PriceCents;
+            Progress.Purchases++;
             if (adsWereOn && (item.Kind == ShopKind.RemoveAds || Progress.SpentCents >= Config.RemoveAdsThresholdCents))
             {
                 Progress.AdsRemoved = true;
                 Progress.AdsRemovedNoticePending = true;
                 result.AdsRemoved = true;
             }
+            ReportPurchase(item, first, priceLocal, currency, result.AdsRemoved);
             return result;
         }
 

@@ -311,6 +311,9 @@ namespace NuggetCreek.Core
         /// <summary>Lifetime spend that turns forced ads off for good (8.3): one 9.99 purchase or two 4.99 ones.</summary>
         public int RemoveAdsThresholdCents = 998;
 
+        /// <summary>Lifetime spend from which payer_tier reads "whale" (USD cents).</summary>
+        public int WhaleCents = 10000;
+
         /// <summary>Store transaction ids kept to reject a repeated grant.</summary>
         public int TransactionMemory = 50;
 
