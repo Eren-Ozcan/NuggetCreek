@@ -78,9 +78,18 @@ namespace NuggetCreek.Game
         public event Action Loaded;
         public event Action<string> Rewarded;
 
-        public void Start()
+        /// <summary>Starts consent and the SDK for the player's age answer (design doc 8.6, 14.2).</summary>
+        public void Start(DataAudience audience)
         {
             MobileAds.RaiseAdEventsOnUnityMainThread = true;
+            // Before any request: child and teen treatment, and no mature ads in an Everyone game.
+            MobileAds.SetRequestConfiguration(new RequestConfiguration
+            {
+                AgeRestrictedTreatment = audience.Child ? AgeRestrictedTreatment.Child
+                    : audience.Teen ? AgeRestrictedTreatment.Teen : AgeRestrictedTreatment.Unspecified,
+                TagForUnderAgeOfConsent = audience.UnderAgeOfConsent ? TagForUnderAgeOfConsent.True : TagForUnderAgeOfConsent.False,
+                MaxAdContentRating = ToRating(audience.MaxAdRating),
+            });
             // The queue behind ExecuteInUpdate; MobileAds.Initialize would create it too late for UMP.
             MobileAdsEventExecutor.Initialize();
             Debug.Log($"[Ads] start, can request {ConsentInformation.CanRequestAds()}");
@@ -88,7 +97,7 @@ namespace NuggetCreek.Game
             if (ConsentInformation.CanRequestAds())
                 Initialize();
             // UMP answers on its own thread; everything after it runs on Unity's.
-            var request = new ConsentRequestParameters();
+            var request = new ConsentRequestParameters { TagForUnderAgeOfConsent = audience.UnderAgeOfConsent };
             if (DebugEea)
                 request.ConsentDebugSettings = new ConsentDebugSettings
                 {
@@ -110,6 +119,24 @@ namespace NuggetCreek.Game
                 }));
             }));
         }
+
+        static MaxAdContentRating ToRating(AdRating rating)
+        {
+            switch (rating)
+            {
+                case AdRating.G:
+                    return MaxAdContentRating.G;
+                case AdRating.PG:
+                    return MaxAdContentRating.PG;
+                case AdRating.MA:
+                    return MaxAdContentRating.MA;
+                default:
+                    return MaxAdContentRating.T;
+            }
+        }
+
+        /// <summary>Forgets the consent answer ("Delete my data"); the form asks again next time.</summary>
+        public void ResetConsent() => ConsentInformation.Reset();
 
         /// <summary>Reopens the consent choices (EEA and UK players).</summary>
         public void ShowPrivacyOptions()

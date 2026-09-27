@@ -17,6 +17,8 @@ namespace NuggetCreek.Game
     /// background; events logged before that are queued. Remote Config is fetched here but
     /// only written to <see cref="RemoteConfigCache"/>, so new values take effect on the next
     /// launch. Off in the editor, so play mode and the smoke tests never touch the network.
+    /// Nothing starts before the first-launch age answer (design doc 14.2); events from
+    /// before it wait in the queue, and a player under 13 has none collected at all.
     /// </summary>
     public static class FirebaseServices
     {
@@ -24,6 +26,10 @@ namespace NuggetCreek.Game
 
         static readonly Queue<KeyValuePair<string, Parameter[]>> queued = new Queue<KeyValuePair<string, Parameter[]>>();
         static bool started;
+        /// <summary>The Firebase dependencies check passed.</summary>
+        static bool available;
+        /// <summary>The player is under 13: no analytics or crash reports, queued events dropped.</summary>
+        static bool collectionOff;
         static TcfConsent? pendingConsent;
         static readonly Dictionary<string, string> pendingProperties = new Dictionary<string, string>();
 
@@ -32,10 +38,26 @@ namespace NuggetCreek.Game
         /// <summary>Where this class's own events (config_fetch) go, so they carry the common snapshot.</summary>
         public static IGameEvents Events { get; set; }
 
-        public static void Start()
+        /// <summary>
+        /// Starts Firebase for the player's age answer. Called again after "Delete my data"
+        /// with the new answer, in the same process.
+        /// </summary>
+        public static void Start(DataAudience audience)
         {
-            if (started || Application.isEditor)
+            if (Application.isEditor)
                 return;
+            collectionOff = !audience.Analytics;
+            if (collectionOff)
+            {
+                queued.Clear();
+                pendingProperties.Clear();
+            }
+            if (started)
+            {
+                if (available)
+                    ApplyCollection();
+                return;
+            }
             started = true;
             FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
             {
@@ -44,20 +66,32 @@ namespace NuggetCreek.Game
                     Debug.LogWarning("Firebase unavailable: " + task.Result);
                     return;
                 }
-                Crashlytics.ReportUncaughtExceptionsAsFatal = true;
-                FirebaseAnalytics.SetUserProperty("build", UnityEngine.Debug.isDebugBuild ? "dev" : "release");
-                Ready = true;
-                ApplyConsent();
-                foreach (KeyValuePair<string, string> property in pendingProperties)
-                    FirebaseAnalytics.SetUserProperty(property.Key, property.Value);
-                pendingProperties.Clear();
-                while (queued.Count > 0)
-                {
-                    KeyValuePair<string, Parameter[]> e = queued.Dequeue();
-                    FirebaseAnalytics.LogEvent(e.Key, e.Value);
-                }
+                available = true;
+                ApplyCollection();
+                // Remote Config still tunes the game for a player under 13; it carries no analytics.
                 FetchRemoteConfig();
             });
+        }
+
+        static void ApplyCollection()
+        {
+            // Both settings persist on the device, so they are written every launch.
+            FirebaseAnalytics.SetAnalyticsCollectionEnabled(!collectionOff);
+            Crashlytics.IsCrashlyticsCollectionEnabled = !collectionOff;
+            if (collectionOff)
+                return;
+            Crashlytics.ReportUncaughtExceptionsAsFatal = true;
+            FirebaseAnalytics.SetUserProperty("build", UnityEngine.Debug.isDebugBuild ? "dev" : "release");
+            Ready = true;
+            ApplyConsent();
+            foreach (KeyValuePair<string, string> property in pendingProperties)
+                FirebaseAnalytics.SetUserProperty(property.Key, property.Value);
+            pendingProperties.Clear();
+            while (queued.Count > 0)
+            {
+                KeyValuePair<string, Parameter[]> e = queued.Dequeue();
+                FirebaseAnalytics.LogEvent(e.Key, e.Value);
+            }
         }
 
         /// <summary>
@@ -88,7 +122,7 @@ namespace NuggetCreek.Game
         /// <summary>Sets a user property now, or once Firebase is up.</summary>
         public static void SetUserProperty(string name, string value)
         {
-            if (!started)
+            if (Application.isEditor || collectionOff)
                 return;
             if (Ready)
                 FirebaseAnalytics.SetUserProperty(name, value);
@@ -99,7 +133,7 @@ namespace NuggetCreek.Game
         /// <summary>Logs one analytics event; values are long, double or string.</summary>
         public static void Log(string name, params (string key, object value)[] parameters)
         {
-            if (!started)
+            if (Application.isEditor || collectionOff)
                 return;
             var list = new Parameter[parameters.Length];
             for (int i = 0; i < parameters.Length; i++)
@@ -108,6 +142,24 @@ namespace NuggetCreek.Game
                 FirebaseAnalytics.LogEvent(name, list);
             else if (queued.Count < MaxQueued)
                 queued.Enqueue(new KeyValuePair<string, Parameter[]>(name, list));
+        }
+
+        /// <summary>
+        /// "Delete my data" (design doc 14.2): clears the analytics id and everything logged on
+        /// this device, then stops collecting until the age screen is answered again; the new
+        /// answer starts under a new id.
+        /// </summary>
+        public static void DeleteData()
+        {
+            queued.Clear();
+            pendingProperties.Clear();
+            pendingConsent = null;
+            Ready = false;
+            if (!available)
+                return;
+            FirebaseAnalytics.ResetAnalyticsData();
+            FirebaseAnalytics.SetAnalyticsCollectionEnabled(false);
+            Crashlytics.IsCrashlyticsCollectionEnabled = false;
         }
 
         static void Emit(string name, params (string Key, object Value)[] parameters)
