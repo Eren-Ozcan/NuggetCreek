@@ -405,6 +405,33 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator CreekUnlockPlaysAnInterstitialOnceTheScreenIsCalm()
+        {
+            // Past the early game (design doc 8.4: creek 3 and 20 minutes of play).
+            var progress = new PlayerProgress { RegionsUnlocked = 4, BestRegionsUnlocked = 4, RegionIndex = 3, PlaySeconds = 30 * 60 };
+            SaveStore.Save(progress);
+            yield return SceneManager.LoadSceneAsync("Creek");
+            yield return null;
+            Click("Skip intro");
+            Click("+$1T");
+            Click("+$1T");
+            // Let the fake interstitial fill before the break.
+            yield return new WaitForSecondsRealtime(3.5f);
+
+            yield return UnlockCreek(GameCatalog.RegionNames[4]);
+            StringAssert.StartsWith(GameCatalog.RegionNames[4], Label("Status").text);
+            // Creek 5 brings crew candidates; no ad while their modal is up (studio ad policy 4).
+            Assert.That(IsActive("CandidateModal"), Is.True);
+            yield return new WaitForSecondsRealtime(2);
+            SendSave();
+            Assert.That(SaveStore.Load().LastFullScreenAdUtc, Is.Zero);
+
+            ClickIn("CandidateModal", "Later");
+            // The ad plays about a second after the screen settles, then saves the shared cooldown.
+            yield return WaitFor(() => SaveStore.Load().LastFullScreenAdUtc > 0, 6);
+        }
+
+        [UnityTest]
         public IEnumerator SaveSurvivesReload()
         {
             Click("+$1M");
