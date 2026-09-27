@@ -42,8 +42,8 @@ targetSdk 36, version code, signing). Menu *Nugget Creek > Android* or
 
 Upload key: `android-keystore/` (gitignored), password in `android-keystore/nuggetcreek-upload.pass` or
 `NC_KEYSTORE_PASS`; backup and SHA-1 in `C:\Projects\pictures\nugget-creek\android-keystore\`.
-Dev/measure builds stay on the debug key on purpose: Android 8+ scopes ANDROID_ID to the signing
-key and the save signature uses it until phase 3.3, so a key switch on a phone orphans the save.
+Dev/measure builds stay on the debug key on purpose: a key switch on a phone needs an uninstall,
+which drops the AndroidKeyStore key that signs the save (`SaveKey`), so the save is orphaned.
 
 ## Firebase
 
