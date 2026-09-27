@@ -135,6 +135,8 @@ namespace NuggetCreek.Core
                     return i.ToString(CultureInfo.InvariantCulture);
                 case long l:
                     return l.ToString(CultureInfo.InvariantCulture);
+                case Enum e:
+                    return e.ToString();
                 case Array array:
                     var parts = new string[array.Length];
                     for (int k = 0; k < array.Length; k++)
