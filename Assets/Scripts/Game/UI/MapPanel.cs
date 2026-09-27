@@ -6,7 +6,10 @@ using UnityEngine.UI;
 
 namespace NuggetCreek.Game.UI
 {
-    /// <summary>Full-screen Map modal: travel between unlocked creeks and unlock the next one.</summary>
+    /// <summary>
+    /// Full-screen Map modal (design doc 6.2): one scrolling list of the 20 creeks, opened at the
+    /// current one; travel between unlocked creeks, unlock the next one, see each boss's state.
+    /// </summary>
     public sealed class MapPanel
     {
         sealed class Row
@@ -19,6 +22,7 @@ namespace NuggetCreek.Game.UI
 
         readonly GameSession session;
         readonly RectTransform root;
+        readonly ScrollRect scroll;
         readonly List<Row> rows = new List<Row>();
 
         public bool IsOpen => root.gameObject.activeSelf;
@@ -38,6 +42,7 @@ namespace NuggetCreek.Game.UI
 
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -160));
             RectTransform list = Ui.ScrollList(body, 16, 24);
+            scroll = list.GetComponentInParent<ScrollRect>();
 
             int count = session.Economy.Config.RegionCount;
             for (int i = 0; i < count; i++)
@@ -50,6 +55,10 @@ namespace NuggetCreek.Game.UI
         {
             root.SetActive(true);
             Refresh();
+            // Open at the current creek: 0 is the bottom of the list, 1 the top.
+            Canvas.ForceUpdateCanvases();
+            int last = Mathf.Max(1, rows.Count - 1);
+            scroll.verticalNormalizedPosition = 1 - Mathf.Clamp01((float)session.Progress.RegionIndex / last);
         }
 
         public void Close() => root.SetActive(false);
@@ -63,6 +72,8 @@ namespace NuggetCreek.Game.UI
             {
                 Row row = rows[i];
                 string valueText = "Gold Dust " + NumberFormat.Dollars(session.Economy.DustBaseValue(i));
+                if (i < progress.RegionsUnlocked)
+                    valueText += session.IsBossBeaten(i) ? "  -  boss beaten" : "  -  boss waiting";
                 if (i == progress.RegionIndex)
                 {
                     row.Detail.SetText(valueText + "  -  you are here");
