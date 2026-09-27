@@ -261,7 +261,7 @@ namespace NuggetCreek.Game
         static BigNumber ParseOrZero(string text) => BigNumber.TryParse(text, out BigNumber value) ? value : BigNumber.Zero;
 
         // Placeholder until the platform milestone moves the key into Android Keystore.
-        static byte[] SigningKey()
+        internal static byte[] SigningKey()
         {
             using (var sha = SHA256.Create())
                 return sha.ComputeHash(Encoding.UTF8.GetBytes("nugget-creek-save/" + SystemInfo.deviceUniqueIdentifier));
