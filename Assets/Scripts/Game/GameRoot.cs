@@ -105,6 +105,7 @@ namespace NuggetCreek.Game
             FirebaseServices.Events = session.Events;
             session.BeginSession();
             session.RecordSessionHour(DateTimeOffset.Now);
+            ReportPayer();
             if (SaveStore.LoadIssue.HasValue)
                 session.Events.Emit("save_error",
                     ("stage", SaveStore.LoadIssue.Value.Stage), ("code", SaveStore.LoadIssue.Value.Code));
@@ -288,6 +289,34 @@ namespace NuggetCreek.Game
                 interstitials.Show(trigger, Save);
         }
 
+        // --- Store (roadmap 3.5) ---
+
+        /// <summary>RevenueCat on a device once its key exists; the test sheet otherwise.</summary>
+        IStore CreateStore(Transform root)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (!string.IsNullOrEmpty(RevenueCatKeys.Google))
+            {
+                var real = new RevenueCatStore(gameObject, RevenueCatKeys.Google);
+                // A reinstall brings Remove Ads and the gear slot back without a button press.
+                real.Restore(owned =>
+                {
+                    if (session.RestoreOwned(owned))
+                        Save();
+                    ReportPayer();
+                });
+                return real;
+            }
+#endif
+            return new FakeStore(root);
+        }
+
+        void ReportPayer()
+        {
+            FirebaseServices.SetUserProperty("payer_tier", session.PayerTier);
+            FirebaseServices.SetUserProperty("ads_removed", session.Progress.AdsRemoved ? "1" : "0");
+        }
+
         // --- Notifications (design doc 10.1) ---
 
         /// <summary>Plans the chain for this leave; nothing is planned without permission.</summary>
@@ -408,7 +437,7 @@ namespace NuggetCreek.Game
             Canvas canvas = Ui.CreateCanvas("UI", 0);
             Transform root = canvas.transform;
             // Its purchase sheet puts itself on top when it opens.
-            store = new FakeStore(root);
+            store = CreateStore(root);
             const float topHeight = 300;
             const float bottomHeight = 220;
 
@@ -526,7 +555,11 @@ namespace NuggetCreek.Game
             notifAsk = new NotifAskCard(root);
             candidateModal.Hired += Save;
             shop = new ShopPanel(session, store, root);
-            shop.Purchased += Save;
+            shop.Purchased += () =>
+            {
+                ReportPayer();
+                Save();
+            };
             shop.SummonLodeRequested += () =>
             {
                 shop.Close();

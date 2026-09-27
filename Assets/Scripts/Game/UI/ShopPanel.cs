@@ -104,9 +104,8 @@ namespace NuggetCreek.Game.UI
             foreach (ShopItem item in ShopCatalog.Items)
                 if (!item.IsOffer)
                     AddGemRow(gems, item);
-            Button restore = Ui.Button("Restore", gems, "Restore purchases", Palette.ButtonAlt, null, out _, 34);
+            Button restore = Ui.Button("Restore", gems, "Restore purchases", Palette.ButtonAlt, RestorePurchases, out _, 34);
             Ui.PreferredHeight(restore, 100);
-            restore.interactable = false;
 
             Close();
         }
@@ -173,6 +172,7 @@ namespace NuggetCreek.Game.UI
                 row.Root.SetActive(left > 0);
                 if (left <= 0)
                     return;
+                session.ReportOfferShown(item, "shop");
                 row.Title.SetText(item.Name);
                 string clock = double.IsInfinity(left) ? "" : "  -  ends in " + TextFormat.Duration(left);
                 row.Detail.SetText(Contents(item) + clock + Badge(item));
@@ -294,11 +294,15 @@ namespace NuggetCreek.Game.UI
 
         void BuyReal(ShopItem item)
         {
+            session.StartPurchase(item);
             store.Purchase(item, outcome =>
             {
                 if (!outcome.Paid)
+                {
+                    session.FailPurchase(item, outcome.Reason);
                     return;
-                PurchaseResult granted = session.GrantPurchase(item, outcome.TransactionId);
+                }
+                PurchaseResult granted = session.GrantPurchase(item, outcome.TransactionId, outcome.PriceLocal, outcome.Currency);
                 if (granted == null)
                     return;
                 result.SetText(Describe(granted));
@@ -306,6 +310,19 @@ namespace NuggetCreek.Game.UI
                 Refresh();
             });
             Refresh();
+        }
+
+        /// <summary>Brings back Remove Ads and the gear slot after a reinstall (8.3).</summary>
+        void RestorePurchases()
+        {
+            store.Restore(owned =>
+            {
+                bool changed = session.RestoreOwned(owned);
+                result.SetText(changed ? "Restored." : "Nothing to restore.");
+                if (changed)
+                    Purchased?.Invoke();
+                Refresh();
+            });
         }
 
         void BuyBoost(ShopBoost boost)
