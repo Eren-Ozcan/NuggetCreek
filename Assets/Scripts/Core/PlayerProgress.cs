@@ -226,6 +226,18 @@ namespace NuggetCreek.Core
         /// <summary>Device boot time (device UTC minus monotonic) at save; detects reboots.</summary>
         public double LastBootUtc;
 
+        // --- Privacy and settings (design doc 14.2, 14.3) ---
+
+        public AgeBand AgeBand;
+
+        /// <summary><see cref="Compliance.TermsVersion"/> the player last accepted; 0 = never.</summary>
+        public int TermsAccepted;
+
+        public VibrationMode Vibration = VibrationMode.All;
+
+        /// <summary>Dark outline around every collectible.</summary>
+        public bool HighContrast;
+
         /// <summary>Brings arrays saved by an older catalog up to the current size.</summary>
         public void Normalize()
         {
@@ -309,6 +321,10 @@ namespace NuggetCreek.Core
             RegionsUnlocked = Math.Max(1, RegionsUnlocked);
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
             BestRegionsUnlocked = Math.Max(BestRegionsUnlocked, RegionsUnlocked);
+            if (AgeBand < AgeBand.Unknown || AgeBand > AgeBand.Adult)
+                AgeBand = AgeBand.Unknown;
+            if (Vibration < VibrationMode.Off || Vibration > VibrationMode.All)
+                Vibration = VibrationMode.All;
         }
 
         /// <summary>Four slots, each holding owned gear at most once.</summary>
