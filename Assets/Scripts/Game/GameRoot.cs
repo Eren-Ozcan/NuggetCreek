@@ -26,6 +26,7 @@ namespace NuggetCreek.Game
         Text shopLabel;
         PeteBanner pete;
         Button upgradesButton;
+        Button quickBuyButton;
         Button mapButton;
         Button shopButton;
         Button dailyButton;
@@ -59,6 +60,7 @@ namespace NuggetCreek.Game
         Text goalLabel;
         Text mapLabel;
         Text upgradesLabel;
+        Text quickBuyLabel;
         Button lateDoubleChip;
         Button crewChip;
         Text crewChipLabel;
@@ -287,8 +289,13 @@ namespace NuggetCreek.Game
             // Map / Upgrades / Shop (design doc 12.2).
             mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
             mapButton.AsRect().Place(Vector2.zero, new Vector2(1 / 3f, 1), new Vector2(30, 30), new Vector2(-10, -30));
-            upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 44);
-            upgradesButton.AsRect().Place(new Vector2(1 / 3f, 0), new Vector2(2 / 3f, 1), new Vector2(10, 30), new Vector2(-10, -30));
+            upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 40);
+            upgradesButton.AsRect().Place(new Vector2(1 / 3f, 0), new Vector2(0.53f, 1), new Vector2(10, 30), new Vector2(-4, -30));
+            // Quick buy (design doc 12.2, v0.19): one tap buys the cheapest affordable sluice
+            // upgrade without opening the panel; holding keeps buying.
+            quickBuyButton = Ui.Button("QuickBuy", bottom, "", Palette.ButtonAlt, QuickBuy, out quickBuyLabel, 28);
+            quickBuyButton.AsRect().Place(new Vector2(0.53f, 0), new Vector2(2 / 3f, 1), new Vector2(4, 30), new Vector2(-10, -30));
+            quickBuyButton.gameObject.AddComponent<HoldRepeat>().Repeat = QuickBuy;
             shopButton = Ui.Button("ShopButton", bottom, "Shop", Palette.GemButton, OpenShop, out shopLabel, 44);
             shopButton.AsRect().Place(new Vector2(2 / 3f, 0), Vector2.one, new Vector2(10, 30), new Vector2(-30, -30));
 
@@ -409,6 +416,7 @@ namespace NuggetCreek.Game
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
             SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, upgradeBadge ? "Upgrades  (!)" : "Upgrades", "Upgrades\nswipe 15 by hand");
+            RefreshQuickBuy();
             SetLock(mapButton, mapLabel, Feature.Map, mapBadge ? "Map  (!)" : "Map", "Map\nhire Amos first");
             SetLock(shopButton, shopLabel, Feature.Shop, shop.HasTimedOffer() ? "Shop  (!)" : "Shop", "Shop\nreach Pine Hollow");
             collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
@@ -436,6 +444,33 @@ namespace NuggetCreek.Game
         }
 
         /// <summary>A locked button stays visible and says what opens it (design doc 9.1, 12.2).</summary>
+        void QuickBuy()
+        {
+            if (session.QuickBuy())
+                RefreshHud();
+        }
+
+        void RefreshQuickBuy()
+        {
+            bool open = session.IsUnlocked(Feature.Upgrades);
+            quickBuyButton.SetActive(open);
+            if (!open)
+                return;
+            int index = session.QuickBuyUpgrade;
+            if (index < 0)
+            {
+                quickBuyLabel.SetText("Quick buy\n-");
+                if (quickBuyButton.interactable)
+                    quickBuyButton.interactable = false;
+                return;
+            }
+            UpgradeDefinition upgrade = GameCatalog.Upgrades[index];
+            int count = session.AffordableUpgradeCount;
+            quickBuyLabel.SetText($"+ {upgrade.Name} L{session.UpgradeLevel(index) + 1}\n{NumberFormat.Dollars(session.UpgradeCost(index).Value)}" + (count > 1 ? $"  ({count})" : ""));
+            if (!quickBuyButton.interactable)
+                quickBuyButton.interactable = true;
+        }
+
         void SetLock(Button button, Text label, Feature feature, string open, string locked)
         {
             bool unlocked = session.IsUnlocked(feature);
