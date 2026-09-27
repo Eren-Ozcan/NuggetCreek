@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using NuggetCreek.Core;
 using NuggetCreek.Game.UI;
@@ -25,6 +26,12 @@ namespace NuggetCreek.Game
         IRewardedAds ads;
         IInterstitialAds interstitials;
         AdMobAds admob;
+        INotifications notifications;
+        NotifAskCard notifAsk;
+        bool askAfterOffline;
+        bool permissionPending;
+        float askSettledFor;
+        bool debugNotifSoon;
         IStore store;
         ShopPanel shop;
         Text shopLabel;
@@ -97,10 +104,16 @@ namespace NuggetCreek.Game
             session.Events = new AnalyticsSink(session);
             FirebaseServices.Events = session.Events;
             session.BeginSession();
+            session.RecordSessionHour(DateTimeOffset.Now);
             if (SaveStore.LoadIssue.HasValue)
                 session.Events.Emit("save_error",
                     ("stage", SaveStore.LoadIssue.Value.Stage), ("code", SaveStore.LoadIssue.Value.Code));
             CreateAds();
+#if UNITY_ANDROID && !UNITY_EDITOR
+            notifications = new AndroidNotifications();
+#else
+            notifications = new NoNotifications();
+#endif
             lateDouble = new LateDoubleOffer(config);
             BuildUi();
         }
@@ -110,6 +123,7 @@ namespace NuggetCreek.Game
             clock.TrustedTimeArrived += OnTrustedTime;
             StartCoroutine(clock.FetchTrustedTime());
             admob?.Start();
+            ReturnFromNotifications();
             // Preload before the offline modal opens so most returns open on Ready (3.3.1 rule 3).
             ads.Load();
             if (session.Progress.LastSeenUtc > 0)
@@ -150,7 +164,9 @@ namespace NuggetCreek.Game
                 }
             }
             offlineModal.Tick(Time.unscaledDeltaTime);
-            UpdateInterstitial(modalOpen);
+            notifications.Tick();
+            UpdateNotifAsk(modalOpen);
+            UpdateInterstitial(modalOpen || notifAsk.IsOpen);
 
             if (returnPending && Time.realtimeSinceStartup - returnWaitStarted > TrustedTimeWaitSeconds)
                 offlineModal.ShowWaitingForConnection();
@@ -174,8 +190,9 @@ namespace NuggetCreek.Game
 
         void OnApplicationPause(bool paused)
         {
-            // A full screen ad pauses the app on Android; that is neither a leave nor a return.
-            if (paused && (ads.IsShowing || interstitials.IsShowing))
+            // A full screen ad or the OS permission dialog pauses the app on Android; that is
+            // neither a leave nor a return.
+            if (paused && (ads.IsShowing || interstitials.IsShowing || permissionPending))
             {
                 pausedUnderAd = true;
                 Save();
@@ -193,9 +210,16 @@ namespace NuggetCreek.Game
                 session.Events.Emit("session_end", session.EndSessionParameters(Time.realtimeSinceStartup - foregroundSince));
                 pausedAtUtc = DateTime.UtcNow;
                 wasPaused = true;
+                ScheduleNotifications();
                 Save();
+                return;
             }
-            else if (!returnPending && !offlineModal.HasUnclaimed)
+            if (wasPaused)
+            {
+                ReturnFromNotifications();
+                session.RecordSessionHour(DateTimeOffset.Now);
+            }
+            if (!returnPending && !offlineModal.HasUnclaimed)
             {
                 foregroundSince = Time.realtimeSinceStartup;
                 // Unity also reports an unpause at launch; only a real return counts.
@@ -262,6 +286,68 @@ namespace NuggetCreek.Game
             string trigger = session.PendingInterstitial;
             if (session.TakeInterstitial(now, interstitials.IsLoaded))
                 interstitials.Show(trigger, Save);
+        }
+
+        // --- Notifications (design doc 10.1) ---
+
+        /// <summary>Plans the chain for this leave; nothing is planned without permission.</summary>
+        void ScheduleNotifications()
+        {
+            if (!notifications.Allowed)
+                return;
+            List<PlannedNotification> plan = session.PlanNotifications(DateTimeOffset.Now);
+            if (debugNotifSoon)
+            {
+                debugNotifSoon = false;
+                plan.Insert(0, new PlannedNotification(NotificationKind.CapFull, "rewards", DateTimeOffset.Now.AddMinutes(1),
+                    "Test from the debug button. Tap me.", 0));
+            }
+            notifications.Schedule(plan);
+        }
+
+        /// <summary>Cancels whatever is pending and settles what fired while away (10.1.1 rule 3).</summary>
+        void ReturnFromNotifications()
+        {
+            notifications.CancelAll();
+            session.ResolveNotifications(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0, notifications.TakeOpened());
+            FirebaseServices.SetUserProperty("notif_opt_in", notifications.Allowed ? "1" : "0");
+        }
+
+        /// <summary>Amos's card at the first Pine Hollow unlock or after a later welcome back (10.1.4).</summary>
+        void UpdateNotifAsk(bool modalOpen)
+        {
+            if (notifAsk.IsOpen || permissionPending || session.IntroSkipped)
+                return;
+            bool busy = modalOpen || motherLode.IsActive || returnPending || offlineModal.HasUnclaimed
+                || pete.IsShowing || ads.IsShowing || interstitials.IsShowing;
+            askSettledFor = busy ? 0 : askSettledFor + Time.unscaledDeltaTime;
+            if (askSettledFor < BreakSettleSeconds)
+                return;
+            bool afterOffline = askAfterOffline;
+            askAfterOffline = false;
+            if (session.NotifAskDue(afterOffline, notifications.Allowed))
+                OpenNotifAsk(afterOffline);
+        }
+
+        void OpenNotifAsk(bool afterOffline)
+        {
+            notifAsk.Open(yes =>
+            {
+                if (!yes)
+                {
+                    session.RecordNotifAsk(afterOffline, false, "skipped");
+                    Save();
+                    return;
+                }
+                permissionPending = true;
+                notifications.RequestPermission(result =>
+                {
+                    permissionPending = false;
+                    session.RecordNotifAsk(afterOffline, true, result);
+                    FirebaseServices.SetUserProperty("notif_opt_in", result == "granted" ? "1" : "0");
+                    Save();
+                });
+            });
         }
 
         // --- Offline return ---
@@ -433,9 +519,11 @@ namespace NuggetCreek.Game
             {
                 // Second session (design doc 10): Amos brings a chest after the first real haul.
                 session.GiveReturnGift();
+                askAfterOffline = true;
                 Save();
             };
             candidateModal = new CandidateModal(session, root);
+            notifAsk = new NotifAskCard(root);
             candidateModal.Hired += Save;
             shop = new ShopPanel(session, store, root);
             shop.Purchased += Save;
@@ -684,7 +772,7 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1300), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1500), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+$1T", () => session.Earn(1e12));
@@ -697,7 +785,9 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 9, "Skip intro", () => session.IntroSkipped = true);
             AddDebugButton(column, 10, "Interstitial", DebugInterstitial);
             AddDebugButton(column, 11, AdMobAds.DebugEea ? "EEA: on" : "EEA: off", ToggleDebugEea);
-            AddDebugButton(column, 12, "Reset", ResetGame);
+            AddDebugButton(column, 12, "Notif 1m", () => debugNotifSoon = true);
+            AddDebugButton(column, 13, "Ask notif", () => OpenNotifAsk(false));
+            AddDebugButton(column, 14, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
