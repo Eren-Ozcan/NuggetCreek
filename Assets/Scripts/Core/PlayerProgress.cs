@@ -145,6 +145,30 @@ namespace NuggetCreek.Core
         /// </summary>
         public double LastFullScreenAdUtc;
 
+        // --- Local notifications (design doc 10.1) ---
+
+        /// <summary>Session starts as local day * 24 + hour, last 7 days; gives the player's hour.</summary>
+        public int[] SessionHourLog = new int[0];
+
+        /// <summary>Notifications sent per <see cref="NotificationKind"/>; rotates the text.</summary>
+        public int[] NotifSent = new int[NotificationKinds];
+
+        /// <summary>Kinds and UTC seconds planned at the last leave; resolved on return.</summary>
+        public int[] NotifPendingKinds = new int[0];
+        public double[] NotifPendingUtc = new double[0];
+
+        /// <summary>Notifications fired in a row without the player opening one.</summary>
+        public int NotifIgnored;
+
+        /// <summary>Cap and daily reminders stay off until this UTC second.</summary>
+        public double NotifMutedUntilUtc;
+
+        /// <summary>Times the pre-prompt card was shown (at most 2) and the session of the last.</summary>
+        public int NotifAsks;
+        public int NotifAskSession;
+
+        public const int NotificationKinds = 7;
+
         public bool StarterBought;
 
         /// <summary>New Creek Welcome on sale: 0 none, 1 Small, 2 Large.</summary>
@@ -260,6 +284,20 @@ namespace NuggetCreek.Core
             if (Transactions == null)
                 Transactions = new string[0];
             PlaySeconds = Math.Max(0, PlaySeconds);
+            SessionHourLog = SessionHourLog ?? new int[0];
+            if (NotifSent == null || NotifSent.Length != NotificationKinds)
+            {
+                var sent = new int[NotificationKinds];
+                if (NotifSent != null)
+                    Array.Copy(NotifSent, sent, Math.Min(NotifSent.Length, sent.Length));
+                NotifSent = sent;
+            }
+            if (NotifPendingKinds == null || NotifPendingUtc == null || NotifPendingKinds.Length != NotifPendingUtc.Length)
+            {
+                NotifPendingKinds = new int[0];
+                NotifPendingUtc = new double[0];
+            }
+            NotifIgnored = Math.Max(0, NotifIgnored);
             CollectedSinceMotherLode = Math.Max(0, CollectedSinceMotherLode);
             SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));

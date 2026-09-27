@@ -3,6 +3,16 @@ using System;
 namespace NuggetCreek.Core
 {
     /// <summary>
+    /// The two arms of the notification ask test (design doc 10.1.4). Names match the Remote
+    /// Config values.
+    /// </summary>
+    public enum NotifAskMoment
+    {
+        session1_region2,
+        session2_offline,
+    }
+
+    /// <summary>
     /// Every tunable economy number. Defaults are the launch values from the design doc;
     /// Remote Config overrides them at session start (never mid-session). Each field's key
     /// is its snake_case name unless a RemoteKey attribute says otherwise (see RemoteConfig).
@@ -433,6 +443,17 @@ namespace NuggetCreek.Core
 
         /// <summary>The first 20 minutes of play never show a forced ad.</summary>
         public double InterstitialMinPlaySeconds = 20 * 60;
+
+        // --- Notifications (10.1) ---
+
+        /// <summary>When Amos first asks to holler (10.1.4 A/B). RC: notif_ask_moment.</summary>
+        [RemoteKey("notif_ask_moment")]
+        public NotifAskMoment NotifAskMoment = NotifAskMoment.session1_region2;
+
+        /// <summary>Ignored notifications in a row before cap and daily reminders pause.</summary>
+        public int NotifFatigueCount = 3;
+
+        public double NotifFatigueMuteSeconds = 7 * 24 * 3600;
 
         public int RegionCount => RegionUnlockCosts.Length;
         public int TierCount => TierCosts.Length;

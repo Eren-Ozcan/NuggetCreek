@@ -436,7 +436,11 @@ namespace NuggetCreek.Core
             Progress.RegionIndex = Progress.RegionsUnlocked;
             Progress.RegionsUnlocked++;
             if (Progress.RegionsUnlocked > Progress.BestRegionsUnlocked)
+            {
                 OfferWelcome(Progress.RegionIndex);
+                if (Progress.RegionsUnlocked == 2)
+                    MarkFirstPineHollow();
+            }
             Progress.BestRegionsUnlocked = Math.Max(Progress.BestRegionsUnlocked, Progress.RegionsUnlocked);
             if (IsCandidateRegion(Progress.RegionIndex))
                 OfferCandidates();
