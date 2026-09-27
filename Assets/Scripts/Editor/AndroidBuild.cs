@@ -79,6 +79,10 @@ namespace NuggetCreek.Editor
         static bool TryBuild(Variant variant)
         {
             AppVersion version = ApplyPlayerSettings();
+            // Firebase's Android libraries enter through mainTemplate.gradle, patched by the
+            // External Dependency Manager; batchmode never runs its auto-resolve, so force it.
+            if (!GooglePlayServices.PlayServicesResolver.ResolveSync(true))
+                throw new InvalidOperationException("Android dependency resolution failed");
             bool signed = ApplySigning(variant == Variant.Release);
             if (variant == Variant.Release && !signed)
                 throw new InvalidOperationException($"release AAB needs the upload key password ({PassEnv} or {PassFile})");
