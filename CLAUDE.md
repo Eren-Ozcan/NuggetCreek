@@ -57,6 +57,15 @@ project API key and stays out of this public repo; the Firebase editor plugin re
 `StreamingAssets/google-services-desktop.json` and the `Plugins/Android/Firebase*.androidlib`
 folders from it (all gitignored).
 
+## Game art
+
+Sprites, crew portraits and creek backgrounds live in `Assets/Resources/Sprites/` (gitignored;
+loaded by `Game/Art.cs`, import settings in `Editor/SpriteImportRules.cs`). On a fresh clone run
+`scripts/fetch-art.sh`, which copies them from `C:\Projects\pictures\nugget-creek\game-art\`
+(private pictures repo). Without it the game runs with the greybox shapes. The source sheets and
+the cutter (`tools/cut_sprites.py`, git-excluded) are backed up in `game-art/source/`; after
+re-cutting, copy `Assets/Resources` back there, then commit and push the pictures repo.
+
 ## Rules
 
 - **Private material stays out of git.** The design docs (`docs/GAME_DESIGN.md`,
