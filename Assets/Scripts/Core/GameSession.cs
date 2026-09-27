@@ -344,6 +344,52 @@ namespace NuggetCreek.Core
             return true;
         }
 
+        // --- Quick buy (design doc 12.2, v0.19) ---
+
+        /// <summary>
+        /// The cheapest sluice upgrade the player can afford right now, or -1. Sluice tiers,
+        /// creeks and Amos are left out on purpose: they are bigger decisions than one tap.
+        /// </summary>
+        public int QuickBuyUpgrade
+        {
+            get
+            {
+                int best = -1;
+                BigNumber bestCost = BigNumber.Zero;
+                for (int i = 0; i < GameCatalog.Upgrades.Count; i++)
+                {
+                    if (!IsUpgradeUnlocked(i))
+                        continue;
+                    BigNumber? cost = UpgradeCost(i);
+                    if (!CanAfford(cost) || (best >= 0 && cost.Value >= bestCost))
+                        continue;
+                    best = i;
+                    bestCost = cost.Value;
+                }
+                return best;
+            }
+        }
+
+        /// <summary>Sluice upgrades the player can afford right now (the quick buy badge).</summary>
+        public int AffordableUpgradeCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < GameCatalog.Upgrades.Count; i++)
+                    if (IsUpgradeUnlocked(i) && CanAfford(UpgradeCost(i)))
+                        count++;
+                return count;
+            }
+        }
+
+        /// <summary>Buys <see cref="QuickBuyUpgrade"/>; false when nothing is affordable.</summary>
+        public bool QuickBuy()
+        {
+            int index = QuickBuyUpgrade;
+            return index >= 0 && BuyUpgrade(index);
+        }
+
         // --- Sluice tiers ---
 
         public bool HasNextTier => Progress.TierIndex + 1 < Config.TierCount;
