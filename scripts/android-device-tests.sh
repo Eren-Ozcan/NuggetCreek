@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Device test pass on the connected phone with a development APK (debug key, so run-as works).
+# Device test pass on the connected phone (debug key builds: a development APK, or a measure
+# APK for the memory numbers).
 # Checks what the editor tests cannot: cold and warm starts, the process being killed in the
 # background, no network, a large system font, rotation, Android's own monkey and memory.
 # Every step scans logcat for crashes, ANRs and Unity exceptions.
@@ -7,7 +8,8 @@
 # The phone's save is backed up first and restored at the end, whatever happens in between.
 #
 # Usage: scripts/android-device-tests.sh [apk] [monkey-events]
-#   apk            default: newest Builds/Android/*-dev.apk (menu Nugget Creek > Android > Build Dev APK)
+#   apk            default: newest Builds/Android/*-dev.apk (menu Nugget Creek > Android > Build Dev APK);
+#                  use a measure APK for the memory numbers, a development build adds about 50 MB
 #   monkey-events  default 5000
 set -uo pipefail
 export MSYS_NO_PATHCONV=1
@@ -30,7 +32,7 @@ launch() {
 
 alive() { [ -n "$(adb shell pidof "$PKG" | tr -d '\r')" ]; }
 
-# Total PSS in MB, the number the design doc budgets (< 300 MB).
+# Total PSS in MB. Design doc budget: the game < 300 MB; with an ad on screen or just shown < 450 MB.
 pss_mb() {
     local kb
     kb=$(adb shell dumpsys meminfo "$PKG" | tr -d '\r' | awk '/TOTAL PSS:|^ *TOTAL /{for(i=1;i<=NF;i++) if($i ~ /^[0-9]+$/){print $i; exit}}')
@@ -72,12 +74,23 @@ echo "device: $(adb shell getprop ro.product.model | tr -d '\r'), Android $(adb 
 echo "apk: $APK"
 
 # --- save backup ---
+# run-as only works on a debuggable build, and on anything else it prints an error instead of
+# the file. The backup therefore needs a development build installed now, and the restore
+# puts one back first when the APK under test (a measure build) is not debuggable.
+DEV_APK=$(ls -t Builds/Android/*-dev.apk 2>/dev/null | head -1)
 adb shell am force-stop "$PKG"
 BACKUP="$OUT/prefs-backup.xml"
 had_save=0
-if adb exec-out run-as "$PKG" cat "$PREFS" > "$BACKUP" 2>/dev/null && [ -s "$BACKUP" ]; then
-    had_save=1
-    echo "save backed up to $BACKUP"
+if adb shell pm path "$PKG" | grep -q package; then
+    adb exec-out run-as "$PKG" cat "$PREFS" > "$BACKUP" 2>/dev/null
+    if head -c 5 "$BACKUP" | grep -q "<?xml"; then
+        had_save=1
+        echo "save backed up to $BACKUP"
+    elif ! adb shell run-as "$PKG" true >/dev/null 2>&1 || grep -q "not debuggable" "$BACKUP"; then
+        echo "the installed build is not debuggable, so its save cannot be backed up;" >&2
+        echo "install a development APK first (it keeps the save), then run this again" >&2
+        exit 1
+    fi
 fi
 
 restore() {
@@ -86,11 +99,18 @@ restore() {
     adb shell settings put system accelerometer_rotation 1 >/dev/null
     adb shell svc wifi enable >/dev/null 2>&1
     adb shell svc data enable >/dev/null 2>&1
-    if [ "$had_save" = 1 ]; then
-        adb push "$BACKUP" /data/local/tmp/nc-prefs.xml >/dev/null
-        adb shell run-as "$PKG" cp /data/local/tmp/nc-prefs.xml "$PREFS"
-        adb shell rm /data/local/tmp/nc-prefs.xml
+    [ "$had_save" = 1 ] || return
+    if [ "$(adb shell run-as "$PKG" echo ok 2>/dev/null | tr -d '\r')" != "ok" ]; then
+        echo "reinstalling $DEV_APK so the save can be put back"
+        adb install -r "$DEV_APK" >/dev/null
+    fi
+    adb push "$BACKUP" /data/local/tmp/nc-prefs.xml >/dev/null
+    adb shell run-as "$PKG" cp /data/local/tmp/nc-prefs.xml "$PREFS"
+    adb shell rm /data/local/tmp/nc-prefs.xml
+    if [ "$(adb exec-out run-as "$PKG" cat "$PREFS" | md5sum)" = "$(md5sum < "$BACKUP")" ]; then
         echo "save restored"
+    else
+        echo "SAVE NOT RESTORED: put $BACKUP back by hand" >&2
     fi
 }
 trap restore EXIT
@@ -107,6 +127,11 @@ launch
 sleep 12
 pass_gate
 step_done "1-cold-start"
+# The game alone: no ad has been shown yet in this process.
+game_mb=$(pss_mb)
+if [ -n "$game_mb" ]; then
+    if [ "$game_mb" -lt 300 ]; then pass "1-memory-game: PSS $game_mb MB"; else fail "1-memory-game: PSS $game_mb MB over 300"; fi
+fi
 load=$(grep -oE "game_loaded.*load_ms[^,)]*" "$OUT/1-cold-start.log" | head -1)
 [ -n "$load" ] && echo "      $load"
 
@@ -173,10 +198,10 @@ else
     step_done "7-monkey-$EVENTS-events"
 fi
 
-# 8. Memory after all of it (design doc budget: PSS < 300 MB).
+# 8. Memory after all of it, ads included (design doc budget: PSS < 450 MB).
 mb=$(pss_mb)
 if [ -n "$mb" ]; then
-    if [ "$mb" -lt 300 ]; then pass "8-memory: PSS $mb MB"; else fail "8-memory: PSS $mb MB over 300"; fi
+    if [ "$mb" -lt 450 ]; then pass "8-memory-with-ads: PSS $mb MB"; else fail "8-memory-with-ads: PSS $mb MB over 450"; fi
 fi
 
 echo

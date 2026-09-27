@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Phase 3.1 device check: installs an APK on the connected phone, plays it with taps for a while
 # and reports APK size, PSS (the RAM budget number) and the PerfProbe frame rate lines.
-# Budgets from the design doc: APK < 200 MB, PSS < 300 MB, >= 30 FPS on an old phone.
+# Budgets from the design doc: APK < 200 MB, PSS < 300 MB for the game (< 450 MB with an ad
+# shown), >= 30 FPS on an old phone.
 #
 # Usage: scripts/android-measure.sh [apk] [seconds]
 #   apk      default: newest Builds/Android/*-measure.apk (menu Nugget Creek > Android > Build Measurement APK)
