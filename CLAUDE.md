@@ -45,6 +45,14 @@ Upload key: `android-keystore/` (gitignored), password in `android-keystore/keys
 Dev/measure builds stay on the debug key on purpose: Android 8+ scopes ANDROID_ID to the signing
 key and the save signature uses it until phase 3.3, so a key switch on a phone orphans the save.
 
+## Firebase
+
+On a fresh clone: run `scripts/fetch-firebase.sh` (SDK tarballs, gitignored), then copy
+`C:\Projects\pictures\nugget-creek\firebase\google-services.json` to `Assets/`. It holds the
+project API key and stays out of this public repo; the Firebase editor plugin regenerates
+`StreamingAssets/google-services-desktop.json` and the `Plugins/Android/Firebase*.androidlib`
+folders from it (all gitignored).
+
 ## Rules
 
 - **Private material stays out of git.** The design docs (`docs/GAME_DESIGN.md`,
