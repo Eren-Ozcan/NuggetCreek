@@ -46,6 +46,17 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             yield return null;
 
+            // The age screen comes first; Accept waits for an answer (design doc 14.2).
+            Assert.That(IsActive("PrivacyGate"), Is.True);
+            Assert.That(Find("GateAccept").GetComponent<Button>().interactable, Is.False);
+            yield return Shot("0_privacy_gate");
+            Click("AgeAdult");
+            Click("GateAccept");
+            yield return null;
+            Assert.That(IsActive("PrivacyGate"), Is.False);
+            SendSave();
+            Assert.That(SaveStore.Load().AgeBand, Is.EqualTo(AgeBand.Adult));
+
             Assert.That(Find("UpgradesButton").GetComponent<Button>().interactable, Is.False);
             Assert.That(LabelIn("UpgradesButton", "Label").text, Is.EqualTo("Upgrades\nswipe 15 by hand"));
             Assert.That(LabelIn("MapButton", "Label").text, Is.EqualTo("Map\nhire Amos first"));
@@ -446,6 +457,36 @@ namespace NuggetCreek.PlayModeTests
 
             StringAssert.StartsWith("$999", Label("Dollars").text);
             StringAssert.Contains("Amos +$", Label("Status").text);
+        }
+
+        [UnityTest]
+        public IEnumerator SettingsKeepChoicesAndDeleteStartsOver()
+        {
+            Click("+$1M");
+            Click("SettingsButton");
+            yield return null;
+            Assert.That(IsActive("Settings"), Is.True);
+            Assert.That(LabelIn("Vibration", "Label").text, Is.EqualTo("Vibration: On"));
+            Click("Vibration");
+            Click("HighContrast");
+            Assert.That(LabelIn("Vibration", "Label").text, Is.EqualTo("Vibration: Important only"));
+            Assert.That(SaveStore.Load().Vibration, Is.EqualTo(VibrationMode.Important));
+            Assert.That(SaveStore.Load().HighContrast, Is.True);
+            yield return Shot("9_settings");
+
+            // Delete asks once more, and "Keep my progress" backs out.
+            Click("DeleteData");
+            Assert.That(IsActive("CancelDelete"), Is.True);
+            Click("CancelDelete");
+            Assert.That(IsActive("CancelDelete"), Is.False);
+            Click("DeleteData");
+            Click("DeleteData");
+            yield return null;
+            yield return null;
+
+            Assert.That(IsActive("PrivacyGate"), Is.True, "a fresh start asks the age again");
+            StringAssert.StartsWith("$0", Label("Dollars").text);
+            Assert.That(SaveStore.Load().AgeBand, Is.EqualTo(AgeBand.Unknown));
         }
 
         // --- helpers ---
