@@ -19,7 +19,7 @@ namespace NuggetCreek.Game
             string text = PlayerPrefs.GetString(Key, "");
             if (text.Length == 0)
                 return new List<KeyValuePair<string, string>>();
-            if (!SaveEnvelope.TryUnwrap(text, SaveStore.SigningKey(), out string payload))
+            if (!SaveStore.TryUnwrap(text, out string payload))
             {
                 Debug.LogWarning("RemoteConfigCache: signature mismatch, using defaults");
                 return new List<KeyValuePair<string, string>>();
@@ -29,7 +29,7 @@ namespace NuggetCreek.Game
 
         public static void Save(IEnumerable<KeyValuePair<string, string>> values)
         {
-            PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(RemoteConfig.Serialize(values), SaveStore.SigningKey()));
+            PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(RemoteConfig.Serialize(values), SaveKey.Current()));
             PlayerPrefs.Save();
         }
 

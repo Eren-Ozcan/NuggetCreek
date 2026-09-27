@@ -1,6 +1,4 @@
 using System;
-using System.Security.Cryptography;
-using System.Text;
 using NuggetCreek.Core;
 using UnityEngine;
 
@@ -8,12 +6,18 @@ namespace NuggetCreek.Game
 {
     /// <summary>
     /// Loads and saves <see cref="PlayerProgress"/> as signed JSON in PlayerPrefs
-    /// (design doc 13.1 rule 4). A tampered or unreadable save starts a fresh game until
-    /// cloud backup exists.
+    /// (design doc 13.1 rule 4) with <see cref="SaveKey"/>. A tampered or unreadable save
+    /// starts a fresh game until cloud backup exists.
     /// </summary>
     public static class SaveStore
     {
         const string Key = "nc_save";
+
+        /// <summary>
+        /// What went wrong on the last load, as save_error (stage, code); null when nothing did.
+        /// The load runs before analytics exists, so GameRoot sends it afterwards.
+        /// </summary>
+        public static (string Stage, string Code)? LoadIssue { get; private set; }
 
         [Serializable]
         sealed class SaveData
@@ -95,12 +99,14 @@ namespace NuggetCreek.Game
 
         public static PlayerProgress Load()
         {
+            LoadIssue = SaveKey.Failure != null ? ("keystore", SaveKey.Failure) : ((string, string)?)null;
             string text = PlayerPrefs.GetString(Key, null);
             if (string.IsNullOrEmpty(text))
                 return new PlayerProgress();
-            if (!SaveEnvelope.TryUnwrap(text, SigningKey(), out string json))
+            if (!TryUnwrap(text, out string json))
             {
                 Debug.LogWarning("Save signature mismatch; starting a fresh game.");
+                LoadIssue = ("load", "signature");
                 return new PlayerProgress();
             }
 
@@ -255,7 +261,7 @@ namespace NuggetCreek.Game
                 lastMonotonicSeconds = progress.LastMonotonicSeconds,
                 lastBootUtc = progress.LastBootUtc,
             };
-            PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(JsonUtility.ToJson(data), SigningKey()));
+            PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(JsonUtility.ToJson(data), SaveKey.Current()));
             PlayerPrefs.Save();
         }
 
@@ -267,11 +273,16 @@ namespace NuggetCreek.Game
 
         static BigNumber ParseOrZero(string text) => BigNumber.TryParse(text, out BigNumber value) ? value : BigNumber.Zero;
 
-        // Placeholder until the platform milestone moves the key into Android Keystore.
-        internal static byte[] SigningKey()
+        /// <summary>
+        /// Checks the signature with the current key, then (during the one-time migration) with
+        /// the pre-Keystore device key so saves from older builds carry over; the next write
+        /// re-signs them.
+        /// </summary>
+        internal static bool TryUnwrap(string text, out string payload)
         {
-            using (var sha = SHA256.Create())
-                return sha.ComputeHash(Encoding.UTF8.GetBytes("nugget-creek-save/" + SystemInfo.deviceUniqueIdentifier));
+            if (SaveEnvelope.TryUnwrap(text, SaveKey.Current(), out payload))
+                return true;
+            return SaveKey.AcceptsLegacy && SaveEnvelope.TryUnwrap(text, SaveKey.Legacy(), out payload);
         }
     }
 }
