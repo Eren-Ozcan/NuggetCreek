@@ -125,7 +125,22 @@ namespace NuggetCreek.Game
                 return new PlayerProgress();
             }
 
-            SaveData data = JsonUtility.FromJson<SaveData>(json);
+            SaveData data;
+            try
+            {
+                data = JsonUtility.FromJson<SaveData>(json);
+            }
+            catch (ArgumentException)
+            {
+                data = null;
+            }
+            if (data == null)
+            {
+                // Signed but unreadable: only a bug writes this, and nothing in it can be trusted.
+                Debug.LogWarning("Save is not valid JSON; starting a fresh game.");
+                LoadIssue = ("load", "parse");
+                return new PlayerProgress();
+            }
             var progress = new PlayerProgress
             {
                 Dollars = ParseOrZero(data.dollars),
