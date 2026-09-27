@@ -147,7 +147,8 @@ namespace NuggetCreek.Game.UI
                 int next = owned + 1;
                 if (!session.IsNextTierUnlocked)
                 {
-                    row.Detail.SetText($"Tier {next + 1} unlocks in {GameCatalog.RegionNames[next]}.");
+                    int creek = System.Math.Min(session.Economy.TierRegion(next), GameCatalog.RegionNames.Count - 1);
+                    row.Detail.SetText($"Tier {next + 1} unlocks in {GameCatalog.RegionNames[creek]}.");
                     SetBuy(row, null, "LOCKED", false);
                     return;
                 }
@@ -339,6 +340,7 @@ namespace NuggetCreek.Game.UI
                 case Stat.AllIncome: return "all income";
                 case Stat.ActiveIncome: return "swipe income";
                 case Stat.MotherLodeReward: return "Mother Lode reward";
+                case Stat.MotherLodeDamage: return "boss damage";
                 case Stat.MotherLodeFrequency: return "Mother Lode wait";
                 case Stat.CollectRadius: return "pick-up radius";
                 case Stat.CollectibleLifetime: return "time on screen";
