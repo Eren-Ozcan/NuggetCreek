@@ -17,10 +17,14 @@ namespace NuggetCreek.Game
     {
         const float AutosaveSeconds = 10;
         const float TrustedTimeWaitSeconds = 6;
+        /// <summary>The screen must stay calm this long after a break before its interstitial plays.</summary>
+        const float BreakSettleSeconds = 1;
 
         GameSession session;
         readonly GameClock clock = new GameClock();
         IRewardedAds ads;
+        IInterstitialAds interstitials;
+        AdMobAds admob;
         IStore store;
         ShopPanel shop;
         Text shopLabel;
@@ -65,6 +69,7 @@ namespace NuggetCreek.Game
         Button crewChip;
         Text crewChipLabel;
         Button summonLode;
+        Button privacyButton;
 
         float autosaveIn = AutosaveSeconds;
         bool returnPending;
@@ -76,6 +81,8 @@ namespace NuggetCreek.Game
         float foregroundSince;
         DateTime pausedAtUtc;
         bool wasPaused;
+        bool pausedUnderAd;
+        float settledFor;
 
         void Awake()
         {
@@ -93,8 +100,7 @@ namespace NuggetCreek.Game
             if (SaveStore.LoadIssue.HasValue)
                 session.Events.Emit("save_error",
                     ("stage", SaveStore.LoadIssue.Value.Stage), ("code", SaveStore.LoadIssue.Value.Code));
-            ads = new FakeRewardedAds();
-            ads.Rewarded += placement => session.Events.Emit("ad_rewarded", ("placement", placement));
+            CreateAds();
             lateDouble = new LateDoubleOffer(config);
             BuildUi();
         }
@@ -103,6 +109,7 @@ namespace NuggetCreek.Game
         {
             clock.TrustedTimeArrived += OnTrustedTime;
             StartCoroutine(clock.FetchTrustedTime());
+            admob?.Start();
             // Preload before the offline modal opens so most returns open on Ready (3.3.1 rule 3).
             ads.Load();
             if (session.Progress.LastSeenUtc > 0)
@@ -119,6 +126,8 @@ namespace NuggetCreek.Game
             float dt = Time.deltaTime;
             UpdateTrustedDay();
             ads.Tick(Time.unscaledDeltaTime);
+            if (!ReferenceEquals(interstitials, ads))
+                interstitials.Tick(Time.unscaledDeltaTime);
             store.Tick(Time.unscaledDeltaTime);
             session.TickShop(dt);
 
@@ -141,6 +150,7 @@ namespace NuggetCreek.Game
                 }
             }
             offlineModal.Tick(Time.unscaledDeltaTime);
+            UpdateInterstitial(modalOpen);
 
             if (returnPending && Time.realtimeSinceStartup - returnWaitStarted > TrustedTimeWaitSeconds)
                 offlineModal.ShowWaitingForConnection();
@@ -164,9 +174,22 @@ namespace NuggetCreek.Game
 
         void OnApplicationPause(bool paused)
         {
+            // A full screen ad pauses the app on Android; that is neither a leave nor a return.
+            if (paused && (ads.IsShowing || interstitials.IsShowing))
+            {
+                pausedUnderAd = true;
+                Save();
+                return;
+            }
+            if (!paused && pausedUnderAd)
+            {
+                pausedUnderAd = false;
+                return;
+            }
             if (paused)
             {
                 motherLode.FinishNow();
+                session.ClearPendingInterstitial();
                 session.Events.Emit("session_end", session.EndSessionParameters(Time.realtimeSinceStartup - foregroundSince));
                 pausedAtUtc = DateTime.UtcNow;
                 wasPaused = true;
@@ -194,6 +217,51 @@ namespace NuggetCreek.Game
             if (!returnPending && !offlineModal.HasUnclaimed)
                 clock.StampLeave(session.Progress);
             SaveStore.Save(session.Progress);
+        }
+
+        // --- Ads (design doc 8.4) ---
+
+        void CreateAds()
+        {
+            if (Application.isEditor)
+            {
+                ads = new FakeRewardedAds();
+                interstitials = new FakeInterstitialAds();
+                interstitials.Opened += StampFullScreenAd;
+            }
+            else
+            {
+                admob = new AdMobAds { Log = (name, parameters) => session.Events.Emit(name, parameters) };
+                admob.ConsentResolved += FirebaseServices.SetConsent;
+                ads = admob;
+                interstitials = admob;
+            }
+            ads.Opened += StampFullScreenAd;
+            ads.Rewarded += placement => session.Events.Emit("ad_rewarded", ("placement", placement));
+        }
+
+        void StampFullScreenAd() => session.MarkFullScreenAdShown(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0);
+
+        /// <summary>
+        /// Plays the interstitial a creek unlock, tier or rebirth earned once the screen is calm:
+        /// no panel, modal, Pete line, Mother Lode or return in progress (studio ad policy 2-4).
+        /// </summary>
+        void UpdateInterstitial(bool modalOpen)
+        {
+            double now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() / 1000.0;
+            string block = session.InterstitialBlock(now);
+            // Early players and paying players never even request one.
+            if (block == null || block == "cooldown")
+                interstitials.Load();
+
+            bool settled = !modalOpen && !motherLode.IsActive && !returnPending && !offlineModal.HasUnclaimed
+                && !pete.IsShowing && !ads.IsShowing && !interstitials.IsShowing;
+            settledFor = settled ? settledFor + Time.unscaledDeltaTime : 0;
+            if (session.PendingInterstitial == null || settledFor < BreakSettleSeconds)
+                return;
+            string trigger = session.PendingInterstitial;
+            if (session.TakeInterstitial(now, interstitials.IsLoaded))
+                interstitials.Show(trigger, Save);
         }
 
         // --- Offline return ---
@@ -275,6 +343,11 @@ namespace NuggetCreek.Game
             statusLabel.rectTransform.Place(new Vector2(0, 0.22f), new Vector2(1, 0.45f));
             guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
             guildButton.AsRect().Box(Vector2.one, new Vector2(220, 70), new Vector2(-20, -20));
+
+            // Consent choices (studio ad policy rule 8); only where the law asks for a way back.
+            privacyButton = Ui.Button("PrivacyButton", top, "Privacy", Palette.ButtonAlt, () => admob?.ShowPrivacyOptions(), out _, 26);
+            privacyButton.AsRect().Box(Vector2.one, new Vector2(160, 50), new Vector2(-20, -100));
+            privacyButton.SetActive(false);
 
             dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
             dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, 70), new Vector2(20, -95));
@@ -411,6 +484,9 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
+            bool privacy = admob != null && admob.PrivacyOptionsRequired;
+            if (privacyButton.gameObject.activeSelf != privacy)
+                privacyButton.SetActive(privacy);
             SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily: tomorrow");
             gemsLabel.SetText(Effects.Gems(progress.Gems));
             RefreshGoal();
@@ -608,7 +684,7 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1100), new Vector2(-10, -topHeight - 10));
+            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1300), new Vector2(-10, -topHeight - 10));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+$1T", () => session.Earn(1e12));
@@ -619,13 +695,33 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 7, "Chest now", AddDebugChest);
             AddDebugButton(column, 8, "Next day", () => debugDayShift++);
             AddDebugButton(column, 9, "Skip intro", () => session.IntroSkipped = true);
-            AddDebugButton(column, 10, "Reset", ResetGame);
+            AddDebugButton(column, 10, "Interstitial", DebugInterstitial);
+            AddDebugButton(column, 11, AdMobAds.DebugEea ? "EEA: on" : "EEA: off", ToggleDebugEea);
+            AddDebugButton(column, 12, "Reset", ResetGame);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
         {
             Button button = Ui.Button(text, column, text, new Color(0, 0, 0, 0.45f), onClick, out _, 30);
             button.AsRect().Box(new Vector2(1, 1), new Vector2(200, 84), new Vector2(0, -index * 96));
+        }
+
+        /// <summary>Consent form test (debug builds): takes effect on the next launch.</summary>
+        void ToggleDebugEea()
+        {
+            if (admob == null)
+                return;
+            AdMobAds.DebugEea = !AdMobAds.DebugEea;
+            Debug.Log($"[Ads] debug EEA {(AdMobAds.DebugEea ? "on" : "off")}; restart the app");
+        }
+
+        /// <summary>First press loads (early players never preload one), the next shows it.</summary>
+        void DebugInterstitial()
+        {
+            if (interstitials.IsLoaded)
+                interstitials.Show("debug", Save);
+            else
+                interstitials.Load();
         }
 
         /// <summary>Pretends the player left 2 hours ago; exercises the whole return path without touching the device clock.</summary>
