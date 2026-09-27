@@ -63,7 +63,7 @@ namespace NuggetCreek.Game.UI
             streakText = Ui.Label("StreakText", list, "", 34, TextAnchor.MiddleLeft, Palette.Text);
             Ui.PreferredHeight(streakText, 130);
             rescue = Ui.Button("RescueStreak", list, "", Palette.Ad, Rescue, out rescueLabel, 36);
-            Ui.PreferredHeight(rescue, 110);
+            Ui.PreferredHeight(rescue, Ui.TapHeight);
             claimStreak = Ui.Button("ClaimStreak", list, "", Palette.Button, ClaimStreak, out claimStreakLabel, 40);
             Ui.PreferredHeight(claimStreak, 120);
 
@@ -194,7 +194,8 @@ namespace NuggetCreek.Game.UI
         JobRow NewJobRow(Transform list, int slot)
         {
             Image background = Ui.Image("Job" + slot, list, Palette.Row);
-            Ui.PreferredHeight(background, 150);
+            // Tall enough for a TapHeight Claim button with 20 above and below.
+            Ui.PreferredHeight(background, Ui.TapHeight + 40);
             RectTransform rt = background.rectTransform;
             var row = new JobRow();
             row.Title = Ui.Label("Title", rt, "", 38, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);

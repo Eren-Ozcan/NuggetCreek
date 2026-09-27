@@ -83,7 +83,7 @@ namespace NuggetCreek.Game.UI
             for (int i = 0; i < GameCatalog.Perks.Count; i++)
                 perkRows.Add(NewPerkRow(list, i));
             Button reset = Ui.Button("ResetPerks", list, "Reset perks (free)", Palette.ButtonAlt, () => session.ResetPerks(), out _, 36);
-            Ui.PreferredHeight(reset, 110);
+            Ui.PreferredHeight(reset, Ui.TapHeight);
 
             Close();
         }

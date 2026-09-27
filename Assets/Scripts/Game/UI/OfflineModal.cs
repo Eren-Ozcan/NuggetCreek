@@ -63,7 +63,7 @@ namespace NuggetCreek.Game.UI
             capLine.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -560), new Vector2(-40, -440));
 
             upgradeAmos = Ui.Button("UpgradeAmos", card, "Upgrade Amos", Palette.Amos, () => UpgradeAmosRequested?.Invoke(), out _, 36);
-            upgradeAmos.AsRect().Box(new Vector2(0.5f, 1), new Vector2(460, 100), new Vector2(0, -580));
+            upgradeAmos.AsRect().Box(new Vector2(0.5f, 1), new Vector2(460, Ui.TapHeight), new Vector2(0, -580));
 
             claim = Ui.Button("Claim", card, "Claim", Palette.ButtonAlt, Claim, out _, 44);
             claim.AsRect().Place(Vector2.zero, new Vector2(0.5f, 0), new Vector2(40, 50), new Vector2(-15, 210));

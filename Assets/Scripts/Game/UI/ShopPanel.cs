@@ -69,7 +69,7 @@ namespace NuggetCreek.Game.UI
                 var index = (Tab)i;
                 tabButtons[i] = Ui.Button("Tab" + index, root, TabNames[i], Palette.ButtonAlt, () => Show(index), out _, 38);
                 tabButtons[i].AsRect().Place(new Vector2(i / 3f, 1), new Vector2((i + 1) / 3f, 1),
-                    new Vector2(i == 0 ? 20 : 8, -280), new Vector2(i == 2 ? -20 : -8, -170));
+                    new Vector2(i == 0 ? 20 : 8, -170 - Ui.TapHeight), new Vector2(i == 2 ? -20 : -8, -170));
             }
 
             result = Ui.Label("ShopResult", root, "", 34, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
@@ -77,7 +77,7 @@ namespace NuggetCreek.Game.UI
 
             for (int i = 0; i < 3; i++)
             {
-                pages[i] = Ui.Rect("Page" + (Tab)i, root).Place(Vector2.zero, Vector2.one, new Vector2(0, 180), new Vector2(0, -290));
+                pages[i] = Ui.Rect("Page" + (Tab)i, root).Place(Vector2.zero, Vector2.one, new Vector2(0, 180), new Vector2(0, -180 - Ui.TapHeight));
             }
 
             RectTransform offers = Ui.ScrollList(pages[0], 16, 24);
@@ -105,7 +105,7 @@ namespace NuggetCreek.Game.UI
                 if (!item.IsOffer)
                     AddGemRow(gems, item);
             Button restore = Ui.Button("Restore", gems, "Restore purchases", Palette.ButtonAlt, RestorePurchases, out _, 34);
-            Ui.PreferredHeight(restore, 100);
+            Ui.PreferredHeight(restore, Ui.TapHeight);
 
             Close();
         }

@@ -115,7 +115,7 @@ namespace NuggetCreek.Game.UI
             slot.Effect.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 0), new Vector2(-30, -90));
 
             slot.Hire = Ui.Button("Hire", slot.Root, "", Palette.GemButton, () => Hire(slot), out slot.HireLabel, 38);
-            slot.Hire.AsRect().Box(new Vector2(1, 0), new Vector2(340, 100), new Vector2(-30, 30));
+            slot.Hire.AsRect().Box(new Vector2(1, 0), new Vector2(340, Ui.TapHeight), new Vector2(-30, 30));
             return slot;
         }
 

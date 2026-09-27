@@ -44,6 +44,12 @@ namespace NuggetCreek.Game.UI
         /// </summary>
         public static float TextScale { get; set; } = 1;
 
+        /// <summary>
+        /// Smallest control height in reference units: 48 dp on a 1080 x 2340 phone, the most
+        /// common shape (Android's minimum touch target).
+        /// </summary>
+        public const float TapHeight = 120;
+
         public static Canvas CreateCanvas(string name, int sortingOrder)
         {
             var go = new GameObject(name, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));

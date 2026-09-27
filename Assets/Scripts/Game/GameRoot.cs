@@ -448,7 +448,7 @@ namespace NuggetCreek.Game
             Transform root = canvas.transform;
             // Its purchase sheet puts itself on top when it opens.
             store = CreateStore(root);
-            const float topHeight = 300;
+            const float topHeight = 330;
             const float bottomHeight = 220;
 
             RectTransform creekRect = Ui.Rect("Creek", root).Place(Vector2.zero, Vector2.one, new Vector2(0, bottomHeight), new Vector2(0, -topHeight));
@@ -458,30 +458,42 @@ namespace NuggetCreek.Game
             motherLode = new MotherLodeView(session, root, creekRect);
             motherLode.Finished += Save;
 
+            // Three rows (design doc 12.2): buttons and the Dollar counter, Gems and status, the
+            // goal bar. Every control is at least TapHeight tall: 48 dp on a 1080 px wide phone.
             RectTransform top = Ui.Image("TopBar", root, Palette.Bar).rectTransform
                 .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -topHeight), Vector2.zero);
-            dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
-            dollarsLabel.rectTransform.Place(new Vector2(0, 0.45f), Vector2.one, Vector2.zero, new Vector2(0, -20));
-            gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.UpperLeft, Palette.Gem, FontStyle.Bold);
-            gemsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -80), new Vector2(0, -24));
-            statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
-            statusLabel.rectTransform.Place(new Vector2(0, 0.22f), new Vector2(1, 0.45f));
-            guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
-            guildButton.AsRect().Box(Vector2.one, new Vector2(220, 70), new Vector2(-20, -20));
 
-            // Holds the consent choices (studio ad policy rule 8) and the accessibility options.
             Ui.Button("SettingsButton", top, "Settings", Palette.ButtonAlt, OpenSettings, out _, 26).AsRect()
-                .Box(Vector2.one, new Vector2(160, 50), new Vector2(-20, -100));
-
+                .Box(new Vector2(0, 1), new Vector2(140, Ui.TapHeight), new Vector2(16, -14));
             dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
-            dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, 70), new Vector2(20, -95));
+            dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, Ui.TapHeight), new Vector2(166, -14));
+            guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
+            guildButton.AsRect().Box(Vector2.one, new Vector2(230, Ui.TapHeight), new Vector2(-16, -14));
+
+            dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            dollarsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(376, -144), new Vector2(-256, -4));
+            // Late-game amounts are long; shrink rather than wrap.
+            dollarsLabel.resizeTextForBestFit = true;
+            dollarsLabel.resizeTextMinSize = 56;
+            dollarsLabel.resizeTextMaxSize = 104;
+            // Best fit only shrinks text that may not overflow.
+            dollarsLabel.verticalOverflow = VerticalWrapMode.Truncate;
+
+            gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.MiddleLeft, Palette.Gem, FontStyle.Bold);
+            gemsLabel.rectTransform.Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(30, -206), new Vector2(330, -144));
+            statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
+            statusLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(330, -206), new Vector2(-30, -144));
+            statusLabel.resizeTextForBestFit = true;
+            statusLabel.resizeTextMinSize = 24;
+            statusLabel.resizeTextMaxSize = 36;
+            statusLabel.verticalOverflow = VerticalWrapMode.Truncate;
 
             goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
-            goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0.22f), new Vector2(20, 6), new Vector2(-250, -2));
+            goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(20, 4), new Vector2(-250, 4 + Ui.TapHeight));
             goalLabel.name = "Goal";
             // Goal bonus (design doc 8.4): a rewarded ad for a few Gems, a handful of times a day.
             goalAd = Ui.Button("GoalAd", top, "", Palette.Ad, WatchGoalAd, out goalAdLabel, 28);
-            goalAd.AsRect().Place(new Vector2(1, 0), new Vector2(1, 0.22f), new Vector2(-240, 6), new Vector2(-20, -2));
+            goalAd.AsRect().Place(new Vector2(1, 0), new Vector2(1, 0), new Vector2(-240, 4), new Vector2(-20, 4 + Ui.TapHeight));
             goalAd.SetActive(false);
 
             RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
@@ -500,26 +512,26 @@ namespace NuggetCreek.Game
             shopButton.AsRect().Place(new Vector2(2 / 3f, 0), Vector2.one, new Vector2(10, 30), new Vector2(-30, -30));
 
             lateDoubleChip = Ui.Button("LateDouble", root, "Double your last haul?", Palette.Ad, WatchLateDouble, out _, 34);
-            lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, 100), new Vector2(0, -topHeight - 20));
+            lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, Ui.TapHeight), new Vector2(0, -topHeight - 20));
             lateDoubleChip.SetActive(false);
 
             crewChip = Ui.Button("CrewChip", root, "", Palette.GemButton, () => candidateModal.Open(), out crewChipLabel, 34);
-            crewChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, 100), new Vector2(20, -topHeight - 20));
+            crewChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, Ui.TapHeight), new Vector2(20, -topHeight - 20));
             crewChip.SetActive(false);
 
             Button collectionButton = Ui.Button("CollectionButton", root, "", Palette.ButtonAlt, () => collection.Open(), out collectionLabel, 32);
-            collectionButton.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 140));
+            collectionButton.AsRect().Box(new Vector2(1, 0), new Vector2(300, Ui.TapHeight), new Vector2(-20, bottomHeight + 155));
 
             claimChip = Ui.Button("ClaimChip", root, "New claim?", Palette.Button, () => guild.Open(), out _, 32);
-            claimChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, 100), new Vector2(20, -topHeight - 130));
+            claimChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, Ui.TapHeight), new Vector2(20, -topHeight - 150));
             claimChip.SetActive(false);
 
             chestChip = Ui.Button("ChestChip", root, "", Palette.Nugget, () => chestModal.Open(), out chestChipLabel, 32);
-            chestChip.AsRect().Box(new Vector2(1, 0), new Vector2(300, 100), new Vector2(-20, bottomHeight + 260));
+            chestChip.AsRect().Box(new Vector2(1, 0), new Vector2(300, Ui.TapHeight), new Vector2(-20, bottomHeight + 290));
             chestChip.SetActive(false);
 
             summonLode = Ui.Button("SummonLode", root, "", Palette.GemButton, SummonMotherLode, out Text summonLabel, 32);
-            summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, 100), new Vector2(-20, bottomHeight + 20));
+            summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, Ui.TapHeight), new Vector2(-20, bottomHeight + 20));
             summonLabel.SetText($"Mother Lode  {Effects.Gems(session.Economy.Config.MotherLodeSummonGems)}");
             summonLode.SetActive(false);
 
