@@ -103,6 +103,7 @@ namespace NuggetCreek.PlayModeTests
                 ",\"welcomeOffer\":9,\"weekendBoughtMask\":255,\"goldWashSecondsLeft\":-3,\"pendingGiantNuggets\":-1" +
                 ",\"sessionHourLog\":[99,-1],\"notifSent\":[1,2,3,4,5,6,7,8,9],\"notifPendingKinds\":[99],\"notifPendingUtc\":[1e300]" +
                 ",\"ageBand\":3,\"termsAccepted\":1,\"vibration\":9,\"peteSeen\":-1,\"featuresAnnounced\":-1}";
+            yield return StopGame();
             PlayerPrefs.SetString(SaveKeyName, SaveEnvelope.Wrap(json, SaveKey.Current()));
 
             yield return SceneManager.LoadSceneAsync("Creek");
@@ -278,8 +279,8 @@ namespace NuggetCreek.PlayModeTests
             }
             yield return Resize(Vector2Int.zero);
 
-            TestContext.Out.WriteLine("Tap targets under 48 dp:\n  " + string.Join("\n  ", small));
             Assert.That(findings, Is.Empty, "controls outside the screen:\n" + string.Join("\n", findings));
+            Assert.That(small, Is.Empty, "tap targets under 48 dp:\n" + string.Join("\n", small));
         }
 
         static RenderTexture target;
@@ -323,14 +324,17 @@ namespace NuggetCreek.PlayModeTests
             Rect visible = new Rect(0, 0, screen.x, screen.y);
             foreach (Selectable control in UnityEngine.Object.FindObjectsByType<Selectable>(FindObjectsSortMode.None))
             {
-                // The debug column is not in store builds; list items scroll into view.
-                if (!control.isActiveAndEnabled || control.GetComponentInParent<ScrollRect>() != null || IsDebug(control))
+                // The debug column is not in store builds.
+                if (!control.isActiveAndEnabled || IsDebug(control))
                     continue;
                 Rect r = ScreenRect((RectTransform)control.transform, camera);
                 string where = $"{state} {screen.x}x{screen.y} {Path(control.transform)}";
-                if (r.xMin < visible.xMin - 1 || r.yMin < visible.yMin - 1 || r.xMax > visible.xMax + 1 || r.yMax > visible.yMax + 1)
+                // List items scroll into view, so only their size counts.
+                bool inList = control.GetComponentInParent<ScrollRect>() != null;
+                if (!inList && (r.xMin < visible.xMin - 1 || r.yMin < visible.yMin - 1 || r.xMax > visible.xMax + 1 || r.yMax > visible.yMax + 1))
                     findings.Add($"{where} at {r}");
-                if (Math.Min(r.width, r.height) < minPixels && screen == new Vector2Int(1080, 2340))
+                // Held to 48 dp on the common 1080 px wide phones (Ui.TapHeight).
+                if (screen.x == 1080 && screen.y >= 2340 && Math.Min(r.width, r.height) < minPixels)
                     small.Add($"{Path(control.transform)} {Mathf.RoundToInt(r.width / minPixels * 48)}x{Mathf.RoundToInt(r.height / minPixels * 48)} dp");
             }
         }
@@ -365,6 +369,18 @@ namespace NuggetCreek.PlayModeTests
         }
 
         // --- helpers ---
+
+        /// <summary>
+        /// Removes the running game before a test writes a save for the next load, so a late
+        /// callback (trusted time, autosave) of the old game cannot write over it.
+        /// </summary>
+        static IEnumerator StopGame()
+        {
+            var root = UnityEngine.Object.FindAnyObjectByType<GameRoot>();
+            if (root != null)
+                UnityEngine.Object.Destroy(root.gameObject);
+            yield return null;
+        }
 
         static GameSession Session()
         {
