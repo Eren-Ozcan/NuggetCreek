@@ -42,6 +42,9 @@ namespace NuggetCreek.Game.UI
 
         GameSession session;
         RectTransform area;
+
+        /// <summary>The swipe area in pixels, the space <see cref="Sweep"/> works in.</summary>
+        public Vector2 AreaSize => area.rect.size;
         RectTransform amos;
         Text hint;
         Text vein;
@@ -194,7 +197,15 @@ namespace NuggetCreek.Game.UI
             Vector2 point = local - area.rect.min;
             Vector2 from = lastPointer ?? point;
             lastPointer = point;
+            Sweep(from, point);
+        }
 
+        /// <summary>
+        /// Collects everything within reach of one finger stroke, in creek-area pixels from its
+        /// bottom-left corner. Public so the PlayMode tests can swipe without an input device.
+        /// </summary>
+        public void Sweep(Vector2 from, Vector2 point)
+        {
             float radius = (float)session.CollectRadiusPixels;
             for (int i = live.Count - 1; i >= 0; i--)
             {
