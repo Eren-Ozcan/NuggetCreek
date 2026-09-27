@@ -103,29 +103,51 @@ namespace NuggetCreek.PlayModeTests
             Click("MapButton");
             yield return null;
             yield return Shot("4_map");
-            ClickIn("Pine Hollow", "Action");
+            ClickIn("Willow Bend", "Action");
             yield return null;
-
-            StringAssert.StartsWith("Pine Hollow", Label("Status").text);
-            Assert.That(Label("Dollars").text, Is.EqualTo("$998.4K"));
+            StringAssert.StartsWith("Willow Bend", Label("Status").text);
             Assert.That(GameObject.Find("Map"), Is.Null, "map closes after unlocking");
+
+            yield return UnlockCreek("Pine Hollow");
+            StringAssert.StartsWith("Pine Hollow", Label("Status").text);
+            double[] costs = new EconomyConfig().RegionUnlockCosts;
+            Assert.That(Label("Dollars").text, Is.EqualTo(NumberFormat.Dollars(1e6 - costs[1] - costs[2])));
+        }
+
+        [UnityTest]
+        public IEnumerator QuickBuyTakesTheCheapestUpgradeWithoutThePanel()
+        {
+            Click("+$1M");
+            yield return null;
+            StringAssert.StartsWith("+ ", LabelIn("QuickBuy", "Label").text);
+            // $1M minus $30 still shows as $1M; the button moves on to the next level instead.
+            string before = LabelIn("QuickBuy", "Label").text;
+            Click("QuickBuy");
+            yield return null;
+            Assert.That(LabelIn("QuickBuy", "Label").text, Is.Not.EqualTo(before));
+            Assert.That(IsActive("Upgrades"), Is.False, "no panel opens");
+        }
+
+        IEnumerator UnlockCreek(string creek)
+        {
+            Click("MapButton");
+            yield return null;
+            ClickIn(creek, "Action");
+            yield return null;
         }
 
         [UnityTest]
         public IEnumerator SilverForkOffersCrewForGems()
         {
             Click("+$1M");
-            Click("MapButton");
-            yield return null;
-            ClickIn("Pine Hollow", "Action");
-            yield return null;
+            yield return UnlockCreek("Willow Bend");
+            yield return UnlockCreek("Pine Hollow");
             Assert.That(IsActive("CandidateModal"), Is.False, "no candidates in Pine Hollow");
 
             Click("+$1T");
-            Click("MapButton");
-            yield return null;
-            ClickIn("Silver Fork", "Action");
-            yield return null;
+            yield return UnlockCreek("Bear Falls");
+            Assert.That(IsActive("CandidateModal"), Is.False, "no candidates in Bear Falls");
+            yield return UnlockCreek("Silver Fork");
             Assert.That(IsActive("CandidateModal"), Is.True);
             StringAssert.StartsWith("Pick one. The offer ends in 10:00", LabelIn("CandidateModal", "Timer").text);
             Button hire = Find("CandidateModal").GetComponentsInChildren<Button>().First(b => b.name == "Hire");
@@ -202,7 +224,7 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator CollectionShowsSavedStars()
         {
-            StringAssert.StartsWith("Nuggets  0/90", LabelIn("CollectionButton", "Label").text);
+            StringAssert.StartsWith("Nuggets  0/138", LabelIn("CollectionButton", "Label").text);
             Click("CollectionButton");
             yield return null;
             Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("???"));
@@ -210,13 +232,13 @@ namespace NuggetCreek.PlayModeTests
 
             // Round-trip catches through the signed save, then reload the scene on it.
             var progress = new PlayerProgress();
-            progress.NuggetCatches[0] = 12;
-            progress.NuggetCatches[4] = 1;
+            progress.NuggetCatches[GameCatalog.CommonNugget(0)] = 12;
+            progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
             SaveStore.Save(progress);
             yield return SceneManager.LoadSceneAsync("Creek");
             yield return null;
 
-            StringAssert.StartsWith("Nuggets  3/90", LabelIn("CollectionButton", "Label").text);
+            StringAssert.StartsWith("Nuggets  3/138", LabelIn("CollectionButton", "Label").text);
             Click("CollectionButton");
             yield return null;
             Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("Pebble  [**-]"));
@@ -263,15 +285,13 @@ namespace NuggetCreek.PlayModeTests
         {
             Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild Lv 0"));
             Click("+$1T");
-            Click("MapButton");
-            yield return null;
-            ClickIn("Pine Hollow", "Action");
-            yield return null;
+            yield return UnlockCreek("Willow Bend");
+            yield return UnlockCreek("Pine Hollow");
 
             Click("GuildButton");
             yield return null;
             Assert.That(IsActive("Guild"), Is.True);
-            StringAssert.Contains("Prospecting XP this claim: +28", Label("ClaimText").text);
+            StringAssert.Contains("Prospecting XP this claim: +63", Label("ClaimText").text);
             Assert.That(LabelIn("PerkPoints", "PerkPoints").text, Is.EqualTo("Perk Points: 0"));
             Assert.That(IsActive("night_watch"), Is.True);
             yield return Shot("14_guild");
