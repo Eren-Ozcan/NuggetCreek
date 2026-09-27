@@ -4,7 +4,8 @@
     "references": [
         "NuggetCreek.Core",
         "NuggetCreek.Game",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.Notifications"
     ],
     "includePlatforms": [
         "Editor"

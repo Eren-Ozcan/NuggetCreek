@@ -6,6 +6,7 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEditor.SceneManagement;
+using Unity.Notifications;
 using UnityEngine;
 
 namespace NuggetCreek.Editor
@@ -133,6 +134,10 @@ namespace NuggetCreek.Editor
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.targetSdkVersion = (AndroidSdkVersions)TargetSdk;
+            // Local notifications (design doc 10.1.1 rule 6): inexact only, and the 30 day chain
+            // must survive a phone restart.
+            NotificationSettings.AndroidSettings.ExactSchedulingOption = 0;
+            NotificationSettings.AndroidSettings.RescheduleOnDeviceRestart = true;
 
             AppVersion version = CurrentVersion();
             PlayerSettings.Android.bundleVersionCode = version.VersionCode;

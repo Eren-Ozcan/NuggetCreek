@@ -3,7 +3,8 @@
     "rootNamespace": "NuggetCreek.Game",
     "references": [
         "NuggetCreek.Core",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.Notifications.Android"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
