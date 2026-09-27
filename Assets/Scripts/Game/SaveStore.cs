@@ -88,6 +88,14 @@ namespace NuggetCreek.Game
             public int goalIndex;
             public double playSeconds;
             public double lastFullScreenAdUtc;
+            public int[] sessionHourLog;
+            public int[] notifSent;
+            public int[] notifPendingKinds;
+            public double[] notifPendingUtc;
+            public int notifIgnored;
+            public double notifMutedUntilUtc;
+            public int notifAsks;
+            public int notifAskSession;
             public int collectedSinceMotherLode;
             public double secondsSinceMotherLode;
             public double lastSeenUtc;
@@ -177,6 +185,14 @@ namespace NuggetCreek.Game
                 GoalIndex = data.goalIndex,
                 PlaySeconds = data.playSeconds,
                 LastFullScreenAdUtc = data.lastFullScreenAdUtc,
+                SessionHourLog = data.sessionHourLog,
+                NotifSent = data.notifSent,
+                NotifPendingKinds = data.notifPendingKinds,
+                NotifPendingUtc = data.notifPendingUtc,
+                NotifIgnored = data.notifIgnored,
+                NotifMutedUntilUtc = data.notifMutedUntilUtc,
+                NotifAsks = data.notifAsks,
+                NotifAskSession = data.notifAskSession,
                 CollectedSinceMotherLode = data.collectedSinceMotherLode,
                 SecondsSinceMotherLode = data.secondsSinceMotherLode,
                 LastSeenUtc = data.lastSeenUtc,
@@ -257,6 +273,14 @@ namespace NuggetCreek.Game
                 goalIndex = progress.GoalIndex,
                 playSeconds = progress.PlaySeconds,
                 lastFullScreenAdUtc = progress.LastFullScreenAdUtc,
+                sessionHourLog = progress.SessionHourLog,
+                notifSent = progress.NotifSent,
+                notifPendingKinds = progress.NotifPendingKinds,
+                notifPendingUtc = progress.NotifPendingUtc,
+                notifIgnored = progress.NotifIgnored,
+                notifMutedUntilUtc = progress.NotifMutedUntilUtc,
+                notifAsks = progress.NotifAsks,
+                notifAskSession = progress.NotifAskSession,
                 collectedSinceMotherLode = progress.CollectedSinceMotherLode,
                 secondsSinceMotherLode = progress.SecondsSinceMotherLode,
                 lastSeenUtc = progress.LastSeenUtc,
