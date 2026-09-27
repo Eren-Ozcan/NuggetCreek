@@ -62,8 +62,8 @@ Thumbs.db
 # Headless Unity batchmode debug logs (unity_*.log at repo root)
 /unity_*.log
 
-# Coplay package's own data (logs, local settings)
-Packages/Coplay/Editor/
+# Coplay package's own data (chat history, logs, local settings)
+/Packages/Coplay/
 
 # .NET test project for the engine-free core (tests/); keep its csproj despite the Unity rule above
 !/tests/**/*.csproj
