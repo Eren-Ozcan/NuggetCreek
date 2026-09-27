@@ -107,3 +107,8 @@ android-keystore/
 
 # Created by the Firebase plugin for the ignored desktop config; empty in git
 /Assets/StreamingAssets.meta
+
+# Game art (sprites, portraits, creek backgrounds); the masters live in the private pictures
+# repo, fetched by scripts/fetch-art.sh
+/Assets/Resources/
+/Assets/Resources.meta
