@@ -22,11 +22,19 @@ namespace NuggetCreek.Balance
             int days = ArgInt(args, "--days", 30);
             int seeds = ArgInt(args, "--seeds", 5);
             bool verbose = args.Contains("--verbose");
+            // Prestige overrides for every mode: XP = floor((total / divisor) ^ exponent).
+            double exponent = ArgDouble(args, "--exponent", new EconomyConfig().PrestigeXpExponent);
+            double divisorOverride = ArgDouble(args, "--divisor", new EconomyConfig().PrestigeXpDivisor);
+            Action<EconomyConfig> prestigeTuning = c =>
+            {
+                c.PrestigeXpExponent = exponent;
+                c.PrestigeXpDivisor = divisorOverride;
+            };
 
             var runs = new List<(BotProfile profile, Action<EconomyConfig> tune)>();
             if (args.Contains("--pine"))
             {
-                // Pine Hollow must open inside the first session for every player (design doc 9, 10).
+                // Willow Bend (creek 2) must open about 5 minutes into the first session for every player (design doc 9, 10).
                 foreach (double scale in new[] { 3.781, 3.6, 3.4, 3.2, 3.0 })
                 {
                     var minutes = Enumerable.Range(0, 20).Select(seed =>
@@ -52,6 +60,11 @@ namespace NuggetCreek.Balance
                 Console.WriteLine("AmosLevelCosts = { " + string.Join(", ", amos) + " }");
                 return 0;
             }
+            if (args.Contains("--tune-late"))
+            {
+                TuneLate(args, seeds, prestigeTuning);
+                return 0;
+            }
             if (args.Contains("--calibrate"))
             {
                 double divisor = ArgDouble(args, "--divisor", new EconomyConfig().PrestigeXpDivisor);
@@ -61,6 +74,7 @@ namespace NuggetCreek.Balance
                 Console.WriteLine($"active/idle ratio {ratio}, past-cap rate {pastCap:0%}");
                 Action<EconomyConfig> prestige = c =>
                 {
+                    prestigeTuning(c);
                     c.PrestigeXpDivisor = divisor;
                     c.ActiveIdleRatio = ratio;
                     c.OfflinePastCapRate = pastCap;
@@ -124,6 +138,7 @@ if (args.Contains("--offline"))
                 for (int seed = 0; seed < seeds; seed++)
                 {
                     var config = new EconomyConfig();
+                    prestigeTuning(config);
                     tune(config);
                     reports.Add(new PlayerBot(config, profile, 1000 + seed).Run(days));
                 }
@@ -144,8 +159,7 @@ if (args.Contains("--offline"))
             double[] targets = PacingModel.TargetDays;
             for (int creek = 1; creek < reports[0].CreekDays.Length; creek++)
             {
-                // Pine Hollow: about 10 minutes into the first session (design doc 10).
-                double target = creek == 1 ? Calibrator.PineHollowDay : targets[creek];
+                double target = targets[creek];
                 var reached = reports.Select(r => r.CreekDays[creek]).Where(d => !double.IsNaN(d)).ToList();
                 string name = GameCatalog.RegionNames[creek];
                 if (target > days)
@@ -169,6 +183,15 @@ if (args.Contains("--offline"))
                 pass &= ok;
                 double multiplier = reports.Average(r => r.CreekMultipliers[creek]);
                 Console.WriteLine($"{name,-14}{target,12:0.00}{mean,16:0.00}{$"{reached.Min():0.00}..{reached.Max():0.00}",18}{off,10:+0%;-0%}{"x" + multiplier.ToString("0.0"),10}{(ok ? "" : "  <-- outside")}");
+            }
+
+            Console.WriteLine("Bosses beaten (design doc 3.4.1: creek r's boss after about r-1 rebirths):");
+            for (int creek = 0; creek < reports[0].BossDays.Length; creek++)
+            {
+                var beaten = reports.Where(r => !double.IsNaN(r.BossDays[creek])).ToList();
+                if (beaten.Count == 0)
+                    continue;
+                Console.WriteLine($"  {GameCatalog.RegionNames[creek],-18}{beaten.Count}/{reports.Count} runs, day {beaten.Average(r => r.BossDays[creek]),6:0.0}, after {beaten.Average(r => r.BossRebirths[creek]),4:0.0} rebirths");
             }
 
             var rebirths = reports.SelectMany(r => r.RebirthDays).ToList();
@@ -213,6 +236,66 @@ if (args.Contains("--offline"))
             }
             Console.WriteLine();
             return pass;
+        }
+
+        /// <summary>
+        /// Creeks past the 30-day calibration (design doc 6.2): one long run per iteration
+        /// measures when the target player reaches each late creek, and each creek's scale moves
+        /// toward the one that makes its window (days since the previous creek) match the curve.
+        /// Much cheaper than bisecting each creek with its own long runs.
+        /// </summary>
+        static void TuneLate(string[] args, int seeds, Action<EconomyConfig> prestigeTuning)
+        {
+            int iterations = ArgInt(args, "--iterations", 8);
+            int first = PacingModel.LastCalibratedRegion + 1;
+            double[] targets = PacingModel.TargetDays;
+            double[] scales = PacingModel.BotCalibration.ToArray();
+            string given = ArgString(args, "--scales");
+            if (given != null)
+                scales = given.Split(',').Select(s => double.Parse(s, CultureInfo.InvariantCulture)).ToArray();
+            int days = (int)Math.Ceiling(targets[targets.Length - 1] * 1.15);
+            for (int iteration = 0; iteration <= iterations; iteration++)
+            {
+                var reports = Enumerable.Range(0, seeds).Select(seed =>
+                {
+                    var config = new EconomyConfig();
+                    prestigeTuning(config);
+                    Calibrator.ApplyScales(config, scales);
+                    return new PlayerBot(config, new BotProfile { Name = "late" }, 1000 + seed).Run(days);
+                }).ToList();
+                double[] arrival = new double[targets.Length];
+                for (int creek = 0; creek < targets.Length; creek++)
+                {
+                    var reached = reports.Select(r => r.CreekDays[creek]).Where(d => !double.IsNaN(d)).ToList();
+                    arrival[creek] = reached.Count == reports.Count ? reached.Average() : double.NaN;
+                }
+                Console.WriteLine($"iteration {iteration}: " + string.Join("  ", Enumerable.Range(first - 1, targets.Length - first + 1)
+                    .Select(c => $"{c + 1}:{arrival[c]:0.0}/{targets[c]:0}")));
+                if (iteration == iterations)
+                    break;
+                for (int creek = first; creek < targets.Length; creek++)
+                {
+                    double wanted = targets[creek] - targets[creek - 1];
+                    double previous = double.IsNaN(arrival[creek - 1]) ? targets[creek - 1] : arrival[creek - 1];
+                    // Not reached: the creek is too dear, halve it.
+                    double factor = double.IsNaN(arrival[creek]) ? 0.5
+                        : Math.Pow(wanted / Math.Max(0.25, arrival[creek] - previous), 0.7);
+                    scales[creek] *= Math.Max(0.2, Math.Min(5, factor));
+                }
+                Console.WriteLine("  scales: " + string.Join(", ", scales.Skip(1).Select(s => s.ToString("0.###", CultureInfo.InvariantCulture))));
+            }
+            var solved = new EconomyConfig();
+            Calibrator.ApplyScales(solved, scales);
+            Console.WriteLine("BotCalibration = { " + string.Join(", ", scales.Select(s => s.ToString("0.###", CultureInfo.InvariantCulture))) + " }");
+            Console.WriteLine("RegionUnlockCosts = { " + string.Join(", ", solved.RegionUnlockCosts.Select(v => v.ToString("G2", CultureInfo.InvariantCulture))) + " }");
+            Console.WriteLine("TierCosts = { " + string.Join(", ", solved.TierCosts.Select(v => v.ToString("G2", CultureInfo.InvariantCulture))) + " }");
+            Console.WriteLine("UpgradeBaseCosts = { " + string.Join(", ", solved.UpgradeBaseCosts.Select(v => v.ToString("G2", CultureInfo.InvariantCulture))) + " }");
+        }
+
+        static string ArgString(string[] args, string name)
+        {
+            int index = Array.IndexOf(args, name);
+            return index >= 0 && index + 1 < args.Length ? args[index + 1] : null;
         }
 
         static double ArgDouble(string[] args, string name, double fallback)

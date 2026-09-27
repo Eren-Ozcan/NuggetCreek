@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NuggetCreek.Core;
 
 namespace NuggetCreek.Balance
@@ -41,6 +42,10 @@ namespace NuggetCreek.Balance
         public double[] CreekDays;
         /// <summary>Prestige multiplier when each creek was first reached.</summary>
         public double[] CreekMultipliers;
+        /// <summary>Day each creek's boss was first beaten (design doc 3.4.1); NaN = never.</summary>
+        public double[] BossDays;
+        /// <summary>Rebirths done when each boss was first beaten.</summary>
+        public int[] BossRebirths;
         public readonly List<double> RebirthDays = new List<double>();
         public readonly Dictionary<string, long> GemsBySource = new Dictionary<string, long>();
         public readonly Dictionary<string, long> GemsBySpend = new Dictionary<string, long>();
@@ -102,7 +107,14 @@ namespace NuggetCreek.Balance
             this.profile = profile;
             rng = new Random(seed);
             session = new GameSession(new Economy(config), new PlayerProgress(), new Random(seed + 1));
-            report = new BotReport { Profile = profile, CreekDays = new double[config.RegionCount], CreekMultipliers = new double[config.RegionCount] };
+            report = new BotReport
+            {
+                Profile = profile,
+                CreekDays = new double[config.RegionCount],
+                CreekMultipliers = new double[config.RegionCount],
+                BossDays = Enumerable.Repeat(double.NaN, config.RegionCount).ToArray(),
+                BossRebirths = new int[config.RegionCount],
+            };
             for (int i = 0; i < report.CreekDays.Length; i++)
                 report.CreekDays[i] = double.NaN;
             report.CreekDays[0] = 0;
@@ -292,6 +304,11 @@ namespace NuggetCreek.Balance
             }
             Gems("Mother Lode", () => !session.FinishMotherLode(run).IsZero);
             report.MotherLodes++;
+            if (run.BossBeaten && double.IsNaN(report.BossDays[run.BossRegion]))
+            {
+                report.BossDays[run.BossRegion] = DayOf(now);
+                report.BossRebirths[run.BossRegion] = session.Progress.Rebirths;
+            }
         }
 
         void Chests()
