@@ -245,6 +245,7 @@ namespace NuggetCreek.PlayModeTests
             var progress = new PlayerProgress();
             progress.NuggetCatches[GameCatalog.CommonNugget(0)] = 12;
             progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
+            yield return StopGame();
             SaveStore.Save(progress);
             yield return SceneManager.LoadSceneAsync("Creek");
             yield return null;
@@ -420,6 +421,7 @@ namespace NuggetCreek.PlayModeTests
         {
             // Past the early game (design doc 8.4: creek 3 and 20 minutes of play).
             var progress = new PlayerProgress { RegionsUnlocked = 4, BestRegionsUnlocked = 4, RegionIndex = 3, PlaySeconds = 30 * 60 };
+            yield return StopGame();
             SaveStore.Save(progress);
             yield return SceneManager.LoadSceneAsync("Creek");
             yield return null;
@@ -490,6 +492,18 @@ namespace NuggetCreek.PlayModeTests
         }
 
         // --- helpers ---
+
+        /// <summary>
+        /// Removes the running game before a test writes a save for the next load, so a late
+        /// callback (trusted time, autosave) of the old game cannot write over it.
+        /// </summary>
+        static IEnumerator StopGame()
+        {
+            var root = UnityEngine.Object.FindAnyObjectByType<GameRoot>();
+            if (root != null)
+                UnityEngine.Object.Destroy(root.gameObject);
+            yield return null;
+        }
 
         static void SendSave() =>
             UnityEngine.Object.FindAnyObjectByType<GameRoot>().SendMessage("Save");
