@@ -27,11 +27,14 @@ namespace NuggetCreek.Game.UI
         }
 
         /// <summary>Shows the next due line unless a menu or the Mother Lode has the screen.</summary>
+        public bool IsShowing => showing.HasValue;
+
         public void Refresh(bool screenBusy)
         {
             if (screenBusy)
             {
                 root.SetActive(false);
+                showing = null;
                 return;
             }
             // Re-read every frame: a line whose moment passed before the tap goes away by itself.

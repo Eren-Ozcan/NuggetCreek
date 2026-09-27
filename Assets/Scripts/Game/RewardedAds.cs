@@ -3,11 +3,17 @@ using UnityEngine;
 
 namespace NuggetCreek.Game
 {
-    /// <summary>What the game needs from a rewarded ad SDK. The real mediation adapter comes later.</summary>
+    /// <summary>What the game needs from a rewarded ad SDK (<see cref="AdMobAds"/> on a device).</summary>
     public interface IRewardedAds
     {
         bool IsLoaded { get; }
         bool IsOnline { get; }
+
+        /// <summary>True from Show until the ad closes; the app pauses underneath a real ad.</summary>
+        bool IsShowing { get; }
+
+        /// <summary>Raised when the ad takes the screen; stamps the shared cooldown.</summary>
+        event Action Opened;
 
         /// <summary>Raised when an ad finishes loading, including late fills.</summary>
         event Action Loaded;
@@ -42,7 +48,9 @@ namespace NuggetCreek.Game
 
         public bool IsLoaded { get; private set; }
         public bool IsOnline => Application.internetReachability != NetworkReachability.NotReachable;
+        public bool IsShowing => showLeft >= 0;
 
+        public event Action Opened;
         public event Action Loaded;
         public event Action<string> Rewarded;
 
@@ -64,6 +72,7 @@ namespace NuggetCreek.Game
             pendingShow = onFinished;
             pendingPlacement = placement;
             showLeft = ShowSeconds;
+            Opened?.Invoke();
         }
 
         public void Tick(float deltaSeconds)
