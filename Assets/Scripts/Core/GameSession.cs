@@ -166,6 +166,8 @@ namespace NuggetCreek.Core
             Progress.NuggetCatches[index] = after;
             int stars = Economy.NuggetStars(after) - Economy.NuggetStars(before);
             CountJob(DailyJobKind.CollectionStars, stars);
+            if (stars > 0)
+                Emit("collection_star", ("nugget_id", GameCatalog.Nuggets[index].Id), ("stars", Economy.NuggetStars(after)), ("total_stars", TotalStars));
             return new NuggetCatch(index, before == 0, stars);
         }
 
@@ -234,6 +236,11 @@ namespace NuggetCreek.Core
         public BigNumber Collect(CollectibleKind kind, bool doubleCatch, bool critical = false)
         {
             BigNumber value = CatchValue(kind, doubleCatch, critical);
+            if (Progress.ManualCollected == 0)
+                Emit("first_manual_catch");
+            Tally.ManualCatches++;
+            if (kind != CollectibleKind.GoldDust)
+                Tally.Nuggets++;
             AdvanceVein();
             CountTowardChest();
             CountJob(DailyJobKind.ManualCatches);
@@ -241,16 +248,17 @@ namespace NuggetCreek.Core
                 CountJob(DailyJobKind.Nuggets);
             Progress.ManualCollected++;
             Progress.CollectedSinceMotherLode++;
-            Earn(value);
+            Earn(value, IncomeSource.Manual);
             return value;
         }
 
-        public void Earn(BigNumber amount)
+        public void Earn(BigNumber amount, IncomeSource source = IncomeSource.Other)
         {
             if (amount <= BigNumber.Zero)
                 return;
             Progress.Dollars += amount;
             Progress.TotalEarned += amount;
+            Tally.Add(source, amount);
         }
 
         // --- Idle and offline ---
@@ -269,7 +277,7 @@ namespace NuggetCreek.Core
             if (!IdleActive || deltaSeconds <= 0)
                 return BigNumber.Zero;
             BigNumber earned = IdleRate * deltaSeconds;
-            Earn(earned);
+            Earn(earned, IncomeSource.Idle);
             return earned;
         }
 
@@ -279,6 +287,8 @@ namespace NuggetCreek.Core
         public OfflineResult EvaluateOffline(OfflineClockInput clock)
         {
             OfflineResult result = offline.Evaluate(clock, OfflineCapSeconds, OfflineRate);
+            if (result.Status == OfflineStatus.RejectedClockTamper)
+                Emit("clock_tamper", ("elapsed_s", (long)result.ElapsedSeconds), ("source", "offline"));
             BigNumber bonus = OfflineBoostBonus(clock.LastSeenUtc, result.CreditedSeconds);
             if (bonus.IsZero)
                 return result;
@@ -290,7 +300,15 @@ namespace NuggetCreek.Core
         {
             if (!result.IsPayable || multiplier < 1)
                 return false;
-            Earn(result.Amount * multiplier);
+            BigNumber paid = result.Amount * multiplier;
+            Earn(paid, IncomeSource.Offline);
+            Emit("offline_claim",
+                ("away_s", (long)result.ElapsedSeconds),
+                ("capped", result.CapReached),
+                ("cap_h", Math.Round(OfflineCapSeconds / 3600, 2)),
+                ("amount_log10", EventValues.Log10(paid)),
+                ("mult", multiplier),
+                ("double_path", multiplier > 1 ? "ad" : "none"));
             return true;
         }
 
@@ -315,6 +333,7 @@ namespace NuggetCreek.Core
             Progress.UpgradeLevels[index]++;
             RebuildStats();
             CountJob(DailyJobKind.UpgradesBought);
+            Tally.Upgrades++;
             return true;
         }
 
@@ -344,6 +363,7 @@ namespace NuggetCreek.Core
             if (!IsNextTierUnlocked || !TrySpend(NextTierCost))
                 return false;
             Progress.TierIndex++;
+            Emit("tier_up", ("new_tier", Progress.TierIndex + 1));
             return true;
         }
 
@@ -366,6 +386,7 @@ namespace NuggetCreek.Core
             Progress.BestRegionsUnlocked = Math.Max(Progress.BestRegionsUnlocked, Progress.RegionsUnlocked);
             if (Progress.RegionIndex >= Config.CrewCandidateFirstRegion)
                 OfferCandidates();
+            Emit("region_unlock", ("region", Progress.RegionIndex + 1));
             return true;
         }
 
@@ -390,9 +411,16 @@ namespace NuggetCreek.Core
 
         public bool BuyAmosLevel()
         {
-            if (!TrySpend(AmosNextCost))
+            BigNumber? cost = AmosNextCost;
+            if (!TrySpend(cost))
                 return false;
             Progress.AmosLevel++;
+            if (Progress.AmosLevel == 1)
+                Emit("idle_unlocked");
+            Emit("amos_level_up",
+                ("level", Progress.AmosLevel),
+                ("cap_h", Math.Round(OfflineCapSeconds / 3600, 2)),
+                ("cost_log10", EventValues.Log10(cost.Value)));
             return true;
         }
 
@@ -406,6 +434,7 @@ namespace NuggetCreek.Core
             Progress.PlaySeconds += deltaSeconds;
             Progress.SecondsSinceMotherLode += deltaSeconds;
             TickChest(deltaSeconds);
+            CheckFeatureUnlocks();
         }
 
         /// <summary>Dollars per second right now from swiping and the crew together.</summary>
@@ -427,8 +456,14 @@ namespace NuggetCreek.Core
         }
 
         /// <summary>Starts a Mother Lode at once for Gems; null when the player cannot pay.</summary>
-        public MotherLodeRun SummonMotherLode() =>
-            TrySpendGems(Config.MotherLodeSummonGems) ? StartMotherLode() : null;
+        public MotherLodeRun SummonMotherLode()
+        {
+            if (!TrySpendGems(Config.MotherLodeSummonGems, "mother_lode_summon"))
+                return null;
+            MotherLodeRun run = StartMotherLode();
+            run.Summoned = true;
+            return run;
+        }
 
         public BigNumber MotherLodeReward(MotherLodeRun run) =>
             Economy.MotherLodeReward(run.IncomePerSecond, run.PeakCombo, Stats);
@@ -440,27 +475,38 @@ namespace NuggetCreek.Core
                 return BigNumber.Zero;
             run.End();
             BigNumber reward = MotherLodeReward(run);
-            Earn(reward);
+            Earn(reward, IncomeSource.Event);
             CountJob(DailyJobKind.MotherLodes);
-            EarnGems(Config.MotherLodeGemReward);
+            EarnGems(Config.MotherLodeGemReward, "mother_lode");
+            Emit("mother_lode",
+                ("trigger", run.Summoned ? "gem" : "natural"),
+                ("reward_log10", EventValues.Log10(reward)),
+                ("taps", run.Hits),
+                ("peak_combo", run.PeakCombo));
             return reward;
         }
 
         // --- Gems ---
 
-        public void EarnGems(int amount)
+        /// <param name="source">earn_virtual_currency's source (13.4.3), e.g. "goal" or "streak".</param>
+        public void EarnGems(int amount, string source = "other")
         {
-            if (amount > 0)
-                Progress.Gems += amount;
+            if (amount <= 0)
+                return;
+            Progress.Gems += amount;
+            Emit("earn_virtual_currency", ("virtual_currency_name", "gem"), ("value", amount), ("source", source));
         }
 
         public bool CanAffordGems(int? cost) => cost.HasValue && Progress.Gems >= cost.Value;
 
-        bool TrySpendGems(int? cost)
+        /// <param name="item">spend_virtual_currency's item_name (13.4.3).</param>
+        bool TrySpendGems(int? cost, string item)
         {
             if (!CanAffordGems(cost))
                 return false;
             Progress.Gems -= cost.Value;
+            if (cost.Value > 0)
+                Emit("spend_virtual_currency", ("virtual_currency_name", "gem"), ("value", cost.Value), ("item_name", item));
             return true;
         }
 
@@ -499,7 +545,7 @@ namespace NuggetCreek.Core
 
         public bool LevelUpCrew(int index)
         {
-            if (!TrySpendGems(CrewLevelUpCost(index)))
+            if (!TrySpendGems(CrewLevelUpCost(index), "crew_level"))
                 return false;
             Progress.CrewLevels[index]++;
             RebuildStats();
@@ -535,8 +581,10 @@ namespace NuggetCreek.Core
         /// <summary>Hires one of the candidates on offer; the other one returns to the pool.</summary>
         public bool HireCandidate(int crewIndex)
         {
-            if (Array.IndexOf(Progress.CrewCandidates, crewIndex) < 0 || !TrySpendGems(CrewHireCost))
+            int? cost = CrewHireCost;
+            if (Array.IndexOf(Progress.CrewCandidates, crewIndex) < 0 || !TrySpendGems(cost, "crew_hire"))
                 return false;
+            Emit("crew_candidate", ("member", GameCatalog.Crew[crewIndex].Id), ("outcome", "hired"), ("gem_cost", cost.Value));
             Progress.CrewLevels[crewIndex] = 1;
             Progress.FreeHireUsed = true;
             CloseCandidates();
@@ -544,7 +592,11 @@ namespace NuggetCreek.Core
             return true;
         }
 
-        public void PassCandidates() => CloseCandidates();
+        public void PassCandidates()
+        {
+            EmitCandidates("passed", 0);
+            CloseCandidates();
+        }
 
         /// <summary>Runs the candidate window down while the game is open; returns true when it just expired.</summary>
         public bool TickCandidates(double deltaSeconds)
@@ -554,6 +606,7 @@ namespace NuggetCreek.Core
             Progress.CandidateSecondsLeft -= deltaSeconds;
             if (Progress.CandidateSecondsLeft > 0)
                 return false;
+            EmitCandidates("expired", 0);
             CloseCandidates();
             return true;
         }
@@ -605,8 +658,10 @@ namespace NuggetCreek.Core
         {
             if (!IsCurrentGoalComplete)
                 return false;
-            EarnGems(CurrentGoalReward);
+            int reward = CurrentGoalReward;
+            EarnGems(reward, "goal");
             Progress.GoalIndex++;
+            Emit("goal_complete", ("goal_n", Progress.GoalIndex), ("gems", reward));
             return true;
         }
 

@@ -39,6 +39,7 @@ namespace NuggetCreek.Core
             long xp = ClaimXp;
             if (xp < 1)
                 return false;
+            Emit("prestige", ("xp_gain", xp), ("region", Progress.RegionsUnlocked), ("play_mins", (long)(Progress.PlaySeconds / 60)));
             Progress.ProspectingXp += xp;
             Progress.Rebirths++;
             Progress.Dollars = BigNumber.Zero;
@@ -110,6 +111,8 @@ namespace NuggetCreek.Core
             int gained = Progress.GuildLevel - before;
             if (gained > 0)
                 RebuildStats();
+            for (int level = before + 1; level <= Progress.GuildLevel; level++)
+                Emit("level_up", ("character", "guild"), ("level", level), ("milestone", Array.IndexOf(Config.GuildMilestoneLevels, level) >= 0));
             return gained;
         }
 
@@ -152,14 +155,17 @@ namespace NuggetCreek.Core
                 return false;
             Progress.PerkRanks[index]++;
             RebuildStats();
+            Emit("perk_buy", ("perk_id", GameCatalog.Perks[index].Id), ("rank", Progress.PerkRanks[index]), ("pp_left", PerkPoints));
             return true;
         }
 
         /// <summary>Free respec: every Perk Point comes back.</summary>
         public void ResetPerks()
         {
+            int spent = PerkPointsSpent;
             Array.Clear(Progress.PerkRanks, 0, Progress.PerkRanks.Length);
             RebuildStats();
+            Emit("perk_respec", ("pp_returned", spent));
         }
 
         void ApplyGuild()

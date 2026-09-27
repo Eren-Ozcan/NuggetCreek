@@ -65,6 +65,8 @@ namespace NuggetCreek.Core
                 long gap = today - Progress.LastStreakClaimDay;
                 if (gap >= 2)
                 {
+                    if (Progress.StreakIndex > 0)
+                        Emit("daily_streak_reset", ("lost_day", Progress.StreakIndex + 1));
                     // One missed day can be bought back with an ad; more starts over.
                     Progress.RescueStreakIndex = gap == 2 ? Progress.StreakIndex : -1;
                     Progress.StreakIndex = 0;
@@ -117,6 +119,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.StreakIndex = Progress.RescueStreakIndex;
             Progress.RescueStreakIndex = -1;
+            streakRescued = true;
             return true;
         }
 
@@ -125,11 +128,13 @@ namespace NuggetCreek.Core
             if (!CanClaimStreak)
                 return null;
             StreakReward reward = StreakRewardFor(Progress.StreakIndex);
-            EarnGems(reward.Gems);
+            EarnGems(reward.Gems, "streak");
             Earn(reward.Dollars);
             Progress.ChestsWaiting += reward.Chests;
             if (reward.Box >= 0)
-                GrantGearBox(reward.Box);
+                GrantGearBox(reward.Box, "streak");
+            Emit("daily_streak_claim", ("day", reward.Day), ("rescued", streakRescued));
+            streakRescued = false;
             Progress.RescueStreakIndex = -1;
             Progress.LastStreakClaimDay = Progress.CurrentDay;
             Progress.StreakIndex = (Progress.StreakIndex + 1) % Config.StreakGems.Length;
@@ -139,6 +144,9 @@ namespace NuggetCreek.Core
         // --- Daily jobs ---
 
         public int JobCount => Progress.JobKinds.Length;
+
+        /// <summary>The next streak claim follows an ad rescue (daily_streak_claim.rescued).</summary>
+        bool streakRescued;
 
         public DailyJobKind JobKind(int slot) => (DailyJobKind)Progress.JobKinds[slot];
 
@@ -155,7 +163,8 @@ namespace NuggetCreek.Core
             if (!JobDone(slot) || Progress.JobClaimed[slot])
                 return false;
             Progress.JobClaimed[slot] = true;
-            EarnGems(Config.DailyJobGems);
+            EarnGems(Config.DailyJobGems, "daily_job");
+            Emit("daily_job_done", ("job", EventValues.Snake(JobKind(slot).ToString())));
             return true;
         }
 
@@ -203,7 +212,8 @@ namespace NuggetCreek.Core
                 Progress.FreeWashUsed = true;
 
             int outcome = RollWash(random.NextDouble());
-            EarnGems(Config.WashGems[outcome]);
+            EarnGems(Config.WashGems[outcome], "wash");
+            Emit("daily_wash", ("method", afterAd ? "ad" : "free"), ("outcome", outcome));
             if (Config.WashMultipliers[outcome] > 1)
                 ApplyBoost(Config.WashMultipliers[outcome], Config.WashMinutes[outcome] * 60);
             if (Config.WashChests[outcome] > 0)
@@ -222,7 +232,7 @@ namespace NuggetCreek.Core
             if (GoalAdsLeftToday <= 0)
                 return false;
             Progress.GoalAds++;
-            EarnGems(Config.GoalAdGems);
+            EarnGems(Config.GoalAdGems, "goal_ad");
             return true;
         }
 
@@ -269,7 +279,7 @@ namespace NuggetCreek.Core
         // --- Gear boxes granted as rewards ---
 
         /// <summary>Grants a gear box's cards for free (streak rewards).</summary>
-        public List<GearCard> GrantGearBox(int box)
+        public List<GearCard> GrantGearBox(int box, string source = "streak")
         {
             int count = Config.GearBoxCards[box];
             var rarities = new Rarity[count];
@@ -285,7 +295,7 @@ namespace NuggetCreek.Core
 
             var cards = new List<GearCard>(count);
             foreach (Rarity rarity in rarities)
-                cards.Add(GrantGearCard(PickGear(rarity, random.NextDouble())));
+                cards.Add(GrantGearCard(PickGear(rarity, random.NextDouble()), source));
             return cards;
         }
     }

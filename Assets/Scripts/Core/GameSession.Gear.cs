@@ -106,7 +106,7 @@ namespace NuggetCreek.Core
 
         public bool BuyThirdGearSlot()
         {
-            if (!GearUnlocked || !TrySpendGems(ThirdGearSlotCost))
+            if (!GearUnlocked || !TrySpendGems(ThirdGearSlotCost, "gear_slot"))
                 return false;
             Progress.ThirdGearSlotBought = true;
             return true;
@@ -121,7 +121,7 @@ namespace NuggetCreek.Core
 
         public bool LevelUpGear(int index)
         {
-            if (!TrySpendGems(GearLevelUpCost(index)))
+            if (!TrySpendGems(GearLevelUpCost(index), "gear_level"))
                 return false;
             Progress.GearLevels[index]++;
             RebuildStats();
@@ -142,9 +142,12 @@ namespace NuggetCreek.Core
         // --- Cards ---
 
         /// <summary>New gear arrives at level 1 and is worn if a slot is free; a duplicate adds a level.</summary>
-        public GearCard GrantGearCard(int index)
+        /// <param name="source">gear_card's source: chest, gear_box, streak or pack.</param>
+        public GearCard GrantGearCard(int index, string source = "other")
         {
             int level = Progress.GearLevels[index];
+            GearDefinition gear = GameCatalog.Gear[index];
+            Emit("gear_card", ("gear_id", gear.Id), ("rarity", EventValues.Snake(gear.Rarity.ToString())), ("source", source), ("dup", level > 0));
             if (level == 0)
             {
                 Progress.GearLevels[index] = 1;
@@ -159,7 +162,7 @@ namespace NuggetCreek.Core
                 CountJob(DailyJobKind.GearLevels);
                 return new GearCard(index, false, true, 0);
             }
-            EarnGems(Config.GearMaxedDuplicateGems);
+            EarnGems(Config.GearMaxedDuplicateGems, "gear_dup");
             return new GearCard(index, false, false, Config.GearMaxedDuplicateGems);
         }
 
@@ -188,6 +191,9 @@ namespace NuggetCreek.Core
         }
 
         // --- Creek chests ---
+
+        /// <summary>The unlocking chest was finished with Gems (chest_open.method).</summary>
+        bool chestBoughtOpen;
 
         public int ChestCapacity => Config.ChestCapacity + (int)Math.Round(Stats[Stat.ChestCapacity]);
 
@@ -242,9 +248,10 @@ namespace NuggetCreek.Core
 
         public bool OpenChestNow()
         {
-            if (!TrySpendGems(ChestInstantCost))
+            if (!TrySpendGems(ChestInstantCost, "chest_instant"))
                 return false;
             Progress.ChestSecondsLeft = 0;
+            chestBoughtOpen = true;
             return true;
         }
 
@@ -261,9 +268,11 @@ namespace NuggetCreek.Core
             Progress.ChestOpening = false;
             Progress.ChestsOpened++;
             CountJob(DailyJobKind.ChestsOpened);
-            Earn(dollars);
+            Earn(dollars, IncomeSource.Chest);
+            Emit("chest_open", ("source", "creek"), ("method", chestBoughtOpen ? "gem" : "free"));
+            chestBoughtOpen = false;
             Rarity rarity = first ? Rarity.Common : RollRarity(Config.ChestCardOdds, 0, random.NextDouble());
-            GearCard card = GrantGearCard(PickGear(rarity, random.NextDouble()));
+            GearCard card = GrantGearCard(PickGear(rarity, random.NextDouble()), "chest");
             return new ChestReward(dollars, card);
         }
 
@@ -273,7 +282,7 @@ namespace NuggetCreek.Core
             if (reward == null || reward.Doubled)
                 return false;
             reward.Doubled = true;
-            Earn(reward.Dollars);
+            Earn(reward.Dollars, IncomeSource.Chest);
             return true;
         }
 
@@ -284,9 +293,9 @@ namespace NuggetCreek.Core
         /// <summary>Buys a box and grants its cards; at least one meets the box's guaranteed rarity.</summary>
         public List<GearCard> BuyGearBox(int box)
         {
-            if (!GearUnlocked || !TrySpendGems(Config.GearBoxGems[box]))
+            if (!GearUnlocked || !TrySpendGems(Config.GearBoxGems[box], "gear_box"))
                 return null;
-            return GrantGearBox(box);
+            return GrantGearBox(box, "gear_box");
         }
     }
 }

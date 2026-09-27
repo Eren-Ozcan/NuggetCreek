@@ -21,6 +21,9 @@ namespace NuggetCreek.Core
         public int PeakCombo { get; private set; } = 1;
         public bool IsPaid { get; private set; }
 
+        /// <summary>Started for Gems rather than by the play counters (mother_lode.trigger).</summary>
+        public bool Summoned { get; set; }
+
         public bool IsOver => SecondsLeft <= 0;
 
         public int MaxCombo => maxCombo;

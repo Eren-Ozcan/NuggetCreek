@@ -117,6 +117,12 @@ namespace NuggetCreek.Core
         /// <summary>The second-session gift chest was given.</summary>
         public bool ReturnGiftGiven;
 
+        /// <summary>Bit per <see cref="Feature"/> whose feature_unlock event was sent.</summary>
+        public int FeaturesAnnounced;
+
+        /// <summary>Cold starts so far; the session_n analytics parameter.</summary>
+        public int Sessions;
+
         /// <summary>First game day played; 0 until trusted time gives one.</summary>
         public long FirstDay;
 

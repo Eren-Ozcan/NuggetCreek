@@ -81,7 +81,16 @@ namespace NuggetCreek.Core
 
         public bool HasSeen(PeteLine line) => (Progress.PeteSeen & (1 << (int)line)) != 0;
 
-        public void MarkSeen(PeteLine line) => Progress.PeteSeen |= 1 << (int)line;
+        /// <summary>Records a shown line; Pete's lines are the tutorial steps in analytics (tutorial_step).</summary>
+        public void MarkSeen(PeteLine line)
+        {
+            if (HasSeen(line))
+                return;
+            if (Progress.PeteSeen == 0)
+                Emit("tutorial_begin");
+            Progress.PeteSeen |= 1 << (int)line;
+            Emit("tutorial_step", ("step", (int)line), ("step_name", EventValues.Snake(line.ToString())));
+        }
 
         /// <summary>The first unseen line whose moment is now; a line whose moment has passed never shows.</summary>
         public PeteLine? NextPeteLine()

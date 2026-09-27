@@ -152,7 +152,7 @@ namespace NuggetCreek.Core
             RememberTransaction(transactionId);
 
             var result = new PurchaseResult { Item = item, Gems = item.Gems };
-            EarnGems(item.Gems);
+            EarnGems(item.Gems, "iap");
             for (int i = 0; i < item.Crew; i++)
             {
                 int member = HireRandomCrew();
@@ -261,7 +261,7 @@ namespace NuggetCreek.Core
 
         public bool BuyBoost(ShopBoost boost)
         {
-            if (!CanBuyBoost(boost) || !TrySpendGems(Config.ShopBoostGems))
+            if (!CanBuyBoost(boost) || !TrySpendGems(Config.ShopBoostGems, "boost_" + EventValues.Snake(boost.ToString())))
                 return false;
             switch (boost)
             {
@@ -269,7 +269,7 @@ namespace NuggetCreek.Core
                     Progress.GoldWashSecondsLeft += Config.GoldWashSeconds;
                     break;
                 case ShopBoost.ExtraShift:
-                    Earn(ExtraShiftPayout);
+                    Earn(ExtraShiftPayout, IncomeSource.Idle);
                     break;
                 case ShopBoost.RichVein:
                     Progress.PendingGiantNuggets++;
