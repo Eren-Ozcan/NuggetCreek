@@ -25,6 +25,10 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
 - `Assets/Tests/PlayMode/` — greybox smoke tests that press real buttons. Run with
   `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>`
   (the editor must be closed); set `NC_SHOT_DIR` to also save 1080x1920 screenshots.
+  `RobustnessTests` add the save round trip, damaged saves, a seeded monkey and a layout check.
+- `scripts/android-device-tests.sh` — device pass on a connected phone (starts, background kill,
+  no network, font scale, monkey, memory); backs up and restores the phone's save.
+  What each layer covers and what it does not: `docs/TESTING.md`.
 
 ## Android builds
 
