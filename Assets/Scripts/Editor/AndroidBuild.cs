@@ -16,7 +16,7 @@ namespace NuggetCreek.Editor
     ///
     /// The release AAB is signed with the upload key in android-keystore/ (gitignored; backup in
     /// the private pictures repo). The password is read from NC_KEYSTORE_PASS, else
-    /// android-keystore/keystore.pass, and never enters the repo.
+    /// android-keystore/nuggetcreek-upload.pass, and never enters the repo.
     /// Dev and measurement APKs stay on the debug key: Android 8+ scopes ANDROID_ID (and so
     /// SystemInfo.deviceUniqueIdentifier, which the save signature uses until phase 3.3) to the
     /// signing key, so switching keys on a test phone needs an uninstall and orphans the save.
@@ -28,7 +28,7 @@ namespace NuggetCreek.Editor
         const string PackageName = "com.yilkgames.nuggetcreek";
         const string KeystorePath = "android-keystore/nuggetcreek-upload.jks";
         const string KeyAlias = "nuggetcreek";
-        const string PassFile = "android-keystore/keystore.pass";
+        const string PassFile = "android-keystore/nuggetcreek-upload.pass";
         const string PassEnv = "NC_KEYSTORE_PASS";
         const string OutputDir = "Builds/Android";
         // Play requires API 36 for new apps and updates from 2026-08-31.
