@@ -116,30 +116,31 @@ namespace NuggetCreek.Core
         // --- Nugget collection (3.1.2) ---
 
         /// <summary>
-        /// Type of a Nugget spawned in the current creek, by rarity weight. roll is uniform in
-        /// [0, 1). Returns -1 in a creek without a collection (past the launch creeks).
+        /// Type of a Nugget spawned in the current creek (design doc 3.1.2): the creek's Common
+        /// 70%, the previous creek's Common 27% (the first creek keeps it), the six global
+        /// Rares 3% together. Boss nuggets never come from this roll. roll is uniform in [0, 1).
         /// </summary>
         public int RollNuggetType(double roll)
         {
-            List<int> pool = GameCatalog.NuggetsInRegion(Progress.RegionIndex);
-            if (pool.Count == 0)
+            int region = Progress.RegionIndex;
+            if (region < 0 || GameCatalog.CommonNugget(region) >= GameCatalog.FirstRareNugget)
                 return -1;
-            double total = 0;
-            foreach (int index in pool)
-                total += Economy.NuggetWeight(GameCatalog.Nuggets[index].Rarity);
+            double own = Config.NuggetOwnWeight + (region == 0 ? Config.NuggetPreviousWeight : 0);
+            double previous = region == 0 ? 0 : Config.NuggetPreviousWeight;
+            double total = own + previous + Config.NuggetRareWeight;
             double target = roll * total;
-            foreach (int index in pool)
-            {
-                target -= Economy.NuggetWeight(GameCatalog.Nuggets[index].Rarity);
-                if (target < 0)
-                    return index;
-            }
-            return pool[pool.Count - 1];
+            if (target < own)
+                return GameCatalog.CommonNugget(region);
+            if (target < own + previous)
+                return GameCatalog.CommonNugget(region - 1);
+            int count = GameCatalog.RareNuggetCount;
+            int rare = (int)((target - own - previous) / Config.NuggetRareWeight * count);
+            return GameCatalog.FirstRareNugget + Math.Max(0, Math.Min(count - 1, rare));
         }
 
         public int NuggetCatches(int index) => Progress.NuggetCatches[index];
 
-        public int NuggetStars(int index) => Economy.NuggetStars(Progress.NuggetCatches[index]);
+        public int NuggetStars(int index) => Economy.NuggetStars(index, Progress.NuggetCatches[index]);
 
         public bool IsNuggetDiscovered(int index) => Progress.NuggetCatches[index] > 0;
 
@@ -149,25 +150,31 @@ namespace NuggetCreek.Core
             {
                 int stars = 0;
                 for (int i = 0; i < Progress.NuggetCatches.Length; i++)
-                    stars += Economy.NuggetStars(Progress.NuggetCatches[i]);
+                    stars += Economy.NuggetStars(i, Progress.NuggetCatches[i]);
                 return stars;
             }
         }
 
         public int MaxStars => GameCatalog.Nuggets.Count * Economy.MaxStarsPerNugget;
 
-        /// <summary>Counts a manual Nugget catch (plain, Rich or Giant) toward its type's stars.</summary>
+        /// <summary>Counts a manual Nugget catch (plain, Rich or Giant) toward its type's stars.
+        /// Boss nuggets only come from a Mother Lode (<see cref="FinishMotherLode"/>).</summary>
         public NuggetCatch CatchNugget(int index)
         {
-            if (index < 0 || index >= Progress.NuggetCatches.Length)
+            if (index < 0 || index >= Progress.NuggetCatches.Length || GameCatalog.IsBossNugget(index))
                 return new NuggetCatch(-1, false, 0);
+            return AddToCollection(index);
+        }
+
+        NuggetCatch AddToCollection(int index)
+        {
             int before = Progress.NuggetCatches[index];
             int after = before + 1;
             Progress.NuggetCatches[index] = after;
-            int stars = Economy.NuggetStars(after) - Economy.NuggetStars(before);
+            int stars = Economy.NuggetStars(index, after) - Economy.NuggetStars(index, before);
             CountJob(DailyJobKind.CollectionStars, stars);
             if (stars > 0)
-                Emit("collection_star", ("nugget_id", GameCatalog.Nuggets[index].Id), ("stars", Economy.NuggetStars(after)), ("total_stars", TotalStars));
+                Emit("collection_star", ("nugget_id", GameCatalog.Nuggets[index].Id), ("stars", Economy.NuggetStars(index, after)), ("total_stars", TotalStars));
             return new NuggetCatch(index, before == 0, stars);
         }
 
@@ -342,8 +349,8 @@ namespace NuggetCreek.Core
         public bool HasNextTier => Progress.TierIndex + 1 < Config.TierCount;
 
         /// <summary>
-        /// Tier t is bought in region t (design doc 6.1: tier 2 in Pine Hollow). Tiers past
-        /// the last launch region open once that region is unlocked.
+        /// Tier t is bought in creek 2t (design doc 6.1: tier 2 in Pine Hollow, creek 3). Tiers
+        /// past the last creek open once the last creek is unlocked.
         /// </summary>
         public bool IsNextTierUnlocked
         {
@@ -352,7 +359,7 @@ namespace NuggetCreek.Core
                 if (!HasNextTier)
                     return false;
                 int highestRegion = Progress.RegionsUnlocked - 1;
-                return Progress.TierIndex + 1 <= highestRegion || Progress.RegionsUnlocked >= Config.RegionCount;
+                return Economy.TierRegion(Progress.TierIndex + 1) <= highestRegion || Progress.RegionsUnlocked >= Config.RegionCount;
             }
         }
 
@@ -384,11 +391,16 @@ namespace NuggetCreek.Core
             if (Progress.RegionsUnlocked > Progress.BestRegionsUnlocked)
                 OfferWelcome(Progress.RegionIndex);
             Progress.BestRegionsUnlocked = Math.Max(Progress.BestRegionsUnlocked, Progress.RegionsUnlocked);
-            if (Progress.RegionIndex >= Config.CrewCandidateFirstRegion)
+            if (IsCandidateRegion(Progress.RegionIndex))
                 OfferCandidates();
             Emit("region_unlock", ("region", Progress.RegionIndex + 1));
             return true;
         }
+
+        /// <summary>Creeks whose unlock brings a candidate pair (design doc 6.3: odd creeks from Silver Fork).</summary>
+        bool IsCandidateRegion(int regionIndex) =>
+            regionIndex >= Config.CrewCandidateFirstRegion
+            && (regionIndex - Config.CrewCandidateFirstRegion) % Math.Max(1, Config.CrewCandidateRegionStep) == 0;
 
         public bool TravelTo(int regionIndex)
         {
@@ -447,13 +459,37 @@ namespace NuggetCreek.Core
             && (Progress.CollectedSinceMotherLode >= Economy.MotherLodeEveryCollectibles(Stats)
                 || Progress.SecondsSinceMotherLode >= Config.MotherLodeEverySeconds);
 
-        /// <summary>Starts the event and restarts both counters; the income it pays is fixed now.</summary>
+        /// <summary>
+        /// Starts the event and restarts both counters; the income it pays is fixed now. While
+        /// an open creek's boss is still unbeaten, the run fights the lowest one (design doc 3.4.1).
+        /// </summary>
         public MotherLodeRun StartMotherLode()
         {
             Progress.CollectedSinceMotherLode = 0;
             Progress.SecondsSinceMotherLode = 0;
-            return new MotherLodeRun(Config, IncomePerSecond, Economy.MotherLodeMaxCombo(Stats));
+            var run = new MotherLodeRun(Config, IncomePerSecond, Economy.MotherLodeMaxCombo(Stats));
+            int boss = NextBossRegion;
+            if (boss >= 0)
+                run.SetBoss(boss, Economy.BossHealth(boss), BossHitDamage);
+            return run;
         }
+
+        /// <summary>Lowest open creek whose boss is not beaten yet; -1 when every open boss is.</summary>
+        public int NextBossRegion
+        {
+            get
+            {
+                for (int r = 0; r < Progress.RegionsUnlocked && GameCatalog.BossNugget(r) < GameCatalog.FirstRareNugget; r++)
+                    if (Progress.NuggetCatches[GameCatalog.BossNugget(r)] == 0)
+                        return r;
+                return -1;
+            }
+        }
+
+        /// <summary>Damage of one Mother Lode hit at combo x1 right now.</summary>
+        public double BossHitDamage => Economy.BossHitDamage(PrestigeMultiplier, Progress.GuildLevel, Stats);
+
+        public bool IsBossBeaten(int regionIndex) => Progress.NuggetCatches[GameCatalog.BossNugget(regionIndex)] > 0;
 
         /// <summary>Starts a Mother Lode at once for Gems; null when the player cannot pay.</summary>
         public MotherLodeRun SummonMotherLode()
@@ -478,12 +514,34 @@ namespace NuggetCreek.Core
             Earn(reward, IncomeSource.Event);
             CountJob(DailyJobKind.MotherLodes);
             EarnGems(Config.MotherLodeGemReward, "mother_lode");
+            DropBossNugget(run);
             Emit("mother_lode",
                 ("trigger", run.Summoned ? "gem" : "natural"),
                 ("reward_log10", EventValues.Log10(reward)),
                 ("taps", run.Hits),
                 ("peak_combo", run.PeakCombo));
             return reward;
+        }
+
+        /// <summary>A beaten boss drops its nugget; a plain run re-drops the current creek's at 25%.</summary>
+        void DropBossNugget(MotherLodeRun run)
+        {
+            int region = -1;
+            if (run.IsBossFight)
+            {
+                if (run.BossBeaten)
+                    region = run.BossRegion;
+                Emit("boss_fight", ("region", run.BossRegion + 1), ("outcome", run.BossBeaten ? "beaten" : "escaped"),
+                    ("damage_pct", (long)Math.Round(100 * Math.Min(1, run.BossDamage / run.BossHealth))));
+            }
+            else if (IsBossBeaten(Progress.RegionIndex) && random.NextDouble() < Config.BossRedropChance)
+            {
+                region = Progress.RegionIndex;
+            }
+            if (region < 0)
+                return;
+            run.DroppedNugget = GameCatalog.BossNugget(region);
+            AddToCollection(run.DroppedNugget);
         }
 
         // --- Gems ---

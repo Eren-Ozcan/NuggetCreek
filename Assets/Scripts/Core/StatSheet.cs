@@ -41,6 +41,7 @@ namespace NuggetCreek.Core
         TierCost,
         RegionCost,
         UpgradeCost,
+        MotherLodeDamage,
     }
 
     /// <summary>Summed bonuses per <see cref="Stat"/>.</summary>

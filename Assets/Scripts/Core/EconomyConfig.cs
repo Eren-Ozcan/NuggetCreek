@@ -97,22 +97,45 @@ namespace NuggetCreek.Core
 
         // --- Nugget collection (3.1.2) ---
 
-        /// <summary>Drop weight of each Nugget type by rarity (Common, Rare, Legendary). A creek's
-        /// five types (3 Common, 1 Rare, 1 Legendary) add up to 1.</summary>
-        public double[] RarityWeights = { 0.28, 0.13, 0.03 };
+        /// <summary>Nugget roll: the creek's own Common. In the first creek it also takes the
+        /// previous creek's share.</summary>
+        public double NuggetOwnWeight = 0.70;
 
-        /// <summary>Manual catches of one type for each of its stars.</summary>
+        /// <summary>Nugget roll: the previous creek's Common.</summary>
+        public double NuggetPreviousWeight = 0.27;
+
+        /// <summary>Nugget roll: the six global Rares together, split evenly.</summary>
+        public double NuggetRareWeight = 0.03;
+
+        /// <summary>Manual catches of a Common or Rare type for each of its stars.</summary>
         public int[] NuggetStarThresholds = { 1, 10, 40 };
 
-        /// <summary>Each collection star raises the prestige bonus by this fraction.</summary>
-        public double StarPrestigeBonus = 0.01;
+        /// <summary>Drops of a boss nugget for each of its stars: the kill, the 2nd and the 5th drop.</summary>
+        public int[] BossStarThresholds = { 1, 2, 5 };
+
+        /// <summary>Each collection star raises the prestige bonus by this fraction (x1.9 at 138 stars).</summary>
+        public double StarPrestigeBonus = 0.0065;
+
+        // --- Mother Lode boss fight (3.4.1) ---
+
+        /// <summary>Health of the first creek's boss: about 12 seconds of swiping for a fresh player.</summary>
+        public double BossHealthBase = 500;
+
+        /// <summary>Each creek's boss has this many times the previous one's health.</summary>
+        public double BossHealthGrowth = 2.2;
+
+        /// <summary>Hit damage bonus per Guild level.</summary>
+        public double BossDamagePerGuildLevel = 0.01;
+
+        /// <summary>Chance a Mother Lode re-drops the current creek's boss nugget once that boss is beaten.</summary>
+        public double BossRedropChance = 0.25;
 
         // --- Gear and chests (6.4) ---
 
         public int GearSlotCount = 4;
 
-        /// <summary>The second slot opens free with this creek (0-based; Silver Fork).</summary>
-        public int GearSecondSlotRegion = 2;
+        /// <summary>The second slot opens free once more than this many creeks are open (Silver Fork, creek 5).</summary>
+        public int GearSecondSlotRegion = 4;
 
         /// <summary>Permanent third slot. The fourth comes with an IAP pack.</summary>
         public int GearThirdSlotGems = 80;
@@ -157,6 +180,10 @@ namespace NuggetCreek.Core
         public Rarity[] GearBoxGuarantee = { Rarity.Rare, Rarity.Rare, Rarity.Legendary };
 
         // --- Rebirth and the Prospectors' Guild (6.5, 6.6) ---
+
+        /// <summary>Smallest claim a new claim can be staked for: about $540M lifetime, where
+        /// the first XP used to start before the v0.19 formula.</summary>
+        public long RebirthMinXp = 14;
 
         /// <summary>The game suggests a new claim once it would pay at least this much Prospecting XP ...</summary>
         public long RebirthSuggestMinXp = 25;
@@ -235,14 +262,14 @@ namespace NuggetCreek.Core
         /// <summary>Manual catches that open Upgrades (the first goal).</summary>
         public int UpgradesUnlockCollected = 15;
 
-        /// <summary>Creeks ever open that open the Shop (Pine Hollow).</summary>
-        public int ShopUnlockRegions = 2;
+        /// <summary>Creeks ever open that open the Shop (Pine Hollow, creek 3).</summary>
+        public int ShopUnlockRegions = 3;
 
         /// <summary>Play time that opens Daily if the second game day has not come yet.</summary>
         public double DailyUnlockPlaySeconds = 60 * 60;
 
-        /// <summary>Creeks ever open that open the Guild (Red Gulch).</summary>
-        public int GuildUnlockRegions = 4;
+        /// <summary>Creeks ever open that open the Guild (Red Gulch, creek 7).</summary>
+        public int GuildUnlockRegions = 7;
 
         /// <summary>Creek chests Amos brings on the first real return (design doc 10).</summary>
         public int ReturnGiftChests = 1;
@@ -266,8 +293,8 @@ namespace NuggetCreek.Core
 
         public double WelcomeOfferHours = 24;
 
-        /// <summary>Creek index (0-based) from which New Creek Welcome is the Large pack.</summary>
-        public int WelcomeLargeFromRegion = 3;
+        /// <summary>Creek index (0-based) from which New Creek Welcome is the Large pack (Red Gulch).</summary>
+        public int WelcomeLargeFromRegion = 6;
 
         public double DailyOfferHours = 6;
 
@@ -283,8 +310,9 @@ namespace NuggetCreek.Core
         /// </summary>
         public double ActiveIdleRatio = 12;
 
-        /// <summary>Base collectible value multiplier per region. RC: value_growth.</summary>
-        public double ValueGrowth = 15.0;
+        /// <summary>Base collectible value multiplier per region: sqrt(15), so every second creek
+        /// is x15 like the old 10-creek curve (design doc 6.2). RC: value_growth.</summary>
+        public double ValueGrowth = 3.872983346207417;
 
         /// <summary>Income multiplier per sluice tier. RC: tier_mult.</summary>
         [RemoteKey("tier_mult")]
@@ -292,14 +320,14 @@ namespace NuggetCreek.Core
 
         // --- Progression tables (5.0.4, 6.1, 6.2), solved by tools/economy_tune.py ---
 
-        /// <summary>Region unlock costs for the 6 launch regions; index 0 is free.</summary>
-        public double[] RegionUnlockCosts = { 0, 1.6e3, 1.5e6, 360e6, 65e9, 34e12 };
+        /// <summary>Region unlock costs for the 20 launch creeks; index 0 is free.</summary>
+        public double[] RegionUnlockCosts = { 0, 780, 4.1e3, 510e3, 4.7e6, 92e6, 1.2e9, 17e9, 120e9, 5.6e12, 170e12, 3.6e15, 53e15, 780e15, 11e18, 88e18, 2e21, 9.8e21, 120e21, 2.6e24 };
 
-        /// <summary>Sluice tier costs for the 8 launch tiers; index 0 is the starting sluice.</summary>
-        public double[] TierCosts = { 0, 400, 380e3, 90e6, 16e9, 8.5e12, 1.6e15, 310e15 };
+        /// <summary>Sluice tier costs for the 10 launch tiers; index 0 is the starting sluice.</summary>
+        public double[] TierCosts = { 0, 1e3, 1.2e6, 300e6, 30e9, 42e12, 13e15, 2.8e18, 500e18, 30e21 };
 
         /// <summary>Level 1 price of each tier's two upgrades (3% of the tier cost, floored at 2x the previous).</summary>
-        public double[] UpgradeBaseCosts = { 30, 60, 11e3, 2.7e6, 480e6, 260e9, 48e12, 9.3e15 };
+        public double[] UpgradeBaseCosts = { 30, 60, 36e3, 9e6, 900e6, 1.3e12, 390e12, 84e15, 15e18, 900e18 };
 
         /// <summary>Upgrade price growth per level. RC: upgrade_growth.</summary>
         [RemoteKey("upgrade_growth")]
@@ -307,8 +335,10 @@ namespace NuggetCreek.Core
 
         // --- Prestige (5.0.3) ---
 
-        public double PrestigeXpDivisor = 6e8;
-        public double PrestigeXpExponent = 0.45;
+        /// <summary>XP = floor((total / divisor) ^ exponent). v0.19: 0.45 made the multiplier grow
+        /// x3.4 per creek and ran through all 20 creeks by day 33; 0.2 grows about x2 (design doc 5.0.3).</summary>
+        public double PrestigeXpDivisor = 1000;
+        public double PrestigeXpExponent = 0.2;
         public double PrestigeBonusPerXp = 0.02;
 
         // --- Offline and Amos (3.3, 3.3.2, 3.3.3) ---
@@ -316,9 +346,9 @@ namespace NuggetCreek.Core
         /// <summary>Dollars at which Amos joins and idle collection starts.</summary>
         public double AmosJoinCost = 70;
 
-        /// <summary>Amos level costs for L2..L12: 45 minutes of typical idle income when the
-        /// level unlocks, the second level of each region pair at 1.5x.</summary>
-        public double[] AmosLevelCosts = { 1.2e3, 49e3, 73e3, 2.2e6, 3.3e6, 270e6, 400e6, 50e9, 74e9, 5.6e12, 8.4e12 };
+        /// <summary>Amos level costs for L2..L12: 45 minutes of typical idle income at the creek
+        /// that unlocks the level (L2 with creek 1 ... L12 with creek 11).</summary>
+        public double[] AmosLevelCosts = { 770, 3e3, 49e3, 190e3, 2.2e6, 13e6, 270e6, 1.6e9, 50e9, 300e9, 5.6e12 };
 
         /// <summary>Offline cap: 30 minutes when Amos joins, 30 more per level, 6 h at level 12.</summary>
         public double OfflineCapHoursPerAmosLevel = 0.5;
@@ -326,7 +356,13 @@ namespace NuggetCreek.Core
         /// <summary>Share of the offline rate paid for time past the cap; 0 = accrual stops at the cap (design doc 3.3).</summary>
         public double OfflinePastCapRate = 0;
         public int AmosMaxLevel = 12;
-        public int AmosLevelsPerRegion = 2;
+
+        /// <summary>Amos' level ceiling is AmosLevelsBase + AmosLevelsPerRegion x open creeks (design doc 3.3.3).</summary>
+        public int AmosLevelsBase = 1;
+        public int AmosLevelsPerRegion = 1;
+
+        /// <summary>Sluice tier t is bought in creek index t x TierRegionStep (design doc 6.1: tier k in creek 2k-1).</summary>
+        public int TierRegionStep = 2;
 
         // --- Crew (6.3) ---
 
@@ -337,7 +373,10 @@ namespace NuggetCreek.Core
         public int[] CrewLevelUpCosts = { 6, 9, 13, 19, 27, 39, 57, 82, 119 };
 
         /// <summary>Candidates appear when this creek (0-based; Silver Fork) or a later one unlocks.</summary>
-        public int CrewCandidateFirstRegion = 2;
+        public int CrewCandidateFirstRegion = 4;
+
+        /// <summary>After the first, candidates appear every this many creeks (the odd creeks 5, 7 ... 19).</summary>
+        public int CrewCandidateRegionStep = 2;
 
         public int CrewCandidatesPerEvent = 2;
 

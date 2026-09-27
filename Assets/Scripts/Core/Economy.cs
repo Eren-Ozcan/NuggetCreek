@@ -173,7 +173,7 @@ namespace NuggetCreek.Core
 
         // --- Prestige ---
 
-        /// <summary>prospecting_xp = floor((total_earned / 1e6) ^ 0.45) * (1 + XP bonus)</summary>
+        /// <summary>prospecting_xp = floor((total_earned / divisor) ^ exponent * (1 + XP bonus)), 1000 and 0.2 at launch.</summary>
         public long ProspectingXp(BigNumber totalEarned, StatSheet stats = null)
         {
             if (totalEarned <= BigNumber.Zero)
@@ -191,34 +191,63 @@ namespace NuggetCreek.Core
 
         // --- Nugget collection ---
 
-        /// <summary>Stars a Nugget type has after this many manual catches.</summary>
-        public int NuggetStars(int catches)
+        /// <summary>Stars a Common or Rare type has after this many manual catches.</summary>
+        public int NuggetStars(int catches) => StarsFor(catches, Config.NuggetStarThresholds);
+
+        /// <summary>Stars a boss nugget has after this many drops.</summary>
+        public int BossNuggetStars(int drops) => StarsFor(drops, Config.BossStarThresholds);
+
+        /// <summary>Stars of a collection entry, by its type.</summary>
+        public int NuggetStars(int index, int count) =>
+            GameCatalog.IsBossNugget(index) ? BossNuggetStars(count) : NuggetStars(count);
+
+        static int StarsFor(int count, int[] thresholds)
         {
             int stars = 0;
-            foreach (int threshold in Config.NuggetStarThresholds)
-                if (catches >= threshold)
+            foreach (int threshold in thresholds)
+                if (count >= threshold)
                     stars++;
             return stars;
         }
 
+        // --- Mother Lode boss fight (3.4.1) ---
+
+        /// <summary>Health of a creek's boss: base x growth^creek index.</summary>
+        public double BossHealth(int regionIndex) =>
+            Config.BossHealthBase * Math.Pow(Config.BossHealthGrowth, regionIndex);
+
+        /// <summary>
+        /// Damage of one hit at combo x1: prestige, Guild level and the Mother Lode damage stat
+        /// (Tobias, Brass Compass). Sluice upgrades never add to it.
+        /// </summary>
+        public double BossHitDamage(double prestigeMultiplier, int guildLevel, StatSheet stats) =>
+            prestigeMultiplier * (1 + Config.BossDamagePerGuildLevel * Math.Max(0, guildLevel)) * stats.Multiplier(Stat.MotherLodeDamage);
+
         public int MaxStarsPerNugget => Config.NuggetStarThresholds.Length;
 
         /// <summary>Catches needed for the next star, or null at max stars.</summary>
-        public int? NextStarAt(int catches)
+        public int? NextStarAt(int catches) => NextThreshold(catches, Config.NuggetStarThresholds);
+
+        /// <summary>Catches (or boss drops) a collection entry needs for its next star, or null at max stars.</summary>
+        public int? NextStarAt(int index, int count) =>
+            NextThreshold(count, GameCatalog.IsBossNugget(index) ? Config.BossStarThresholds : Config.NuggetStarThresholds);
+
+        static int? NextThreshold(int count, int[] thresholds)
         {
-            foreach (int threshold in Config.NuggetStarThresholds)
-                if (catches < threshold)
+            foreach (int threshold in thresholds)
+                if (count < threshold)
                     return threshold;
             return null;
         }
 
-        public double NuggetWeight(Rarity rarity) => Config.RarityWeights[(int)rarity];
-
         // --- Amos and offline cap ---
 
-        /// <summary>Amos' level ceiling: 2 per unlocked region, never above the absolute max.</summary>
+        /// <summary>Amos' level ceiling: open creeks + 1, never above the absolute max.</summary>
         public int AmosMaxLevel(int regionsUnlocked) =>
-            Math.Min(Config.AmosMaxLevel, Config.AmosLevelsPerRegion * Math.Max(1, regionsUnlocked));
+            Math.Min(Config.AmosMaxLevel, Config.AmosLevelsBase + Config.AmosLevelsPerRegion * Math.Max(1, regionsUnlocked));
+
+        /// <summary>Creek index in which sluice tier tierIndex is bought.</summary>
+        public int TierRegion(int tierIndex) => tierIndex * Config.TierRegionStep;
 
         /// <summary>
         /// Offline cap in seconds: Amos' hours plus Night Watch. Level 0 means Amos has not

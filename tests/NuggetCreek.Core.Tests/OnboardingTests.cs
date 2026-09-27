@@ -47,6 +47,8 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.IsUnlocked(Feature.Map), Is.True);
             Assert.That(session.IsUnlocked(Feature.Shop), Is.False);
             session.UnlockNextRegion();
+            Assert.That(session.IsUnlocked(Feature.Shop), Is.False, "Willow Bend is too early");
+            session.UnlockNextRegion();
             Assert.That(session.IsUnlocked(Feature.Shop), Is.True);
         }
 
@@ -70,9 +72,9 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void GuildOpensAtRedGulchAndStaysOpen()
         {
-            GameSession session = NewSession(new PlayerProgress { BestRegionsUnlocked = 3, RegionsUnlocked = 3 });
+            GameSession session = NewSession(new PlayerProgress { BestRegionsUnlocked = 6, RegionsUnlocked = 6 });
             Assert.That(session.IsUnlocked(Feature.Guild), Is.False);
-            GameSession later = NewSession(new PlayerProgress { BestRegionsUnlocked = 4, RegionsUnlocked = 1 });
+            GameSession later = NewSession(new PlayerProgress { BestRegionsUnlocked = 7, RegionsUnlocked = 1 });
             Assert.That(later.IsUnlocked(Feature.Guild), Is.True, "a rebirth keeps the best creek count");
         }
 

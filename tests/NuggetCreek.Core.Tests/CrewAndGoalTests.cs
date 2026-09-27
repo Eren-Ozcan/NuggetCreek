@@ -56,11 +56,25 @@ namespace NuggetCreek.Core.Tests
         public void SilverForkOffersTwoDistinctUnhiredCandidates()
         {
             GameSession session = NewSession();
-            UnlockRegions(session, 3);
+            UnlockRegions(session, 4);
+            Assert.That(session.HasCandidates, Is.False, "Bear Falls brings none");
+            UnlockRegions(session, 5);
 
             Assert.That(session.Candidates.Count, Is.EqualTo(2));
             Assert.That(session.Candidates.Distinct().Count(), Is.EqualTo(2));
             Assert.That(session.Progress.CandidateSecondsLeft, Is.EqualTo(600));
+        }
+
+        [Test]
+        public void CandidatesSkipTheCreeksBetweenOldPoints()
+        {
+            GameSession session = NewSession();
+            UnlockRegions(session, 5);
+            session.PassCandidates();
+            UnlockRegions(session, 6);
+            Assert.That(session.HasCandidates, Is.False, "Copper Bluff (creek 6)");
+            UnlockRegions(session, 7);
+            Assert.That(session.HasCandidates, Is.True, "Red Gulch (creek 7)");
         }
 
         [Test]

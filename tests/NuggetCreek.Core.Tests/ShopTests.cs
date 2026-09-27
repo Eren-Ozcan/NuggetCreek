@@ -108,12 +108,13 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.IsOnSale(Item(ShopKind.WelcomeSmall)), Is.False);
 
             session.UnlockNextRegion();
-            Assert.That(session.OfferSecondsLeft(Item(ShopKind.WelcomeSmall)), Is.EqualTo(24 * Hour));
+            Assert.That(session.OfferSecondsLeft(Item(ShopKind.WelcomeSmall)), Is.EqualTo(24 * Hour), "every creek, Willow Bend too");
             Assert.That(session.IsOnSale(Item(ShopKind.WelcomeLarge)), Is.False);
-            session.UnlockNextRegion();
-            session.UnlockNextRegion();
+            for (int i = 0; i < 5; i++)
+                session.UnlockNextRegion();
+            Assert.That(session.Progress.RegionIndex, Is.EqualTo(6));
             Assert.That(session.IsOnSale(Item(ShopKind.WelcomeSmall)), Is.False);
-            Assert.That(session.OfferSecondsLeft(Item(ShopKind.WelcomeLarge)), Is.EqualTo(24 * Hour));
+            Assert.That(session.OfferSecondsLeft(Item(ShopKind.WelcomeLarge)), Is.EqualTo(24 * Hour), "Red Gulch");
 
             Buy(session, ShopKind.WelcomeLarge);
             Assert.That(session.IsOnSale(Item(ShopKind.WelcomeLarge)), Is.False);

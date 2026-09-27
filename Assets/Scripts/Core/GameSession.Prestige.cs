@@ -23,7 +23,7 @@ namespace NuggetCreek.Core
             }
         }
 
-        public bool CanRebirth => ClaimXp >= 1;
+        public bool CanRebirth => ClaimXp >= Math.Max(1, Config.RebirthMinXp);
 
         /// <summary>Prestige multiplier after staking a new claim now.</summary>
         public double PrestigeMultiplierAfterRebirth =>
@@ -36,9 +36,9 @@ namespace NuggetCreek.Core
         /// </summary>
         public bool Rebirth()
         {
-            long xp = ClaimXp;
-            if (xp < 1)
+            if (!CanRebirth)
                 return false;
+            long xp = ClaimXp;
             Emit("prestige", ("xp_gain", xp), ("region", Progress.RegionsUnlocked), ("play_mins", (long)(Progress.PlaySeconds / 60)));
             Progress.ProspectingXp += xp;
             Progress.Rebirths++;

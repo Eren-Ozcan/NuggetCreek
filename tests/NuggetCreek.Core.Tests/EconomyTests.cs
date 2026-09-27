@@ -45,7 +45,7 @@ namespace NuggetCreek.Core.Tests
         {
             StatSheet stats = Sheet((Stat.DustValue, 0.5), (Stat.NuggetChance, 0.02), (Stat.NuggetValue, 0.4),
                 (Stat.DoubleCatch, 0.03), (Stat.AllIncome, 0.1));
-            AssertClose(1716.8892840000003, economy.CollectValue(2, 1, stats, 1.5));
+            AssertClose(114.45928560000003, economy.CollectValue(2, 1, stats, 1.5));
         }
 
         [Test]
@@ -55,7 +55,7 @@ namespace NuggetCreek.Core.Tests
                 (Stat.DoubleCatch, 0.03), (Stat.AllIncome, 0.1), (Stat.RichNuggetChance, 0.05),
                 (Stat.RichNuggetValue, 0.5), (Stat.GiantNuggetChance, 0.02), (Stat.GiantNuggetValue, 0.8),
                 (Stat.CritChance, 0.1), (Stat.CritValue, 0.5));
-            AssertClose(2576.3324162400004, economy.CollectValue(2, 1, stats, 1.5));
+            AssertClose(171.75549441600006, economy.CollectValue(2, 1, stats, 1.5));
         }
 
         [Test]
@@ -63,7 +63,7 @@ namespace NuggetCreek.Core.Tests
         {
             StatSheet stats = Sheet((Stat.DustValue, 0.5), (Stat.NuggetChance, 0.02), (Stat.CritChance, 0.1),
                 (Stat.CritValue, 0.5), (Stat.GiantNuggetChance, 0.02));
-            AssertClose(1634.6162880000002, economy.ActiveRate(2, 1, stats, 1.5, 0.8));
+            AssertClose(108.97441920000001, economy.ActiveRate(2, 1, stats, 1.5, 0.8));
         }
 
         [Test]
@@ -81,46 +81,62 @@ namespace NuggetCreek.Core.Tests
         public void ActiveAndIdleRate_MatchPython()
         {
             StatSheet s = PacingModel.TypicalStats(3, 4);
-            AssertClose(1193227.2000000002, economy.ActiveRate(3, 3, s, 2.5, 0.8));
-            AssertClose(99435.60000000002, economy.IdleRate(3, 3, s, 2.5, 0.8));
+            AssertClose(20539.329217074257, economy.ActiveRate(3, 3, s, 2.5, 0.8));
+            AssertClose(1711.6107680895213, economy.IdleRate(3, 3, s, 2.5, 0.8));
         }
 
         [Test]
         public void FirstSessionIncome_MatchesPython()
         {
-            AssertClose(1608.7499999999995, pacing.FirstSessionIncome());
+            AssertClose(707.8499999999999, pacing.FirstSessionIncome(0));
+            AssertClose(2326.1137977321746, pacing.FirstSessionIncome(1));
         }
 
         [TestCase(0, 16061.760000000002)]
-        [TestCase(1, 1011890.88)]
-        [TestCase(2, 45535089.60000001)]
-        [TestCase(3, 5584303296.000001)]
-        [TestCase(4, 1032065715732.4805)]
-        [TestCase(5, 116228446304256.06)]
+        [TestCase(1, 62206.92899078045)]
+        [TestCase(3, 3919036.5264191683)]
+        [TestCase(5, 278844337.27978253)]
+        [TestCase(8, 1032065715732.4807)]
+        [TestCase(11, 711750967604751.5)]
         public void DayIncome_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.DayIncome(region));
         }
 
-        [TestCase(1, 1649.6122499999994)]
-        [TestCase(2, 1549613.74119552)]
-        [TestCase(3, 364965564.54758406)]
-        [TestCase(4, 65487124752.192)]
-        [TestCase(5, 34494113177497.258)]
+        [TestCase(1, 775.0957499999998)]
+        [TestCase(2, 4149.321792394652)]
+        [TestCase(3, 514929.3445296002)]
+        [TestCase(5, 92477629.19268143)]
+        [TestCase(10, 174971071106980.9)]
+        [TestCase(19, 2.5724581206778955e+24)]
         public void SolvedRegionCost_MatchesPython(int region, double expected)
         {
             AssertClose(expected, pacing.SolveRegionCost(region));
         }
 
-        [TestCase(1)]
         [TestCase(2)]
         [TestCase(3)]
         [TestCase(4)]
         [TestCase(5)]
+        [TestCase(6)]
+        [TestCase(7)]
+        [TestCase(8)]
+        [TestCase(9)]
+        [TestCase(10)]
+        [TestCase(11)]
+        [TestCase(12)]
+        [TestCase(13)]
+        [TestCase(14)]
+        [TestCase(15)]
+        [TestCase(16)]
+        [TestCase(17)]
+        [TestCase(18)]
+        [TestCase(19)]
         public void ActiveToAway_FortyMinutesEarnAtLeastOneDayAway(int region)
         {
             // Design rule: 40 min of full active play earn at least one 24 h absence (no ad
             // double). Nothing is paid past the cap, so early creeks with short caps run higher.
+            // Creeks 1-2 belong to the opening session, before Amos and before any absence.
             Assert.That(pacing.ActiveToAwayRatio(region), Is.InRange(1.0, 4.5));
         }
 
@@ -139,15 +155,21 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void TierCostDefaults_AreQuarterOfRegionCost()
         {
-            // Tier t is bought inside region t; tiers 7 and 8 use regions 7 and 8 (post-launch).
-            double region7 = PacingModel.RoundSignificant(pacing.SolveRegionCost(6).ToDouble());
-            double region8 = region7 * region7 / config.RegionUnlockCosts[5];
-            double[] regionCosts = config.RegionUnlockCosts.Skip(1).Concat(new[] { region7, region8 }).ToArray();
+            // Tier t is bought in creek index 2t (design doc 6.1).
             for (int t = 1; t < config.TierCount; t++)
             {
-                double expected = PacingModel.RoundSignificant(regionCosts[t - 1] * PacingModel.TierShare);
+                double expected = PacingModel.RoundSignificant(config.RegionUnlockCosts[2 * t] * PacingModel.TierShare);
                 Assert.That(config.TierCosts[t], Is.EqualTo(expected).Within(expected * 1e-9), "tier " + (t + 1));
             }
+        }
+
+        [Test]
+        public void TargetDays_KeepTheOldCurveOnOddCreeks()
+        {
+            double[] old = { 0, 10.0 / 1440, 0.6, 3, 8, 20, 40, 70, 110, 160 };
+            for (int k = 0; k < old.Length; k++)
+                Assert.That(PacingModel.TargetDays[2 * k], Is.EqualTo(old[k]).Within(1e-12), "creek " + (2 * k + 1));
+            Assert.That(PacingModel.TargetDays[5], Is.EqualTo(System.Math.Sqrt(0.6 * 3)).Within(1e-12));
         }
 
         [Test]
@@ -227,12 +249,13 @@ namespace NuggetCreek.Core.Tests
         }
 
         [TestCase(0, 1.0)]
-        [TestCase(1, 15.0)]
-        [TestCase(2, 225.0)]
-        [TestCase(5, 759375.0)]
-        public void DustBaseValue_Is15PowRegion(int region, double expected)
+        [TestCase(1, 3.872983346207417)]
+        [TestCase(2, 15.0)]
+        [TestCase(4, 225.0)]
+        [TestCase(10, 759375.0)]
+        public void DustBaseValue_IsFifteenEverySecondCreek(int region, double expected)
         {
-            Assert.That(economy.DustBaseValue(region).ToDouble(), Is.EqualTo(expected));
+            Assert.That(economy.DustBaseValue(region).ToDouble(), Is.EqualTo(expected).Within(expected * 1e-12));
         }
 
         [Test]
@@ -287,13 +310,13 @@ namespace NuggetCreek.Core.Tests
         }
 
         // Design doc 5.0.3 table.
-        [TestCase(6e8, 1L)]
-        [TestCase(1e11, 9L)]
-        [TestCase(1e12, 28L)]
-        [TestCase(1e13, 79L)]
-        [TestCase(1e15, 630L)]
-        [TestCase(1e18, 14119L)]
-        [TestCase(5.99e8, 0L)]
+        [TestCase(1e3, 1L)]
+        [TestCase(1e11, 39L)]
+        [TestCase(1e12, 63L)]
+        [TestCase(1e13, 100L)]
+        [TestCase(1e15, 251L)]
+        [TestCase(1e18, 1000L)]
+        [TestCase(999.0, 0L)]
         [TestCase(0.0, 0L)]
         public void ProspectingXp_MatchesDesignTable(double total, long expectedXp)
         {
@@ -303,7 +326,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void ProspectingXp_EliasBonus()
         {
-            Assert.That(economy.ProspectingXp(1e12, Sheet((Stat.ProspectingXp, 1.0))), Is.EqualTo(56));
+            Assert.That(economy.ProspectingXp(1e12, Sheet((Stat.ProspectingXp, 1.0))), Is.EqualTo(126));
         }
 
         [Test]
@@ -323,10 +346,10 @@ namespace NuggetCreek.Core.Tests
         }
 
         [TestCase(1, 2)]
-        [TestCase(3, 6)]
-        [TestCase(6, 12)]
-        [TestCase(8, 12)]
-        public void AmosMaxLevel_TwoPerRegion(int regions, int expected)
+        [TestCase(3, 4)]
+        [TestCase(11, 12)]
+        [TestCase(20, 12)]
+        public void AmosMaxLevel_OpenCreeksPlusOne(int regions, int expected)
         {
             Assert.That(economy.AmosMaxLevel(regions), Is.EqualTo(expected));
         }

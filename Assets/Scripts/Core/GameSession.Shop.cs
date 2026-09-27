@@ -59,7 +59,8 @@ namespace NuggetCreek.Core
             Progress.DailyOfferEndUtc = NowUtc.Value + Config.DailyOfferHours * 3600;
         }
 
-        /// <summary>First arrival at a creek puts New Creek Welcome on sale; replays after a rebirth do not.</summary>
+        /// <summary>First arrival at every creek puts New Creek Welcome on sale (user decision, v0.19);
+        /// replays after a rebirth do not.</summary>
         void OfferWelcome(int regionIndex)
         {
             if (!NowUtc.HasValue || regionIndex < 1)

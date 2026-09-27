@@ -6,8 +6,9 @@ using UnityEngine.UI;
 namespace NuggetCreek.Game.UI
 {
     /// <summary>
-    /// Full-screen Nugget collection (design doc 3.1.2, 12.1 screen 6): the five types of each
-    /// creek with their stars. Undiscovered types show as "???".
+    /// Full-screen Nugget collection (design doc 3.1.2, 12.1 screen 6): the six global Rares,
+    /// then each creek's Common and boss nugget with their stars. Undiscovered types show as
+    /// "???"; an unbeaten boss names the creek where it waits.
     /// </summary>
     public sealed class CollectionPanel
     {
@@ -43,16 +44,23 @@ namespace NuggetCreek.Game.UI
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -240));
             RectTransform list = Ui.ScrollList(body, 16, 24);
 
+            Section(list, "RARE  -  ANY CREEK");
+            for (int index = GameCatalog.FirstRareNugget; index < GameCatalog.Nuggets.Count; index++)
+                cards.Add(NewCard(list, index));
             for (int region = 0; region < session.Economy.Config.RegionCount; region++)
             {
-                Text section = Ui.Label(GameCatalog.RegionNames[region], list, GameCatalog.RegionNames[region].ToUpperInvariant(),
-                    38, TextAnchor.LowerLeft, Palette.TextMuted, FontStyle.Bold);
-                Ui.PreferredHeight(section, 70);
-                foreach (int index in GameCatalog.NuggetsInRegion(region))
-                    cards.Add(NewCard(list, index));
+                Section(list, $"{region + 1}. {GameCatalog.RegionNames[region].ToUpperInvariant()}");
+                cards.Add(NewCard(list, GameCatalog.CommonNugget(region)));
+                cards.Add(NewCard(list, GameCatalog.BossNugget(region)));
             }
 
             Close();
+        }
+
+        static void Section(Transform list, string text)
+        {
+            Text section = Ui.Label(text, list, text, 38, TextAnchor.LowerLeft, Palette.TextMuted, FontStyle.Bold);
+            Ui.PreferredHeight(section, 70);
         }
 
         public void Open()
@@ -74,21 +82,24 @@ namespace NuggetCreek.Game.UI
             foreach (Card card in cards)
             {
                 NuggetDefinition nugget = GameCatalog.Nuggets[card.Index];
+                bool boss = GameCatalog.IsBossNugget(card.Index);
+                string kind = boss ? "Boss" : nugget.Rarity.ToString();
                 int catches = session.NuggetCatches(card.Index);
                 if (catches == 0)
                 {
                     card.Swatch.color = Palette.Row * 1.4f;
                     card.Title.SetText("???");
-                    card.Detail.SetText($"{nugget.Rarity}  -  not found yet");
+                    card.Detail.SetText(boss ? $"Boss  -  beat the boss at {GameCatalog.RegionNames[nugget.RegionIndex]}" : $"{kind}  -  not found yet");
                     card.Flavor.SetText("");
                     continue;
                 }
                 card.Swatch.color = ColorOf(nugget.Rarity);
                 int starCount = session.NuggetStars(card.Index);
                 card.Title.SetText($"{nugget.Name}  {StarText(starCount, session.Economy.MaxStarsPerNugget)}");
-                int? next = session.Economy.NextStarAt(catches);
-                string progress = next.HasValue ? $"{catches}/{next.Value} to next star" : $"{catches} found  -  MAX";
-                card.Detail.SetText($"{nugget.Rarity}  -  {progress}");
+                int? next = session.Economy.NextStarAt(card.Index, catches);
+                string unit = boss ? "drops" : "found";
+                string progress = next.HasValue ? $"{catches}/{next.Value} to next star" : $"{catches} {unit}  -  MAX";
+                card.Detail.SetText($"{kind}  -  {progress}");
                 card.Flavor.SetText(nugget.Flavor);
             }
         }

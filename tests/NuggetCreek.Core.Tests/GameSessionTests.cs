@@ -209,11 +209,15 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.BuyNextTier(), Is.False);
 
             Assert.That(session.UnlockNextRegion(), Is.True);
-            Assert.That(session.Progress.RegionIndex, Is.EqualTo(1));
+            Assert.That(session.RegionName, Is.EqualTo("Willow Bend"));
+            Assert.That(session.IsNextTierUnlocked, Is.False, "tier 2 is bought in creek 3");
+            Assert.That(session.UnlockNextRegion(), Is.True);
+            Assert.That(session.Progress.RegionIndex, Is.EqualTo(2));
             Assert.That(session.RegionName, Is.EqualTo("Pine Hollow"));
             Assert.That(session.IsNextTierUnlocked, Is.True);
             Assert.That(session.BuyNextTier(), Is.True);
-            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - 1600 - 400).Within(1e-6));
+            double spent = config.RegionUnlockCosts[1] + config.RegionUnlockCosts[2] + config.TierCosts[1];
+            Assert.That(session.Progress.Dollars.ToDouble(), Is.EqualTo(1e6 - spent).Within(1e-6));
             Assert.That(session.IsUpgradeUnlocked(UpgradeIndex("steel_sieve")), Is.True);
             Assert.That(session.IsNextTierUnlocked, Is.False);
         }
@@ -221,13 +225,13 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void TravelOnlyToUnlockedRegions()
         {
-            GameSession session = NewSession(4000);
+            GameSession session = NewSession(config.RegionUnlockCosts[1]);
             Assert.That(session.TravelTo(1), Is.False);
-            session.UnlockNextRegion();
+            Assert.That(session.UnlockNextRegion(), Is.True);
             Assert.That(session.TravelTo(0), Is.True);
             Assert.That(session.CatchValue(CollectibleKind.GoldDust, false).ToDouble(), Is.EqualTo(1));
             Assert.That(session.TravelTo(1), Is.True);
-            Assert.That(session.CatchValue(CollectibleKind.GoldDust, false).ToDouble(), Is.EqualTo(15));
+            Assert.That(session.CatchValue(CollectibleKind.GoldDust, false).ToDouble(), Is.EqualTo(System.Math.Sqrt(15)).Within(1e-12));
         }
 
         [Test]
@@ -265,7 +269,10 @@ namespace NuggetCreek.Core.Tests
 
             session.UnlockNextRegion();
             Assert.That(session.AmosWaitsForRegion, Is.False);
-            AssertClose(49e3, session.AmosNextCost.Value);
+            AssertClose(config.AmosLevelCosts[1], session.AmosNextCost.Value);
+            session.Progress.Dollars = 1e12;
+            Assert.That(session.BuyAmosLevel(), Is.True);
+            Assert.That(session.AmosWaitsForRegion, Is.True, "one Amos level per creek");
         }
 
         [Test]

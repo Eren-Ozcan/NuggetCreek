@@ -109,8 +109,10 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.IsEquipped(1), Is.False, "only one slot so far");
             Assert.That(session.Equip(1), Is.False);
 
-            session.Progress.RegionsUnlocked = 3;
-            Assert.That(session.IsGearSlotUnlocked(1), Is.True);
+            session.Progress.RegionsUnlocked = 4;
+            Assert.That(session.IsGearSlotUnlocked(1), Is.False, "Bear Falls");
+            session.Progress.RegionsUnlocked = 5;
+            Assert.That(session.IsGearSlotUnlocked(1), Is.True, "Silver Fork");
             Assert.That(session.Equip(1), Is.True);
 
             Assert.That(session.BuyThirdGearSlot(), Is.True);

@@ -24,6 +24,23 @@ namespace NuggetCreek.Core
         /// <summary>Started for Gems rather than by the play counters (mother_lode.trigger).</summary>
         public bool Summoned { get; set; }
 
+        /// <summary>Creek whose boss this run fights; -1 for a plain Mother Lode (design doc 3.4.1).</summary>
+        public int BossRegion { get; private set; } = -1;
+
+        public double BossHealth { get; private set; }
+
+        public double BossDamage { get; private set; }
+
+        /// <summary>Damage of one hit at combo x1; each hit deals this times the combo.</summary>
+        public double HitDamage { get; private set; }
+
+        public bool IsBossFight => BossRegion >= 0;
+
+        public bool BossBeaten => IsBossFight && BossDamage >= BossHealth;
+
+        /// <summary>Boss nugget this run dropped once paid; -1 for none.</summary>
+        public int DroppedNugget { get; internal set; } = -1;
+
         public bool IsOver => SecondsLeft <= 0;
 
         public int MaxCombo => maxCombo;
@@ -35,6 +52,14 @@ namespace NuggetCreek.Core
             this.maxCombo = maxCombo > 0 ? maxCombo : config.MotherLodeMaxCombo;
             IncomePerSecond = incomePerSecond;
             SecondsLeft = config.MotherLodeDurationSeconds;
+        }
+
+        /// <summary>Turns the run into a boss fight.</summary>
+        public void SetBoss(int regionIndex, double health, double hitDamage)
+        {
+            BossRegion = regionIndex;
+            BossHealth = health;
+            HitDamage = hitDamage;
         }
 
         public void Tick(double deltaSeconds)
@@ -56,11 +81,19 @@ namespace NuggetCreek.Core
                 return;
             Hits++;
             sinceHit = 0;
-            if (Combo >= maxCombo || ++hitsTowardNext < config.MotherLodeHitsPerCombo)
-                return;
-            hitsTowardNext = 0;
-            Combo++;
-            PeakCombo = Math.Max(PeakCombo, Combo);
+            if (Combo < maxCombo && ++hitsTowardNext >= config.MotherLodeHitsPerCombo)
+            {
+                hitsTowardNext = 0;
+                Combo++;
+                PeakCombo = Math.Max(PeakCombo, Combo);
+            }
+            if (IsBossFight)
+            {
+                BossDamage += HitDamage * Combo;
+                // A beaten boss ends the fight at once.
+                if (BossBeaten)
+                    SecondsLeft = 0;
+            }
         }
 
         /// <summary>Ends the run now; called when it is paid.</summary>

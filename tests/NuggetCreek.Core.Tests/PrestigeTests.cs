@@ -38,10 +38,10 @@ namespace NuggetCreek.Core.Tests
             progress.NuggetCatches[0] = 12;
             GameSession session = NewSession(progress);
 
-            Assert.That(session.ClaimXp, Is.EqualTo(861));
+            Assert.That(session.ClaimXp, Is.EqualTo(288));
             Assert.That(session.Rebirth(), Is.True);
 
-            Assert.That(progress.ProspectingXp, Is.EqualTo(871));
+            Assert.That(progress.ProspectingXp, Is.EqualTo(298));
             Assert.That(progress.Rebirths, Is.EqualTo(1));
             Assert.That(progress.Dollars.IsZero, Is.True);
             Assert.That(progress.TotalEarned.IsZero, Is.True);
@@ -62,7 +62,9 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void NoRebirthWithoutXp()
         {
-            GameSession session = NewSession(new PlayerProgress { TotalEarned = 999_999 });
+            // $500M lifetime is 13 XP, one short of the smallest claim.
+            GameSession session = NewSession(new PlayerProgress { TotalEarned = 5e8 });
+            Assert.That(session.ClaimXp, Is.EqualTo(13));
             Assert.That(session.CanRebirth, Is.False);
             Assert.That(session.Rebirth(), Is.False);
         }
@@ -71,15 +73,15 @@ namespace NuggetCreek.Core.Tests
         public void MultiplierAfterRebirthCountsTheClaim()
         {
             GameSession session = NewSession(new PlayerProgress { TotalEarned = 2e15 });
-            Assert.That(session.PrestigeMultiplierAfterRebirth, Is.EqualTo(18.22).Within(1e-12));
+            Assert.That(session.PrestigeMultiplierAfterRebirth, Is.EqualTo(6.76).Within(1e-12));
             session.Rebirth();
-            Assert.That(session.PrestigeMultiplier, Is.EqualTo(18.22).Within(1e-12));
+            Assert.That(session.PrestigeMultiplier, Is.EqualTo(6.76).Within(1e-12));
         }
 
         [Test]
         public void SuggestionWaitsForTheWall()
         {
-            // $20T lifetime in Nugget Creek: 63 XP would make x2.26, and Pine Hollow is cheap.
+            // $20T lifetime in Nugget Creek: 114 XP would make x3.28, and Willow Bend is cheap.
             var progress = new PlayerProgress { TotalEarned = 2e13, AmosLevel = 1, ManualCollected = 100 };
             GameSession session = NewSession(progress);
             Assert.That(session.PrestigeMultiplierAfterRebirth, Is.GreaterThan(2));
@@ -102,7 +104,7 @@ namespace NuggetCreek.Core.Tests
             progress.RegionIndex = config.RegionCount - 1;
             progress.TierIndex = config.TierCount - 1;
             GameSession session = NewSession(progress);
-            // x3 now, x4.26 after: not worth a restart yet.
+            // x3 now, x5.28 after: not worth a restart yet.
             Assert.That(session.PrestigeMultiplierAfterRebirth, Is.LessThan(2 * session.PrestigeMultiplier));
             Assert.That(session.RebirthSuggested, Is.False);
         }
@@ -121,7 +123,7 @@ namespace NuggetCreek.Core.Tests
         [Test]
         public void NoSuggestionForASmallClaim()
         {
-            GameSession session = NewSession(new PlayerProgress { TotalEarned = 2e11, AmosLevel = 1 });
+            GameSession session = NewSession(new PlayerProgress { TotalEarned = 5e9, AmosLevel = 1 });
             Assert.That(session.ClaimXp, Is.LessThan(25));
             Assert.That(session.RebirthSuggested, Is.False);
         }
@@ -182,7 +184,7 @@ namespace NuggetCreek.Core.Tests
 
             session.Progress.GuildLevel = 100;
             session.RebuildStats();
-            Assert.That(session.ClaimXp, Is.EqualTo(1291), "861 x 1.5");
+            Assert.That(session.ClaimXp, Is.EqualTo(432), "288 x 1.5");
         }
 
         [Test]
