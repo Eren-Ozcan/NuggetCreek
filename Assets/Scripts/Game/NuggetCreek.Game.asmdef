@@ -4,7 +4,8 @@
     "references": [
         "NuggetCreek.Core",
         "UnityEngine.UI",
-        "Unity.Notifications.Android"
+        "Unity.Notifications.Android",
+        "revenuecat.purchases-unity"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -6,6 +6,7 @@ apply from: '../shared/common.gradle'
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 // Android Resolver Dependencies Start
+    implementation 'androidx.annotation:annotation:[1.2.0]' // Packages/com.revenuecat.purchases-unity/Plugins/Editor/RevenueCatDependencies.xml:5
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4' // Packages/com.google.ads.mobile/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:12
     implementation 'androidx.fragment:fragment:1.7.1' // Packages/com.google.ads.mobile/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:22
     implementation 'androidx.lifecycle:lifecycle-process:2.6.2' // Packages/com.google.ads.mobile/GoogleMobileAds/Editor/GoogleMobileAdsDependencies.xml:17
@@ -20,6 +21,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-config-unity:13.17.0' // Packages/com.google.firebase.remote-config/Firebase/Editor/RemoteConfigDependencies.xml:23
     implementation 'com.google.firebase:firebase-crashlytics-ndk:20.1.1' // Packages/com.google.firebase.crashlytics/Firebase/Editor/CrashlyticsDependencies.xml:16
     implementation 'com.google.firebase:firebase-crashlytics-unity:13.17.0' // Packages/com.google.firebase.crashlytics/Firebase/Editor/CrashlyticsDependencies.xml:23
+    implementation 'com.revenuecat.purchases:purchases-hybrid-common:[19.3.1]' // Packages/com.revenuecat.purchases-unity/Plugins/Editor/RevenueCatDependencies.xml:4
 // Android Resolver Dependencies End
 **DEPS**}
 
