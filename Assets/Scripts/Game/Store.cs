@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NuggetCreek.Core;
 using NuggetCreek.Game.UI;
 using UnityEngine;
@@ -12,15 +13,25 @@ namespace NuggetCreek.Game
         public readonly bool Paid;
         /// <summary>Store transaction id; the session grants each one once.</summary>
         public readonly string TransactionId;
+        /// <summary>What the store charged, in <see cref="Currency"/>; 0 when unknown.</summary>
+        public readonly double PriceLocal;
+        public readonly string Currency;
+        /// <summary>Why nothing was paid: "cancelled", "busy", "pending" or a store error code.</summary>
+        public readonly string Reason;
 
-        public StoreResult(bool paid, string transactionId)
+        public StoreResult(bool paid, string transactionId, double priceLocal = 0, string currency = null, string reason = null)
         {
             Paid = paid;
             TransactionId = transactionId;
+            PriceLocal = priceLocal;
+            Currency = currency;
+            Reason = reason;
         }
+
+        public static StoreResult Failed(string reason) => new StoreResult(false, null, reason: reason);
     }
 
-    /// <summary>What the game needs from a billing SDK. The real Play Billing adapter comes in phase 3.5.</summary>
+    /// <summary>What the game needs from a billing SDK (<see cref="RevenueCatStore"/> on a device).</summary>
     public interface IStore
     {
         /// <summary>A purchase sheet is open or processing.</summary>
@@ -30,6 +41,9 @@ namespace NuggetCreek.Game
         string PriceText(ShopItem item);
 
         void Purchase(ShopItem item, Action<StoreResult> onFinished);
+
+        /// <summary>Asks the store what the player owns; reports product ids.</summary>
+        void Restore(Action<IReadOnlyList<string>> onOwned);
 
         void Tick(float deltaSeconds);
     }
@@ -76,7 +90,7 @@ namespace NuggetCreek.Game
         {
             if (IsBusy || item == null)
             {
-                onFinished?.Invoke(new StoreResult(false, null));
+                onFinished?.Invoke(StoreResult.Failed("busy"));
                 return;
             }
             pending = item;
@@ -89,13 +103,16 @@ namespace NuggetCreek.Game
             sheet.SetActive(true);
         }
 
+        /// <summary>The fake store keeps no receipts; nothing comes back.</summary>
+        public void Restore(Action<IReadOnlyList<string>> onOwned) => onOwned?.Invoke(Array.Empty<string>());
+
         public void Tick(float deltaSeconds)
         {
             if (processingLeft < 0)
                 return;
             processingLeft -= deltaSeconds;
             if (processingLeft < 0)
-                Finish(new StoreResult(true, "fake-" + Guid.NewGuid().ToString("N")));
+                Finish(new StoreResult(true, "fake-" + Guid.NewGuid().ToString("N"), pending.PriceCents / 100.0, "USD"));
         }
 
         void Confirm()
@@ -106,7 +123,7 @@ namespace NuggetCreek.Game
             processingLeft = ProcessingSeconds;
         }
 
-        void Cancel() => Finish(new StoreResult(false, null));
+        void Cancel() => Finish(StoreResult.Failed("cancelled"));
 
         void Finish(StoreResult result)
         {
