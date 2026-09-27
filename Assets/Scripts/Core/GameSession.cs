@@ -47,12 +47,27 @@ namespace NuggetCreek.Core
             Economy = economy ?? throw new ArgumentNullException(nameof(economy));
             Progress = progress ?? throw new ArgumentNullException(nameof(progress));
             Progress.Normalize();
+            ClampToConfig();
             offline = new OfflineEarnings(economy.Config);
             this.random = random ?? new Random();
             RebuildStats();
         }
 
         EconomyConfig Config => Economy.Config;
+
+        /// <summary>
+        /// Bounds that depend on the tuned config rather than the catalog; a save from a build
+        /// with more creeks or tiers must not index past this one's tables.
+        /// </summary>
+        void ClampToConfig()
+        {
+            PlayerProgress p = Progress;
+            p.RegionsUnlocked = Math.Min(p.RegionsUnlocked, Config.RegionCount);
+            p.RegionIndex = Math.Min(p.RegionIndex, p.RegionsUnlocked - 1);
+            p.TierIndex = Math.Min(p.TierIndex, Config.TierCount - 1);
+            p.AmosLevel = Math.Min(p.AmosLevel, Config.AmosMaxLevel);
+            p.GuildLevel = Math.Min(p.GuildLevel, Config.GuildMaxLevel);
+        }
 
         public void RebuildStats()
         {

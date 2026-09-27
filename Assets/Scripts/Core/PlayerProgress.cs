@@ -172,6 +172,9 @@ namespace NuggetCreek.Core
 
         public const int NotificationKinds = 7;
 
+        /// <summary>Kinds of daily job (<see cref="DailyJobKind"/>).</summary>
+        public const int DailyJobKinds = 8;
+
         public bool StarterBought;
 
         /// <summary>New Creek Welcome on sale: 0 none, 1 Small, 2 Large.</summary>
@@ -241,14 +244,26 @@ namespace NuggetCreek.Core
         /// <summary>Brings arrays saved by an older catalog up to the current size.</summary>
         public void Normalize()
         {
+            if (Dollars < BigNumber.Zero)
+                Dollars = BigNumber.Zero;
+            if (TotalEarned < BigNumber.Zero)
+                TotalEarned = BigNumber.Zero;
+            TierIndex = Math.Max(0, TierIndex);
+            AmosLevel = Math.Max(0, AmosLevel);
+            ManualCollected = Math.Max(0, ManualCollected);
+            ProspectingXp = Math.Max(0, ProspectingXp);
             if (UpgradeLevels == null)
                 UpgradeLevels = new int[GameCatalog.Upgrades.Count];
             else if (UpgradeLevels.Length != GameCatalog.Upgrades.Count)
                 Array.Resize(ref UpgradeLevels, GameCatalog.Upgrades.Count);
+            for (int i = 0; i < UpgradeLevels.Length; i++)
+                UpgradeLevels[i] = Math.Max(0, UpgradeLevels[i]);
             if (CrewLevels == null)
                 CrewLevels = new int[GameCatalog.Crew.Count];
             else if (CrewLevels.Length != GameCatalog.Crew.Count)
                 Array.Resize(ref CrewLevels, GameCatalog.Crew.Count);
+            for (int i = 0; i < CrewLevels.Length; i++)
+                CrewLevels[i] = Math.Max(0, Math.Min(CrewLevels[i], GameCatalog.CrewMaxLevel));
             if (NuggetCatches == null)
                 NuggetCatches = new int[GameCatalog.Nuggets.Count];
             else if (NuggetCatches.Length != GameCatalog.Nuggets.Count)
@@ -268,10 +283,12 @@ namespace NuggetCreek.Core
                 Array.Resize(ref PerkRanks, GameCatalog.Perks.Count);
             for (int i = 0; i < PerkRanks.Length; i++)
                 PerkRanks[i] = Math.Max(0, Math.Min(PerkRanks[i], GameCatalog.Perks[i].MaxRank));
-            if (JobKinds == null || JobKinds.Length != 3)
+            if (JobKinds == null || JobKinds.Length != 3 || Array.Exists(JobKinds, k => k < 0 || k >= DailyJobKinds))
                 JobKinds = new[] { 0, 1, 2 };
             if (JobProgress == null || JobProgress.Length != 3)
                 JobProgress = new int[3];
+            for (int i = 0; i < JobProgress.Length; i++)
+                JobProgress[i] = Math.Max(0, JobProgress[i]);
             if (JobClaimed == null || JobClaimed.Length != 3)
                 JobClaimed = new bool[3];
             StreakIndex = Math.Max(0, Math.Min(StreakIndex, 29));
@@ -318,9 +335,9 @@ namespace NuggetCreek.Core
             CollectedSinceMotherLode = Math.Max(0, CollectedSinceMotherLode);
             SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
-            RegionsUnlocked = Math.Max(1, RegionsUnlocked);
+            RegionsUnlocked = Math.Max(1, Math.Min(RegionsUnlocked, GameCatalog.RegionNames.Count));
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
-            BestRegionsUnlocked = Math.Max(BestRegionsUnlocked, RegionsUnlocked);
+            BestRegionsUnlocked = Math.Max(RegionsUnlocked, Math.Min(BestRegionsUnlocked, GameCatalog.RegionNames.Count));
             if (AgeBand < AgeBand.Unknown || AgeBand > AgeBand.Adult)
                 AgeBand = AgeBand.Unknown;
             if (Vibration < VibrationMode.Off || Vibration > VibrationMode.All)
