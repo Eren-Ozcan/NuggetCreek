@@ -10,8 +10,18 @@
       },
       "hash": "f7f876f5fa3bc6be0ecdc2ee2e2948dc6d1e06d8"
     },
+    "com.google.ads.mobile": {
+      "version": "11.5.0",
+      "depth": 0,
+      "source": "registry",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.187",
+        "com.unity.modules.androidjni": "1.0.0"
+      },
+      "url": "https://package.openupm.com"
+    },
     "com.google.external-dependency-manager": {
-      "version": "file:firebase/com.google.external-dependency-manager-1.2.186.tgz",
+      "version": "file:firebase/com.google.external-dependency-manager-1.2.187.tgz",
       "depth": 0,
       "source": "local-tarball",
       "dependencies": {}

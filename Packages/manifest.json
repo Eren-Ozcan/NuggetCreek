@@ -1,7 +1,8 @@
 {
   "dependencies": {
     "com.coplaydev.coplay": "https://github.com/CoplayDev/unity-plugin.git#beta",
-    "com.google.external-dependency-manager": "file:firebase/com.google.external-dependency-manager-1.2.186.tgz",
+    "com.google.ads.mobile": "11.5.0",
+    "com.google.external-dependency-manager": "file:firebase/com.google.external-dependency-manager-1.2.187.tgz",
     "com.google.firebase.analytics": "file:firebase/com.google.firebase.analytics-13.17.0.tgz",
     "com.google.firebase.app": "file:firebase/com.google.firebase.app-13.17.0.tgz",
     "com.google.firebase.crashlytics": "file:firebase/com.google.firebase.crashlytics-13.17.0.tgz",
@@ -33,5 +34,14 @@
     "com.unity.modules.unitywebrequestwww": "1.0.0",
     "com.unity.modules.vectorgraphics": "1.0.0",
     "com.unity.modules.video": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.google.ads.mobile"
+      ]
+    }
+  ]
 }
