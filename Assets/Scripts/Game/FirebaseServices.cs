@@ -24,6 +24,7 @@ namespace NuggetCreek.Game
 
         static readonly Queue<KeyValuePair<string, Parameter[]>> queued = new Queue<KeyValuePair<string, Parameter[]>>();
         static bool started;
+        static TcfConsent? pendingConsent;
 
         public static bool Ready { get; private set; }
 
@@ -45,12 +46,38 @@ namespace NuggetCreek.Game
                 Crashlytics.ReportUncaughtExceptionsAsFatal = true;
                 FirebaseAnalytics.SetUserProperty("build", UnityEngine.Debug.isDebugBuild ? "dev" : "release");
                 Ready = true;
+                ApplyConsent();
                 while (queued.Count > 0)
                 {
                     KeyValuePair<string, Parameter[]> e = queued.Dequeue();
                     FirebaseAnalytics.LogEvent(e.Key, e.Value);
                 }
                 FetchRemoteConfig();
+            });
+        }
+
+        /// <summary>
+        /// Consent Mode v2 from the consent form (design doc 13.4.4); applied as soon as
+        /// Firebase is up if it is not yet.
+        /// </summary>
+        public static void SetConsent(TcfConsent consent)
+        {
+            pendingConsent = consent;
+            if (Ready)
+                ApplyConsent();
+        }
+
+        static void ApplyConsent()
+        {
+            if (!pendingConsent.HasValue)
+                return;
+            TcfConsent c = pendingConsent.Value;
+            FirebaseAnalytics.SetConsent(new Dictionary<ConsentType, ConsentStatus>
+            {
+                { ConsentType.AnalyticsStorage, c.AnalyticsStorage ? ConsentStatus.Granted : ConsentStatus.Denied },
+                { ConsentType.AdStorage, c.AdStorage ? ConsentStatus.Granted : ConsentStatus.Denied },
+                { ConsentType.AdUserData, c.AdUserData ? ConsentStatus.Granted : ConsentStatus.Denied },
+                { ConsentType.AdPersonalization, c.AdPersonalization ? ConsentStatus.Granted : ConsentStatus.Denied },
             });
         }
 
