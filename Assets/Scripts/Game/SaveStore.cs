@@ -18,7 +18,7 @@ namespace NuggetCreek.Game
         [Serializable]
         sealed class SaveData
         {
-            public int version = 1;
+            public int version = SaveMigration.CurrentVersion;
             public string dollars;
             public string totalEarned;
             public int regionIndex;
@@ -176,6 +176,7 @@ namespace NuggetCreek.Game
                 LastMonotonicSeconds = data.lastMonotonicSeconds,
                 LastBootUtc = data.lastBootUtc,
             };
+            SaveMigration.Upgrade(progress, data.version);
             progress.Normalize();
             return progress;
         }
