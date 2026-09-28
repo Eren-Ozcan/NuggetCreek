@@ -286,6 +286,7 @@ namespace NuggetCreek.Game.UI
                 ShowPopup(c.Root.anchoredPosition, text, critical ? size + 8 : size,
                     critical ? Palette.Critical : ColorOf(c.Kind));
                 Haptics.Tap();
+                Sound.Pick(manual: true);
                 if (c.NuggetType >= 0)
                     RecordNugget(c.NuggetType, c.Root.anchoredPosition);
                 Destroy(c.Root.gameObject);

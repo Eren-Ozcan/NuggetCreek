@@ -180,6 +180,8 @@ namespace NuggetCreek.Game.UI
         {
             shown = session.ClaimChest();
             openedAt = Time.unscaledTime;
+            if (shown != null)
+                Sound.Play(Sfx.Chest);
             Refresh();
         }
 

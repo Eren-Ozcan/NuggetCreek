@@ -149,6 +149,7 @@ namespace NuggetCreek.Game.UI
             int peak = run.PeakCombo;
             int hitCount = run.Hits;
             BigNumber reward = session.FinishMotherLode(run);
+            Sound.Play(Sfx.VeinEnd);
             int gems = session.Economy.Config.MotherLodeGemReward;
             boulder.SetActive(false);
             SetRunLabelsActive(false);
@@ -229,6 +230,7 @@ namespace NuggetCreek.Game.UI
             if (crossed && !pointerInside)
             {
                 run.Hit();
+                Sound.VeinHit(run.Combo);
                 pulse = HitPulseSeconds;
             }
             pointerInside = Vector2.Distance(center, point) <= radius;

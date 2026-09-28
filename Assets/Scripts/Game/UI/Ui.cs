@@ -291,6 +291,7 @@ namespace NuggetCreek.Game.UI
             ColorBlock colors = button.colors;
             colors.disabledColor = new Color(0.62f, 0.58f, 0.52f, 0.75f);
             button.colors = colors;
+            button.onClick.AddListener(() => Sound.Play(Sfx.Tap));
             if (onClick != null)
                 button.onClick.AddListener(() => onClick());
             label = Label("Label", background.transform, text, fontSize, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);

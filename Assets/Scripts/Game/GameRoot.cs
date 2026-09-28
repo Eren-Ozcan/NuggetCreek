@@ -108,6 +108,9 @@ namespace NuggetCreek.Game
             if (!Compliance.NeedsGate(session.Progress))
                 FirebaseServices.Start(Compliance.Audience(session.Progress.AgeBand));
             Haptics.Mode = session.Progress.Vibration;
+            Sound.MusicOn = session.Progress.MusicOn;
+            Sound.SoundOn = session.Progress.SoundOn;
+            Sound.Create();
             Ui.TextScale = Compliance.TextScale(DeviceSettings.FontScale());
             session.Events = new AnalyticsSink(session);
             FirebaseServices.Events = session.Events;
@@ -156,6 +159,9 @@ namespace NuggetCreek.Game
                 interstitials.Tick(Time.unscaledDeltaTime);
             store.Tick(Time.unscaledDeltaTime);
             session.TickShop(dt);
+
+            Sound.Region = session.Progress.RegionIndex;
+            Sound.MotherLode = motherLode.IsActive;
 
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
@@ -582,6 +588,7 @@ namespace NuggetCreek.Game
             daily.Changed += Save;
             creek.NuggetDiscovered += _ => Save();
             upgrades.Closed += () => offlineModal.Unhide();
+            upgrades.Purchased += () => Sound.Play(Sfx.Upgrade);
             map = new MapPanel(session, root);
             // A creek unlock may bring crew candidates (design doc 6.3); show them right away.
             map.RegionChanged += () =>
@@ -612,6 +619,7 @@ namespace NuggetCreek.Game
             candidateModal.Hired += () =>
             {
                 Haptics.Important();
+                Sound.Play(Sfx.Crew);
                 Save();
             };
             shop = new ShopPanel(session, store, root);
@@ -745,7 +753,10 @@ namespace NuggetCreek.Game
         void QuickBuy()
         {
             if (session.QuickBuy())
+            {
+                Sound.Play(Sfx.Upgrade);
                 RefreshHud();
+            }
         }
 
         void RefreshQuickBuy()
@@ -828,6 +839,7 @@ namespace NuggetCreek.Game
             shop.Close();
             candidateModal.Close();
             Haptics.Important();
+            Sound.Play(Sfx.VeinStart);
             motherLode.Begin(run);
         }
 
@@ -880,7 +892,10 @@ namespace NuggetCreek.Game
         void ClaimGoal()
         {
             if (session.ClaimGoal())
+            {
+                Sound.Play(Sfx.Goal);
                 Save();
+            }
         }
 
         static string GoalText(GoalDefinition goal)

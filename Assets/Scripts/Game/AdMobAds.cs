@@ -217,12 +217,14 @@ namespace NuggetCreek.Game
             placement = where;
             rewardEarned = false;
             rewardedDone = onFinished;
+            Sound.AdPlaying = true;
             ad.Show(_ => rewardEarned = true);
         }
 
         void FinishRewarded(RewardedAd ad)
         {
             ad.Destroy();
+            Sound.AdPlaying = false;
             Action<bool> callback = rewardedDone;
             rewardedDone = null;
             if (rewardEarned)
@@ -282,12 +284,14 @@ namespace NuggetCreek.Game
             interstitial.Ad = null;
             placement = trigger;
             interstitialDone = onClosed;
+            Sound.AdPlaying = true;
             ad.Show();
         }
 
         void FinishInterstitial(InterstitialAd ad)
         {
             ad.Destroy();
+            Sound.AdPlaying = false;
             Action callback = interstitialDone;
             interstitialDone = null;
             callback?.Invoke();

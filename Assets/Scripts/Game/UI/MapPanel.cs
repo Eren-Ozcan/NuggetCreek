@@ -368,9 +368,12 @@ namespace NuggetCreek.Game.UI
         {
             if (index == session.Progress.RegionIndex)
                 return;
-            bool changed = index == session.Progress.RegionsUnlocked ? session.UnlockNextRegion() : session.TravelTo(index);
+            bool unlock = index == session.Progress.RegionsUnlocked;
+            bool changed = unlock ? session.UnlockNextRegion() : session.TravelTo(index);
             if (!changed)
                 return;
+            if (unlock)
+                Sound.Play(Sfx.Region);
             RegionChanged?.Invoke();
             Close();
         }
