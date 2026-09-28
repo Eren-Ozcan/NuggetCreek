@@ -7,15 +7,20 @@ namespace NuggetCreek.Game.UI
 {
     /// <summary>
     /// Full-screen Nugget collection (design doc 3.1.2, 12.1 screen 6): the six global Rares,
-    /// then each creek's Common and boss nugget with their stars. Undiscovered types show as
-    /// "???"; an unbeaten boss names the creek where it waits.
+    /// then each creek's Common and boss nugget with their stars. Each card shows the nugget's
+    /// own picture; undiscovered types show it as a dark silhouette with "???", and an unbeaten
+    /// boss names the creek where it waits.
     /// </summary>
     public sealed class CollectionPanel
     {
+        /// <summary>Tint that turns a nugget picture into a shadow of itself.</summary>
+        static readonly Color Silhouette = new Color(0.06f, 0.07f, 0.06f, 0.9f);
+
         sealed class Card
         {
             public int Index;
             public Image Swatch;
+            public bool HasArt;
             public Text Title;
             public Text Detail;
             public Text Flavor;
@@ -87,13 +92,13 @@ namespace NuggetCreek.Game.UI
                 int catches = session.NuggetCatches(card.Index);
                 if (catches == 0)
                 {
-                    card.Swatch.color = Palette.Row * 1.4f;
+                    card.Swatch.color = card.HasArt ? Silhouette : Palette.Row * 1.4f;
                     card.Title.SetText("???");
                     card.Detail.SetText(boss ? $"Boss  -  beat the boss at {GameCatalog.RegionNames[nugget.RegionIndex]}" : $"{kind}  -  not found yet");
                     card.Flavor.SetText("");
                     continue;
                 }
-                card.Swatch.color = ColorOf(nugget.Rarity);
+                card.Swatch.color = card.HasArt ? Color.white : ColorOf(nugget.Rarity);
                 int starCount = session.NuggetStars(card.Index);
                 card.Title.SetText($"{nugget.Name}  {StarText(starCount, session.Economy.MaxStarsPerNugget)}");
                 int? next = session.Economy.NextStarAt(card.Index, catches);
@@ -111,8 +116,10 @@ namespace NuggetCreek.Game.UI
             RectTransform rt = background.rectTransform;
             var card = new Card { Index = index };
 
-            card.Swatch = Ui.Image("Swatch", rt, Palette.Nugget, Ui.Circle);
-            card.Swatch.rectTransform.Box(new Vector2(0, 0.5f), new Vector2(110, 110), new Vector2(30, 0));
+            Sprite art = Art.Nugget(index);
+            card.HasArt = art != null;
+            card.Swatch = Ui.Icon("Swatch", rt, art, Palette.Nugget);
+            card.Swatch.rectTransform.Box(new Vector2(0, 0.5f), new Vector2(130, 130), new Vector2(22, 0));
             card.Title = Ui.Label("Title", rt, "", 42, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
             card.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(170, 0), new Vector2(-24, -18));
             card.Detail = Ui.Label("Detail", rt, "", 30, TextAnchor.MiddleLeft, Palette.TextMuted);
