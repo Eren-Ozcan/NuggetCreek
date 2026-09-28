@@ -37,6 +37,9 @@ targetSdk 36, version code, signing). Menu *Nugget Creek > Android* or
 `Unity.exe -batchmode -quit -projectPath . -executeMethod NuggetCreek.Editor.AndroidBuild.<Method>`:
 
 - `BuildDevApk` — development APK for phone playtests, debug key.
+- `BuildEmulatorApk` — dev APK that also carries x86_64. The emulator's ARM64 translation
+  crashes the ARM64-only build at start; run the AVD with `-gpu swiftshader_indirect`
+  (the default Vulkan path takes the emulator down when Unity starts).
 - `BuildMeasureApk` — store settings plus `PerfProbe` (logcat FPS/memory), debug key.
   Then `scripts/android-measure.sh` installs it, taps for 2 min and prints APK size, PSS and FPS.
 - `BuildReleaseAab` — Play upload, signed with the upload key; refuses to overwrite an existing
