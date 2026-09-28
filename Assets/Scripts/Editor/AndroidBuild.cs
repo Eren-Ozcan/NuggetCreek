@@ -38,6 +38,13 @@ namespace NuggetCreek.Editor
         [MenuItem("Nugget Creek/Android/Build Development APK")]
         public static void BuildDevApk() => Build(Variant.Dev);
 
+        /// <summary>
+        /// Development APK that also carries x86_64, for the Android emulator: its ARM64
+        /// translation stops on an instruction in the Unity engine library.
+        /// </summary>
+        [MenuItem("Nugget Creek/Android/Build Emulator APK")]
+        public static void BuildEmulatorApk() => Build(Variant.Emulator);
+
         /// <summary>Store settings as an APK plus the PerfProbe log, for size, RAM and FPS checks.</summary>
         [MenuItem("Nugget Creek/Android/Build Measurement APK")]
         public static void BuildMeasureApk() => Build(Variant.Measure);
@@ -59,7 +66,7 @@ namespace NuggetCreek.Editor
                 EditorApplication.Exit(0);
         }
 
-        enum Variant { Dev, Measure, Release }
+        enum Variant { Dev, Measure, Release, Emulator }
 
         static void Build(Variant variant)
         {
@@ -79,6 +86,8 @@ namespace NuggetCreek.Editor
         static bool TryBuild(Variant variant)
         {
             AppVersion version = ApplyPlayerSettings();
+            if (variant == Variant.Emulator)
+                PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64 | AndroidArchitecture.X86_64;
             // Firebase's Android libraries enter through mainTemplate.gradle, patched by the
             // External Dependency Manager; batchmode never runs its auto-resolve, so force it.
             if (!GooglePlayServices.PlayServicesResolver.ResolveSync(true))
@@ -103,7 +112,7 @@ namespace NuggetCreek.Editor
                 scenes = EditorBuildSettings.scenes.Where(s => s.enabled).Select(s => s.path).ToArray(),
                 locationPathName = path,
                 target = BuildTarget.Android,
-                options = variant == Variant.Dev ? BuildOptions.Development : BuildOptions.None,
+                options = variant == Variant.Dev || variant == Variant.Emulator ? BuildOptions.Development : BuildOptions.None,
                 extraScriptingDefines = variant == Variant.Measure ? new[] { "NC_PERF_PROBE" } : Array.Empty<string>(),
             };
             BuildSummary summary;
@@ -115,6 +124,7 @@ namespace NuggetCreek.Editor
             {
                 // Leave the project on the debug key so editor Build And Run keeps working.
                 PlayerSettings.Android.useCustomKeystore = false;
+                PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
                 AssetDatabase.SaveAssets();
             }
             long bytes = File.Exists(path) ? new FileInfo(path).Length : 0;
