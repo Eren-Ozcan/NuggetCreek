@@ -608,6 +608,15 @@ namespace NuggetCreek.PlayModeTests
 
             var target = new RenderTexture(1080, 1920, 24);
             camera.targetTexture = target;
+            // Two frames at the new size let scroll views clamp content whose height follows the
+            // width (the map); masks then need a nudge, as they keep the clip from the old mode.
+            yield return null;
+            yield return null;
+            foreach (RectMask2D mask in UnityEngine.Object.FindObjectsByType<RectMask2D>(FindObjectsSortMode.None))
+            {
+                mask.enabled = false;
+                mask.enabled = true;
+            }
             Canvas.ForceUpdateCanvases();
             camera.Render();
             RenderTexture.active = target;
