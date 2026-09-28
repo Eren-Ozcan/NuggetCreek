@@ -36,10 +36,10 @@ namespace NuggetCreek.Game.UI
         {
             this.session = session;
             root = Ui.Image("CandidateModal", canvas, Palette.Dim).rectTransform.Fill();
-            RectTransform card = Ui.Image("Card", root, Palette.Panel).rectTransform
+            RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1080));
 
-            Text title = Ui.Label("Title", card, "NEW CREW", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", card, "NEW CREW", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));
 
             timer = Ui.Label("Timer", card, "", 34, TextAnchor.MiddleCenter, Palette.TextMuted);
@@ -113,7 +113,7 @@ namespace NuggetCreek.Game.UI
         {
             var slot = new Slot();
             const float height = 300;
-            slot.Root = Ui.Image("Candidate", card, Palette.Row).rectTransform
+            slot.Root = Ui.Panel("Candidate", card, Palette.Row).rectTransform
                 .Box(new Vector2(0.5f, 1), new Vector2(860, height), new Vector2(0, -220 - position * 330));
             // Smaller than the card so the effect text keeps room above the Hire button.
             // Built with any portrait; Refresh swaps in the candidate's own.

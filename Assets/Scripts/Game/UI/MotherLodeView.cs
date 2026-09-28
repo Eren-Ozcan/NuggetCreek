@@ -49,13 +49,19 @@ namespace NuggetCreek.Game.UI
             root = Ui.Image("MotherLode", canvas, new Color(0.05f, 0.04f, 0.03f, 0.88f)).rectTransform;
             root.Place(area.anchorMin, area.anchorMax, area.offsetMin, area.offsetMax);
 
-            title = Ui.Label("Title", root, "MOTHER LODE!", 64, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
-            title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -140), new Vector2(0, -30));
-            timer = Ui.Label("Timer", root, "", 44, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            title = Ui.Title("Title", root, "MOTHER LODE!", 64, Palette.Gold);
+            title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -140), new Vector2(-30, -30));
+            // Boss names are long in the wide heading font; shrink rather than spill.
+            title.resizeTextForBestFit = true;
+            title.resizeTextMinSize = 36;
+            title.resizeTextMaxSize = 64;
+            title.verticalOverflow = VerticalWrapMode.Truncate;
+            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            timer = Ui.Label("Timer", root, "", 44, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
             timer.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -220), new Vector2(0, -140));
 
             // Boss health (design doc 3.4.1): shrinks as the combo hits land.
-            bossBarBack = Ui.Image("BossBar", root, Palette.Row).rectTransform;
+            bossBarBack = Ui.Image("BossBar", root, Palette.Text).rectTransform;
             bossBarBack.Place(new Vector2(0, 1), Vector2.one, new Vector2(80, -290), new Vector2(-80, -240));
             bossBar = Ui.Image("Health", bossBarBack, Palette.GiantNugget);
             bossBar.rectTransform.Fill();
@@ -64,23 +70,23 @@ namespace NuggetCreek.Game.UI
                 boulders[i] = Art.Get(BoulderSprites[i]);
             boulderImage = Ui.Icon("Boulder", root, boulders[0], Palette.Nugget);
             boulder = boulderImage.rectTransform.Box(new Vector2(0.5f, 0.5f), new Vector2(BoulderSize, BoulderSize), new Vector2(0, 40));
-            combo = Ui.Label("Combo", boulder, "", 110, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            combo = Ui.Label("Combo", boulder, "", 110, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
             combo.rectTransform.Fill();
             // The combo sits on the rock art; an outline keeps it readable.
             var outline = combo.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(0, 0, 0, 0.85f);
             outline.effectDistance = new Vector2(4, -4);
 
-            hits = Ui.Label("Hits", root, "", 40, TextAnchor.MiddleCenter, Palette.TextMuted, FontStyle.Bold);
+            hits = Ui.Label("Hits", root, "", 40, TextAnchor.MiddleCenter, new Color32(0xE0, 0xCF, 0xB0, 0xFF), FontStyle.Bold);
             hits.rectTransform.Place(new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0, -290), new Vector2(0, -210));
-            prompt = Ui.Label("Prompt", root, "Swipe back and forth across the boulder!", 40, TextAnchor.MiddleCenter, Palette.Text);
+            prompt = Ui.Label("Prompt", root, "Swipe back and forth across the boulder!", 40, TextAnchor.MiddleCenter, Palette.TextLight);
             prompt.rectTransform.Place(new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(40, -380), new Vector2(-40, -300));
 
-            result = Ui.Image("Result", root, Palette.Panel).rectTransform
+            result = Ui.Panel("Result", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(860, 560));
-            Text resultTitle = Ui.Label("Title", result, "THE BOULDER CRACKED OPEN", 48, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text resultTitle = Ui.Title("Title", result, "THE BOULDER CRACKED OPEN", 48);
             resultTitle.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -120), new Vector2(0, -30));
-            resultAmount = Ui.Label("Amount", result, "", 44, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            resultAmount = Ui.Label("Amount", result, "", 44, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             resultAmount.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 200), new Vector2(-30, -130));
             Ui.Button("LodeCollect", result, "Collect", Palette.Button, Close, out _, 44).AsRect()
                 .Box(new Vector2(0.5f, 0), new Vector2(420, 140), new Vector2(0, 40));

@@ -71,9 +71,9 @@ namespace NuggetCreek.Game
         public FakeStore(Transform canvas)
         {
             sheet = Ui.Image("StoreSheet", canvas, Palette.Dim).rectTransform.Fill();
-            RectTransform card = Ui.Image("Card", sheet, Palette.Panel).rectTransform
+            RectTransform card = Ui.Panel("Card", sheet, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(900, 620));
-            Text title = Ui.Label("Title", card, "Test purchase", 48, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", card, "Test purchase", 48);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -110), new Vector2(0, -20));
             details = Ui.Label("Details", card, "", 36, TextAnchor.UpperCenter, Palette.Text);
             details.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(40, 180), new Vector2(-40, -130));

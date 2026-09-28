@@ -18,9 +18,9 @@ namespace NuggetCreek.Game.UI
         public NotifAskCard(Transform canvas)
         {
             root = Ui.Image("NotifAsk", canvas, Palette.Dim).rectTransform.Fill();
-            RectTransform card = Ui.Image("Card", root, Palette.Panel).rectTransform
+            RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(900, 620));
-            Text title = Ui.Label("Title", card, "Amos", 52, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", card, "Amos", 52);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -120), new Vector2(0, -30));
             Text line = Ui.Label("Line", card, "\"I'll keep digging while you're gone. Want me to holler when the pan's full?\"",
                 40, TextAnchor.MiddleCenter, Palette.Text);

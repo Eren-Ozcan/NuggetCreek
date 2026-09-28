@@ -146,7 +146,7 @@ namespace NuggetCreek.Game.UI
         Row NewRow(string name, Sprite picture, string leftText, Action onLeft, string rightText, Action onRight)
         {
             const float height = 170;
-            Image background = Ui.Image(name, list, Palette.Row);
+            Image background = Ui.Panel(name, list, Palette.Row);
             Ui.PreferredHeight(background, height);
             var row = new Row { Root = background.rectTransform };
             parts.Add(background.gameObject);

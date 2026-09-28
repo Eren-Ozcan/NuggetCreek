@@ -45,10 +45,10 @@ namespace NuggetCreek.Game.UI
         {
             this.boxSprites = boxSprites;
             root = Ui.Image("GearBoxReveal", parent, Palette.Dim).rectTransform.Fill();
-            card = Ui.Image("Card", root, Palette.Panel).rectTransform
+            card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(960, CardHeight(maxCards)));
 
-            title = Ui.Label("Title", card, "", 52, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            title = Ui.Title("Title", card, "", 52);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));
 
             box = Ui.Icon("BoxPicture", card, null, Palette.Nugget);
@@ -112,7 +112,7 @@ namespace NuggetCreek.Game.UI
         CardRow NewRow(RectTransform card, int index)
         {
             float top = -RowsTop - index * RowStep;
-            Image background = Ui.Image("Card" + index, card, Palette.Row);
+            Image background = Ui.Panel("Card" + index, card, Palette.Row);
             RectTransform rt = background.rectTransform.Place(new Vector2(0, 1), Vector2.one,
                 new Vector2(40, top - RowHeight), new Vector2(-40, top));
             var row = new CardRow { Root = rt, Group = rt.gameObject.AddComponent<CanvasGroup>() };
@@ -146,7 +146,7 @@ namespace NuggetCreek.Game.UI
             else
             {
                 row.State.SetText("+" + Effects.Gems(card.Gems));
-                row.State.color = Palette.Gem;
+                row.State.color = Palette.GemText;
             }
         }
 
@@ -155,7 +155,7 @@ namespace NuggetCreek.Game.UI
             switch (rarity)
             {
                 case Rarity.Rare: return Palette.RichNugget;
-                case Rarity.Legendary: return Palette.Gold;
+                case Rarity.Legendary: return Palette.GoldText;
                 default: return Palette.TextMuted;
             }
         }

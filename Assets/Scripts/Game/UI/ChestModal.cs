@@ -43,10 +43,10 @@ namespace NuggetCreek.Game.UI
             this.session = session;
             this.ads = ads;
             root = Ui.Image("ChestModal", canvas, Palette.Dim).rectTransform.Fill();
-            RectTransform card = Ui.Image("Card", root, Palette.Panel).rectTransform
+            RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1240));
 
-            Text title = Ui.Label("Title", card, "CREEK CHEST", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", card, "CREEK CHEST", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));
 
             EconomyConfig config = session.Economy.Config;
@@ -60,7 +60,7 @@ namespace NuggetCreek.Game.UI
             // Dollars and the card fade in once the lid is open.
             RectTransform rewardArea = Ui.Rect("RewardArea", card).Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -940), new Vector2(-40, -610));
             rewardGroup = rewardArea.gameObject.AddComponent<CanvasGroup>();
-            status = Ui.Label("ChestStatus", rewardArea, "", 44, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            status = Ui.Label("ChestStatus", rewardArea, "", 44, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             status.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -90), Vector2.zero);
             reward = Ui.Label("ChestReward", rewardArea, "", 40, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             reward.rectTransform.Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -100));

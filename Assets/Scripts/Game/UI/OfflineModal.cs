@@ -47,16 +47,16 @@ namespace NuggetCreek.Game.UI
             ads.Loaded += () => machine?.NotifyAdLoaded();
 
             root = Ui.Image("OfflineModal", canvas, Palette.Dim).rectTransform.Fill();
-            RectTransform card = Ui.Image("Card", root, Palette.Panel).rectTransform
+            RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1000));
 
-            Text title = Ui.Label("Title", card, "WELCOME BACK", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", card, "WELCOME BACK", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));
 
             body = Ui.Label("Body", card, "", 38, TextAnchor.MiddleCenter, Palette.TextMuted);
             body.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -300), new Vector2(-40, -140));
 
-            amount = Ui.Label("Amount", card, "", 92, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            amount = Ui.Label("Amount", card, "", 92, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             amount.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -430), new Vector2(0, -300));
 
             capLine = Ui.Label("CapLine", card, "", 34, TextAnchor.MiddleCenter, Palette.Text);

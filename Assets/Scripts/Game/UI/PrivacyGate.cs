@@ -26,10 +26,10 @@ namespace NuggetCreek.Game.UI
         public PrivacyGate(Transform canvas)
         {
             root = Ui.Image("PrivacyGate", canvas, Palette.Background).rectTransform.Fill();
-            RectTransform card = Ui.Image("Card", root, Palette.Panel).rectTransform
+            RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(960, 1240));
 
-            Text title = Ui.Label("Title", card, "Welcome to Nugget Creek", 56, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            Text title = Ui.Title("Title", card, "Welcome to Nugget Creek", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -150), new Vector2(-40, -40));
 
             Text question = Ui.Label("Question", card, "How old are you?", 42, TextAnchor.MiddleCenter, Palette.Text);

@@ -62,10 +62,9 @@ namespace NuggetCreek.Game.UI
             this.store = store;
             root = Ui.Image("Shop", canvas, Palette.Panel).rectTransform.Fill();
 
-            Text title = Ui.Label("Title", root, "SHOP", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", root, "SHOP", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -150), Vector2.zero);
-            Ui.Button("Close", root, "X", Palette.ButtonAlt, Close, out _).AsRect()
-                .Box(Vector2.one, new Vector2(120, 120), new Vector2(-20, -15));
+            Ui.CloseButton(root, Close);
 
             for (int i = 0; i < 3; i++)
             {
@@ -75,7 +74,7 @@ namespace NuggetCreek.Game.UI
                     new Vector2(i == 0 ? 20 : 8, -170 - Ui.TapHeight), new Vector2(i == 2 ? -20 : -8, -170));
             }
 
-            result = Ui.Label("ShopResult", root, "", 34, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            result = Ui.Label("ShopResult", root, "", 34, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             result.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(30, 20), new Vector2(-30, 170));
 
             for (int i = 0; i < 3; i++)
@@ -259,7 +258,7 @@ namespace NuggetCreek.Game.UI
         Row NewRow(Transform list, string name, Sprite picture, Action onBuy, bool gemPrice = false)
         {
             const float height = 170;
-            Image background = Ui.Image(name, list, Palette.Row);
+            Image background = Ui.Panel(name, list, Palette.Row);
             Ui.PreferredHeight(background, height);
             var row = new Row { Root = background.rectTransform };
             float inset = Ui.RowPicture(row.Root, height, picture, out _);

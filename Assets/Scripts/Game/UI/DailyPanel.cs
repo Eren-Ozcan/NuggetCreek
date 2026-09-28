@@ -51,10 +51,9 @@ namespace NuggetCreek.Game.UI
             this.ads = ads;
             root = Ui.Image("Daily", canvas, Palette.Panel).rectTransform.Fill();
 
-            Text title = Ui.Label("Title", root, "DAILY", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", root, "DAILY", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -150), Vector2.zero);
-            Ui.Button("Close", root, "X", Palette.ButtonAlt, Close, out _).AsRect()
-                .Box(Vector2.one, new Vector2(120, 120), new Vector2(-20, -15));
+            Ui.CloseButton(root, Close);
 
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -160));
             RectTransform list = Ui.ScrollList(body, 16, 24);
@@ -76,7 +75,7 @@ namespace NuggetCreek.Game.UI
             Ui.PreferredHeight(washText, 290);
             wash = Ui.Button("Wash", list, "", Palette.Button, Wash, out washLabel, 44);
             Ui.PreferredHeight(wash, 130);
-            washResult = Ui.Label("WashResult", list, "", 38, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            washResult = Ui.Label("WashResult", list, "", 38, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             Ui.PreferredHeight(washResult, 90);
 
             Close();
@@ -193,7 +192,7 @@ namespace NuggetCreek.Game.UI
 
         JobRow NewJobRow(Transform list, int slot)
         {
-            Image background = Ui.Image("Job" + slot, list, Palette.Row);
+            Image background = Ui.Panel("Job" + slot, list, Palette.Row);
             // Tall enough for a TapHeight Claim button with 20 above and below.
             Ui.PreferredHeight(background, Ui.TapHeight + 40);
             RectTransform rt = background.rectTransform;

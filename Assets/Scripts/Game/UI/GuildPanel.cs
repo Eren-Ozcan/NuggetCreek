@@ -55,10 +55,13 @@ namespace NuggetCreek.Game.UI
             this.ads = ads;
             root = Ui.Image("Guild", canvas, Palette.Panel).rectTransform.Fill();
 
-            Text title = Ui.Label("Title", root, "PROSPECTORS' GUILD", 52, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
-            title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -150), Vector2.zero);
-            Ui.Button("Close", root, "X", Palette.ButtonAlt, Close, out _).AsRect()
-                .Box(Vector2.one, new Vector2(120, 120), new Vector2(-20, -15));
+            Text title = Ui.Title("Title", root, "PROSPECTORS' GUILD", 52);
+            // Clear of the close button on narrow phones.
+            title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(150, -150), new Vector2(-150, 0));
+            title.resizeTextForBestFit = true;
+            title.resizeTextMinSize = 36;
+            title.resizeTextMaxSize = Mathf.RoundToInt(52 * Ui.TextScale);
+            Ui.CloseButton(root, Close);
 
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -160));
             RectTransform list = Ui.ScrollList(body, 16, 24);
@@ -70,7 +73,7 @@ namespace NuggetCreek.Game.UI
             Ui.PreferredHeight(rebirth, 120);
 
             Section(list, "GUILD");
-            guildText = Ui.Label("GuildText", list, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold);
+            guildText = Ui.Label("GuildText", list, "", 34, TextAnchor.MiddleLeft, Palette.GoldText, FontStyle.Bold);
             Ui.PreferredHeight(guildText, 90);
             watchAd = Ui.Button("GuildAd", list, $"Watch ad  +{session.Economy.Config.GuildXpPerAd} Guild XP", Palette.Ad, WatchAd, out _, 38);
             Ui.PreferredHeight(watchAd, 120);
@@ -159,7 +162,7 @@ namespace NuggetCreek.Game.UI
         {
             const float height = 160;
             string id = GameCatalog.Perks[index].Id;
-            Image background = Ui.Image(id, list, Palette.Row);
+            Image background = Ui.Panel(id, list, Palette.Row);
             Ui.PreferredHeight(background, height);
             RectTransform rt = background.rectTransform;
             var row = new PerkRow { Index = index };

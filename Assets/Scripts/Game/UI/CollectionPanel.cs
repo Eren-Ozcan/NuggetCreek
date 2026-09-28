@@ -38,12 +38,11 @@ namespace NuggetCreek.Game.UI
             this.session = session;
             root = Ui.Image("Collection", canvas, Palette.Panel).rectTransform.Fill();
 
-            Text title = Ui.Label("Title", root, "NUGGETS", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text title = Ui.Title("Title", root, "NUGGETS", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -150), Vector2.zero);
-            Ui.Button("Close", root, "X", Palette.ButtonAlt, Close, out _).AsRect()
-                .Box(Vector2.one, new Vector2(120, 120), new Vector2(-20, -15));
+            Ui.CloseButton(root, Close);
 
-            total = Ui.Label("TotalStars", root, "", 34, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            total = Ui.Label("TotalStars", root, "", 34, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             total.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -230), new Vector2(0, -150));
 
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -240));
@@ -111,7 +110,7 @@ namespace NuggetCreek.Game.UI
 
         Card NewCard(Transform list, int index)
         {
-            Image background = Ui.Image(GameCatalog.Nuggets[index].Id, list, Palette.Row);
+            Image background = Ui.Panel(GameCatalog.Nuggets[index].Id, list, Palette.Row);
             Ui.PreferredHeight(background, 190);
             RectTransform rt = background.rectTransform;
             var card = new Card { Index = index };
