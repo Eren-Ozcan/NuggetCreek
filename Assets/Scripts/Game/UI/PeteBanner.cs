@@ -19,10 +19,27 @@ namespace NuggetCreek.Game.UI
         {
             this.session = session;
             root = Ui.Button("Pete", canvas, "", Palette.Amos, Dismiss, out text, 34);
-            root.AsRect().Box(Vector2.zero, new Vector2(620, 170), new Vector2(20, bottom + 20));
+            const float height = 170;
+            root.AsRect().Box(Vector2.zero, new Vector2(620, height), new Vector2(20, bottom + 20));
             text.alignment = TextAnchor.MiddleLeft;
             text.fontStyle = FontStyle.Normal;
-            text.rectTransform.Fill(20);
+            text.font = Ui.Font;
+            // Pete's face on the left, framed like the crew portraits.
+            float left = 20;
+            Sprite face = Art.Portrait("old_pete_portrait");
+            if (face != null)
+            {
+                const float side = height - 2 * 16 - Ui.Lip;
+                Image frame = Ui.Panel("Portrait", root.transform, Palette.Panel);
+                frame.rectTransform.Box(new Vector2(0, 0.5f), new Vector2(side, side), new Vector2(16, Ui.Lip / 2f));
+                frame.raycastTarget = false;
+                frame.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+                Image picture = Ui.Image("Face", frame.transform, Color.white, face);
+                picture.rectTransform.Fill(5);
+                picture.raycastTarget = false;
+                left = 16 + side + 18;
+            }
+            text.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(left, 16 + Ui.Lip), new Vector2(-20, -16));
             root.SetActive(false);
         }
 

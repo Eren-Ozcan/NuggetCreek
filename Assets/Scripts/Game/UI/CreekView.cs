@@ -84,7 +84,7 @@ namespace NuggetCreek.Game.UI
             cover.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
             UpdateBackground();
 
-            hint = Legible(Ui.Label("Hint", area, "Swipe over the glinting gold!", 44, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold));
+            hint = Legible(Ui.Label("Hint", area, "Swipe over the glinting gold!", 44, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold));
             hint.rectTransform.Place(new Vector2(0, 0.45f), new Vector2(1, 0.55f));
 
             vein = Legible(Ui.Label("Vein", area, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold));
@@ -97,8 +97,27 @@ namespace NuggetCreek.Game.UI
 
             Image amosBody = Ui.Image("AmosMarker", area, Palette.Amos, Ui.Circle);
             amos = amosBody.rectTransform.Box(new Vector2(0, 0), new Vector2(130, 130), new Vector2(30, 30));
-            Text amosName = Ui.Label("Name", amos, "AMOS", 30, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Sprite amosFace = Art.Portrait("amos");
+            if (amosFace != null)
+            {
+                // His portrait in a cream ring instead of the name disc.
+                amosBody.color = Palette.Panel;
+                Image inner = Ui.Image("Inner", amos, Color.white, Ui.Circle);
+                inner.rectTransform.Fill(7);
+                inner.raycastTarget = false;
+                inner.gameObject.AddComponent<Mask>().showMaskGraphic = false;
+                Image face = Ui.Image("Face", inner.transform, Color.white, amosFace);
+                face.rectTransform.Fill();
+                face.raycastTarget = false;
+            }
+            Text amosName = Ui.Label("Name", amos, "AMOS", 30, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
             amosName.rectTransform.Fill();
+            if (amosFace != null)
+            {
+                amosName.alignment = TextAnchor.LowerCenter;
+                amosName.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(-20, -8), new Vector2(20, 32));
+                Legible(amosName);
+            }
 
             ScheduleNextSpawn();
         }
@@ -210,7 +229,7 @@ namespace NuggetCreek.Game.UI
                 if (c.Age >= c.Lifetime)
                 {
                     if (session.LoseCollectible() && session.VeinOpen)
-                        ShowPopup(c.Root.anchoredPosition, "Vein lost", 34, Palette.TextMuted);
+                        ShowPopup(c.Root.anchoredPosition, "Vein lost", 34, Palette.TextLight);
                     Destroy(c.Root.gameObject);
                     live.RemoveAt(i);
                     continue;
@@ -347,7 +366,7 @@ namespace NuggetCreek.Game.UI
                 return;
             amosTimer = 0;
             if (!amosPending.IsZero)
-                ShowPopup(amos.anchoredPosition + new Vector2(65, 150), "+" + NumberFormat.Dollars(amosPending), 34, Palette.TextMuted);
+                ShowPopup(amos.anchoredPosition + new Vector2(65, 150), "+" + NumberFormat.Dollars(amosPending), 34, Palette.TextLight);
             amosPending = BigNumber.Zero;
         }
 
