@@ -66,6 +66,7 @@ namespace NuggetCreek.Game
         Text gemsLabel;
         // Buttons whose icon turns into a lock while their feature is closed, with the open icon.
         readonly Dictionary<Button, (Image icon, Sprite open)> lockIcons = new Dictionary<Button, (Image, Sprite)>();
+        readonly Dictionary<Button, Image> badges = new Dictionary<Button, Image>();
         Button goalButton;
         Button goalAd;
         Text goalAdLabel;
@@ -464,6 +465,8 @@ namespace NuggetCreek.Game
             // goal bar. Every control is at least TapHeight tall: 48 dp on a 1080 px wide phone.
             RectTransform top = Ui.Image("TopBar", root, Palette.Bar).rectTransform
                 .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -topHeight), Vector2.zero);
+            // A dark rule where the cream bar meets the painting.
+            Ui.Image("Edge", top, Palette.Text).rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(0, -6), Vector2.zero);
 
             Button settingsButton = Ui.Button("SettingsButton", top, "Settings", Palette.ButtonAlt, OpenSettings, out Text settingsLabel, 26);
             settingsButton.AsRect().Box(new Vector2(0, 1), new Vector2(Ui.TapHeight, Ui.TapHeight), new Vector2(16, -14));
@@ -481,7 +484,7 @@ namespace NuggetCreek.Game
             LeadIcon(guildButton, guildLabel, Art.GuildEmblem);
 
             // The coin sits just left of the amount, however long it gets.
-            dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             dollarsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(460, -144), new Vector2(-256, -4));
             IconBesideText.Attach(dollarsLabel, Art.Dollar, Palette.Gold, 92);
             // Late-game amounts are long; shrink rather than wrap.
@@ -493,7 +496,7 @@ namespace NuggetCreek.Game
 
             Ui.Icon("GemIcon", top, Art.Gem, Palette.Gem).rectTransform
                 .Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, -202), new Vector2(80, -148));
-            gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.MiddleLeft, Palette.Gem, FontStyle.Bold);
+            gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.MiddleLeft, Palette.GemText, FontStyle.Bold);
             gemsLabel.rectTransform.Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(92, -206), new Vector2(330, -144));
             statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
             statusLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(330, -206), new Vector2(-30, -144));
@@ -502,8 +505,12 @@ namespace NuggetCreek.Game
             statusLabel.resizeTextMaxSize = 36;
             statusLabel.verticalOverflow = VerticalWrapMode.Truncate;
 
-            goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
+            goalButton = Ui.Button("GoalButton", top, "", Palette.Row, ClaimGoal, out goalLabel, 34);
             goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(20, 4), new Vector2(-250, 4 + Ui.TapHeight));
+            // An unfinished goal is a plain strip, not a greyed-out button.
+            ColorBlock goalColors = goalButton.colors;
+            goalColors.disabledColor = Color.white;
+            goalButton.colors = goalColors;
             goalLabel.name = "Goal";
             Image goalIcon = Ui.Icon("Icon", goalButton.transform, Art.Icon("goals"));
             if (goalIcon != null)
@@ -518,6 +525,7 @@ namespace NuggetCreek.Game
 
             RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
                 .Place(Vector2.zero, new Vector2(1, 0), Vector2.zero, new Vector2(0, bottomHeight));
+            Ui.Image("Edge", bottom, Palette.Text).rectTransform.Place(new Vector2(0, 1), Vector2.one, Vector2.zero, new Vector2(0, 6));
             // Map / Upgrades / Shop (design doc 12.2).
             mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
             mapButton.AsRect().Place(Vector2.zero, new Vector2(1 / 3f, 1), new Vector2(30, 30), new Vector2(-10, -30));
@@ -698,17 +706,17 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
-            SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily\ntomorrow");
+            SetLock(dailyButton, dailyLabel, Feature.Daily, "Daily", "Daily\ntomorrow", daily.AnythingToCollect());
             gemsLabel.SetText(progress.Gems.ToString());
             RefreshGoal();
             RefreshGoalAd();
 
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
-            SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, upgradeBadge ? "Upgrades  (!)" : "Upgrades", "Upgrades\nswipe 15 by hand");
+            SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, "Upgrades", "Upgrades\nswipe 15 by hand", upgradeBadge);
             RefreshQuickBuy();
-            SetLock(mapButton, mapLabel, Feature.Map, mapBadge ? "Map  (!)" : "Map", "Map\nhire Amos first");
-            SetLock(shopButton, shopLabel, Feature.Shop, shop.HasTimedOffer() ? "Shop  (!)" : "Shop", "Shop\nreach Pine Hollow");
+            SetLock(mapButton, mapLabel, Feature.Map, "Map", "Map\nhire Amos first", mapBadge);
+            SetLock(shopButton, shopLabel, Feature.Shop, "Shop", "Shop\nreach Pine Hollow", shop.HasTimedOffer());
             collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
@@ -761,10 +769,13 @@ namespace NuggetCreek.Game
                 quickBuyButton.interactable = true;
         }
 
-        void SetLock(Button button, Text label, Feature feature, string open, string locked)
+        void SetLock(Button button, Text label, Feature feature, string open, string locked, bool badge = false)
         {
             bool unlocked = session.IsUnlocked(feature);
             label.SetText(unlocked ? open : locked);
+            if (!badges.TryGetValue(button, out Image dot))
+                badges[button] = dot = Ui.Badge(button);
+            dot.SetActive(unlocked && badge);
             if (button.interactable != unlocked)
                 button.interactable = unlocked;
             if (lockIcons.TryGetValue(button, out (Image icon, Sprite open) entry))
@@ -834,7 +845,8 @@ namespace NuggetCreek.Game
             bool done = session.IsCurrentGoalComplete;
             if (goalButton.interactable != done)
                 goalButton.interactable = done;
-            goalButton.GetComponent<Image>().color = done ? Palette.GemButton : Color.clear;
+            goalButton.GetComponent<Image>().color = done ? Palette.GemButton : Palette.Row;
+            goalLabel.color = done ? Palette.TextLight : Palette.Text;
             if (goal == null)
                 goalLabel.SetText(NextStep());
             else if (done)
