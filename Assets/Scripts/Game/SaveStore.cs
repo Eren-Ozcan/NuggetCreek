@@ -7,7 +7,7 @@ namespace NuggetCreek.Game
     /// <summary>
     /// Loads and saves <see cref="PlayerProgress"/> as signed JSON in PlayerPrefs
     /// (design doc 13.1 rule 4) with <see cref="SaveKey"/>. A tampered or unreadable save
-    /// starts a fresh game until cloud backup exists.
+    /// starts a fresh game, which <see cref="CloudSync"/> then replaces with the cloud copy.
     /// </summary>
     public static class SaveStore
     {
@@ -113,6 +113,9 @@ namespace NuggetCreek.Game
             public bool soundOn = true;
         }
 
+        /// <summary>The last load found a save it could not trust or read.</summary>
+        public static bool LoadDamaged => LoadIssue.HasValue && LoadIssue.Value.Stage == "load";
+
         public static bool HasSave => PlayerPrefs.HasKey(Key);
 
         public static PlayerProgress Load()
@@ -128,22 +131,34 @@ namespace NuggetCreek.Game
                 return new PlayerProgress();
             }
 
-            SaveData data;
-            try
-            {
-                data = JsonUtility.FromJson<SaveData>(json);
-            }
-            catch (ArgumentException)
-            {
-                data = null;
-            }
-            if (data == null)
+            PlayerProgress progress = FromJson(json);
+            if (progress == null)
             {
                 // Signed but unreadable: only a bug writes this, and nothing in it can be trusted.
                 Debug.LogWarning("Save is not valid JSON; starting a fresh game.");
                 LoadIssue = ("load", "parse");
                 return new PlayerProgress();
             }
+            return progress;
+        }
+
+        /// <summary>
+        /// Reads save JSON (local or cloud) into progress, upgraded and normalised; null when the
+        /// text is not a save.
+        /// </summary>
+        public static PlayerProgress FromJson(string json)
+        {
+            SaveData data;
+            try
+            {
+                data = string.IsNullOrEmpty(json) ? null : JsonUtility.FromJson<SaveData>(json);
+            }
+            catch (ArgumentException)
+            {
+                data = null;
+            }
+            if (data == null)
+                return null;
             var progress = new PlayerProgress
             {
                 Dollars = ParseOrZero(data.dollars),
@@ -238,6 +253,13 @@ namespace NuggetCreek.Game
 
         public static void Save(PlayerProgress progress)
         {
+            PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(ToJson(progress), SaveKey.Current()));
+            PlayerPrefs.Save();
+        }
+
+        /// <summary>The save as unsigned JSON: the local copy signs it, the cloud copy carries it as is.</summary>
+        public static string ToJson(PlayerProgress progress)
+        {
             var data = new SaveData
             {
                 dollars = progress.Dollars.ToString(),
@@ -326,8 +348,7 @@ namespace NuggetCreek.Game
                 musicOn = progress.MusicOn,
                 soundOn = progress.SoundOn,
             };
-            PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(JsonUtility.ToJson(data), SaveKey.Current()));
-            PlayerPrefs.Save();
+            return JsonUtility.ToJson(data);
         }
 
         public static void Delete()
