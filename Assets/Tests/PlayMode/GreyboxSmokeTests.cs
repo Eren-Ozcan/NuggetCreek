@@ -514,6 +514,13 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(LabelIn("Vibration", "Label").text, Is.EqualTo("Vibration: Important only"));
             Assert.That(SaveStore.Load().Vibration, Is.EqualTo(VibrationMode.Important));
             Assert.That(SaveStore.Load().HighContrast, Is.True);
+            Assert.That(LabelIn("Music", "Label").text, Is.EqualTo("Music: On"));
+            Click("Music");
+            Assert.That(LabelIn("Music", "Label").text, Is.EqualTo("Music: Off"));
+            Assert.That(SaveStore.Load().MusicOn, Is.False);
+            Assert.That(SaveStore.Load().SoundOn, Is.True);
+            Assert.That(Sound.MusicOn, Is.False);
+            Click("Music");
             yield return Shot("9_settings");
 
             // Delete asks once more, and "Keep my progress" backs out.

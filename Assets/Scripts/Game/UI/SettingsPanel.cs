@@ -6,13 +6,15 @@ using UnityEngine.UI;
 namespace NuggetCreek.Game.UI
 {
     /// <summary>
-    /// Settings (design doc 14.2, 14.3): vibration, high contrast, the ad consent choices
+    /// Settings (design doc 14.2, 14.3, 15.5): music and effects, vibration, high contrast, the ad consent choices
     /// where the law asks for them, the privacy policy and "Delete my data".
     /// </summary>
     public sealed class SettingsPanel
     {
         readonly PlayerProgress progress;
         readonly RectTransform root;
+        readonly Text musicLabel;
+        readonly Text soundLabel;
         readonly Text vibrationLabel;
         readonly Text contrastLabel;
         readonly Button privacyChoices;
@@ -45,6 +47,10 @@ namespace NuggetCreek.Game.UI
 
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -160));
             RectTransform list = Ui.ScrollList(body, 16, 24);
+
+            Section(list, "SOUND");
+            Ui.PreferredHeight(Ui.Button("Music", list, "", Palette.ButtonAlt, ToggleMusic, out musicLabel, 38), 120);
+            Ui.PreferredHeight(Ui.Button("Effects", list, "", Palette.ButtonAlt, ToggleSound, out soundLabel, 38), 120);
 
             Section(list, "ACCESSIBILITY");
             Ui.PreferredHeight(Ui.Button("Vibration", list, "", Palette.ButtonAlt, CycleVibration, out vibrationLabel, 38), 120);
@@ -90,6 +96,8 @@ namespace NuggetCreek.Game.UI
         {
             if (!IsOpen)
                 return;
+            musicLabel.SetText("Music: " + (progress.MusicOn ? "On" : "Off"));
+            soundLabel.SetText("Sound effects: " + (progress.SoundOn ? "On" : "Off"));
             vibrationLabel.SetText("Vibration: " + VibrationText(progress.Vibration));
             contrastLabel.SetText("High contrast: " + (progress.HighContrast ? "On" : "Off"));
             privacyChoices.SetActive(privacyChoicesRequired());
@@ -114,6 +122,22 @@ namespace NuggetCreek.Game.UI
                 : progress.Vibration == VibrationMode.Important ? VibrationMode.Off : VibrationMode.All;
             Haptics.Mode = progress.Vibration;
             Haptics.Important();
+            Refresh();
+            Changed?.Invoke();
+        }
+
+        void ToggleMusic()
+        {
+            progress.MusicOn = !progress.MusicOn;
+            Sound.MusicOn = progress.MusicOn;
+            Refresh();
+            Changed?.Invoke();
+        }
+
+        void ToggleSound()
+        {
+            progress.SoundOn = !progress.SoundOn;
+            Sound.SoundOn = progress.SoundOn;
             Refresh();
             Changed?.Invoke();
         }
