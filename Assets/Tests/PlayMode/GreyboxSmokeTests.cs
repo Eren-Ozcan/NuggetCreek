@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using NuggetCreek.Core;
 using NuggetCreek.Game;
+using NuggetCreek.Game.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
@@ -239,6 +240,7 @@ namespace NuggetCreek.PlayModeTests
             Click("CollectionButton");
             yield return null;
             Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("???"));
+            Assert.That(StarsIn("pebble"), Is.Null, "an unfound nugget shows no stars");
             Click("Close");
 
             // Round-trip catches through the signed save, then reload the scene on it.
@@ -254,9 +256,10 @@ namespace NuggetCreek.PlayModeTests
             StringAssert.StartsWith("Nuggets  3/138", LabelIn("CollectionButton", "Label").text);
             Click("CollectionButton");
             yield return null;
-            Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("Pebble  [**-]"));
+            Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("Pebble"));
+            Assert.That(StarsIn("pebble").Filled, Is.EqualTo(2));
             StringAssert.Contains("12/40 to next star", LabelIn("pebble", "Detail").text);
-            Assert.That(LabelIn("creek_heart", "Title").text, Is.EqualTo("Creek Heart  [*--]"));
+            Assert.That(StarsIn("creek_heart").Filled, Is.EqualTo(1));
             Assert.That(LabelIn("button", "Title").text, Is.EqualTo("???"));
             yield return Shot("11_collection");
         }
@@ -549,6 +552,9 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(go, Is.Not.Null, $"'{name}' not found");
             return go;
         }
+
+        /// <summary>The active star row of a card, or null while it is hidden.</summary>
+        static StarRow StarsIn(string parent) => Find(parent).GetComponentInChildren<StarRow>();
 
         static bool IsActive(string name) => GameObject.Find(name) != null;
 

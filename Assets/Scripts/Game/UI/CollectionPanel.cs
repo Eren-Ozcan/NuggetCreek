@@ -22,6 +22,7 @@ namespace NuggetCreek.Game.UI
             public Image Swatch;
             public bool HasArt;
             public Text Title;
+            public StarRow Stars;
             public Text Detail;
             public Text Flavor;
         }
@@ -93,13 +94,15 @@ namespace NuggetCreek.Game.UI
                 {
                     card.Swatch.color = card.HasArt ? Silhouette : Palette.Row * 1.4f;
                     card.Title.SetText("???");
+                    card.Stars.SetActive(false);
                     card.Detail.SetText(boss ? $"Boss  -  beat the boss at {GameCatalog.RegionNames[nugget.RegionIndex]}" : $"{kind}  -  not found yet");
                     card.Flavor.SetText("");
                     continue;
                 }
                 card.Swatch.color = card.HasArt ? Color.white : ColorOf(nugget.Rarity);
-                int starCount = session.NuggetStars(card.Index);
-                card.Title.SetText($"{nugget.Name}  {StarText(starCount, session.Economy.MaxStarsPerNugget)}");
+                card.Title.SetText(nugget.Name);
+                card.Stars.SetActive(true);
+                card.Stars.Set(session.NuggetStars(card.Index));
                 int? next = session.Economy.NextStarAt(card.Index, catches);
                 string unit = boss ? "drops" : "found";
                 string progress = next.HasValue ? $"{catches}/{next.Value} to next star" : $"{catches} {unit}  -  MAX";
@@ -119,18 +122,16 @@ namespace NuggetCreek.Game.UI
             card.HasArt = art != null;
             card.Swatch = Ui.Icon("Swatch", rt, art, Palette.Nugget);
             card.Swatch.rectTransform.Box(new Vector2(0, 0.5f), new Vector2(130, 130), new Vector2(22, 0));
+            card.Stars = StarRow.Create("Stars", rt, session.Economy.MaxStarsPerNugget, 44);
+            ((RectTransform)card.Stars.transform).Box(Vector2.one, new Vector2(card.Stars.Width, 44), new Vector2(-24, -22));
             card.Title = Ui.Label("Title", rt, "", 42, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
-            card.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(170, 0), new Vector2(-24, -18));
+            card.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(170, 0), new Vector2(-48 - card.Stars.Width, -18));
             card.Detail = Ui.Label("Detail", rt, "", 30, TextAnchor.MiddleLeft, Palette.TextMuted);
             card.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(170, 40), new Vector2(-24, -70));
             card.Flavor = Ui.Label("Flavor", rt, "", 28, TextAnchor.LowerLeft, Palette.TextMuted, FontStyle.Italic);
             card.Flavor.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(170, 18), new Vector2(-24, -130));
             return card;
         }
-
-        /// <summary>Stars as text, e.g. "[**-]"; the greybox font has no star glyph.</summary>
-        public static string StarText(int stars, int max) =>
-            "[" + new string('*', stars) + new string('-', Mathf.Max(0, max - stars)) + "]";
 
         static Color ColorOf(Rarity rarity)
         {

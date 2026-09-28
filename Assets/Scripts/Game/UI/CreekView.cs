@@ -38,6 +38,7 @@ namespace NuggetCreek.Game.UI
         sealed class Popup
         {
             public Text Label;
+            public StarRow Stars;
             public float Age;
         }
 
@@ -306,8 +307,10 @@ namespace NuggetCreek.Game.UI
             }
             else if (result.StarsGained > 0)
             {
-                string stars = CollectionPanel.StarText(session.NuggetStars(index), session.Economy.MaxStarsPerNugget);
-                ShowPopup(position + new Vector2(0, 70), $"{name} {stars}", 36, Palette.GiantNugget);
+                Popup popup = ShowPopup(position + new Vector2(0, 70), name, 36, Palette.GiantNugget);
+                popup.Stars = StarRow.Create("Stars", popup.Label.transform, session.Economy.MaxStarsPerNugget, 40);
+                ((RectTransform)popup.Stars.transform).Box(new Vector2(0.5f, 0), new Vector2(popup.Stars.Width, 40), new Vector2(0, -36));
+                popup.Stars.Set(session.NuggetStars(index));
             }
         }
 
@@ -370,13 +373,15 @@ namespace NuggetCreek.Game.UI
             amosPending = BigNumber.Zero;
         }
 
-        void ShowPopup(Vector2 position, string text, int size, Color color)
+        Popup ShowPopup(Vector2 position, string text, int size, Color color)
         {
             Text label = Legible(Ui.Label("Popup", area, text, size, TextAnchor.MiddleCenter, color, FontStyle.Bold));
             label.rectTransform.Box(Vector2.zero, new Vector2(400, 80), position);
             label.rectTransform.pivot = new Vector2(0.5f, 0.5f);
             label.rectTransform.anchoredPosition = position;
-            popups.Add(new Popup { Label = label });
+            var popup = new Popup { Label = label };
+            popups.Add(popup);
+            return popup;
         }
 
         void AgePopups(float deltaTime)
@@ -395,6 +400,8 @@ namespace NuggetCreek.Game.UI
                 Color color = p.Label.color;
                 color.a = 1 - p.Age / PopupSeconds;
                 p.Label.color = color;
+                if (p.Stars != null)
+                    p.Stars.Fade(color.a);
             }
         }
 
