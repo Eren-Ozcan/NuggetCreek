@@ -30,7 +30,20 @@ namespace NuggetCreek.Game
                 ? Get("Nuggets/" + GameCatalog.Nuggets[nuggetIndex].Id)
                 : null;
 
+        /// <summary>Sluice machine for a tier index (0 = tier 1).</summary>
+        public static Sprite Sluice(int tierIndex) => Get($"Sluices/tier_{tierIndex + 1:00}");
+
+        public static Sprite Upgrade(string id) => Get("Upgrades/" + id);
+
+        public static Sprite Portrait(string crewId) => Get("Portraits/" + crewId);
+
+        public static Sprite Gear(string id) => Get("Gear/" + id);
+
+        public static Sprite Perk(string id) => Get("Perks/" + id);
+
         public static Sprite GoldDust => Get("Currency/dust");
+
+        public static Sprite NuggetIcon => Get("Currency/nugget");
 
         public static Sprite Dollar => Get("Currency/dollar");
 

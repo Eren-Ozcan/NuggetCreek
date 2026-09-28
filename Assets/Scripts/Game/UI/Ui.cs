@@ -118,6 +118,49 @@ namespace NuggetCreek.Game.UI
             return image;
         }
 
+        /// <summary>Left inset of a list row's text when the row has no picture.</summary>
+        public const float RowTextInset = 28;
+
+        /// <summary>
+        /// Square picture on the left of a list row, as tall as the row minus a margin. Returns
+        /// the left inset for the row's text, which stays at <see cref="RowTextInset"/> when the
+        /// art is missing. <paramref name="cover"/> crops a non-square picture to fill the square.
+        /// </summary>
+        public static float RowPicture(RectTransform row, float rowHeight, Sprite sprite, out Image picture, bool cover = false)
+        {
+            picture = null;
+            if (sprite == null)
+                return RowTextInset;
+            const float margin = 18;
+            float size = rowHeight - 2 * margin;
+            RectTransform slot = Rect("Picture", row).Box(new Vector2(0, 0.5f), new Vector2(size, size), new Vector2(margin, 0));
+            if (cover)
+            {
+                slot.gameObject.AddComponent<RectMask2D>();
+                picture = Image("Image", slot, Color.white, sprite);
+                picture.rectTransform.anchorMin = Vector2.zero;
+                picture.rectTransform.anchorMax = Vector2.one;
+                var fitter = picture.gameObject.AddComponent<AspectRatioFitter>();
+                fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+                fitter.aspectRatio = sprite.rect.width / sprite.rect.height;
+            }
+            else
+            {
+                picture = slot.gameObject.AddComponent<Image>();
+                picture.sprite = sprite;
+                picture.preserveAspect = true;
+            }
+            picture.raycastTarget = false;
+            return margin + size + 22;
+        }
+
+        /// <summary>
+        /// Currency icon on a price button. The icon and the price are centred together; hide
+        /// the icon while the button shows a word such as MAX.
+        /// </summary>
+        public static IconBesideText PriceIcon(Text label, Sprite sprite, Color fallback) =>
+            IconBesideText.Attach(label, sprite, fallback, Mathf.Round(label.fontSize * 1.25f), centerGroup: true);
+
         public static Text Label(string name, Transform parent, string text, int size,
             TextAnchor alignment = TextAnchor.MiddleCenter, Color? color = null, FontStyle style = FontStyle.Normal)
         {
