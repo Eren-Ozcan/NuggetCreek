@@ -45,6 +45,7 @@ namespace NuggetCreek.Game.UI
         readonly Text noOffers;
         readonly Text adsLine;
         readonly Text result;
+        readonly GearBoxReveal boxReveal;
         Tab tab = Tab.Offers;
 
         public bool IsOpen => root.gameObject.activeSelf;
@@ -109,6 +110,14 @@ namespace NuggetCreek.Game.UI
             Button restore = Ui.Button("Restore", gems, "Restore purchases", Palette.ButtonAlt, RestorePurchases, out _, 34);
             Ui.PreferredHeight(restore, Ui.TapHeight);
 
+            var boxArt = new Sprite[BoxSprites.Length];
+            for (int i = 0; i < boxArt.Length; i++)
+                boxArt[i] = Art.Get(BoxSprites[i]);
+            int maxCards = 0;
+            foreach (int count in session.Economy.Config.GearBoxCards)
+                maxCards = Mathf.Max(maxCards, count);
+            boxReveal = new GearBoxReveal(root, boxArt, maxCards);
+
             Close();
         }
 
@@ -121,7 +130,11 @@ namespace NuggetCreek.Game.UI
             Show(start);
         }
 
-        public void Close() => root.SetActive(false);
+        public void Close()
+        {
+            boxReveal.Close();
+            root.SetActive(false);
+        }
 
         public void Show(Tab next)
         {
@@ -138,6 +151,7 @@ namespace NuggetCreek.Game.UI
         {
             if (!IsOpen)
                 return;
+            boxReveal.Refresh();
             foreach (Row row in rows)
                 row.Refresh();
             noOffers.SetActive(ActiveTimedOffers() == 0);
@@ -378,6 +392,7 @@ namespace NuggetCreek.Game.UI
             foreach (GearCard card in cards)
                 text.Append("  ").Append(CardText(card)).Append(',');
             result.SetText(text.ToString().TrimEnd(','));
+            boxReveal.Show(box, BoxNames[box], cards);
             Purchased?.Invoke();
             Refresh();
         }

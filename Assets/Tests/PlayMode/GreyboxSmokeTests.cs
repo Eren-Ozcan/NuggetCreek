@@ -294,6 +294,39 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator GearBoxOpensOnItsOwnCard()
+        {
+            Click("Chest now");
+            yield return null;
+            Click("ChestChip");
+            yield return null;
+            Click("OpenChest");
+            yield return null;
+            Click("ChestCollect");
+            yield return null;
+
+            Click("+50 Gems");
+            Click("+50 Gems");
+            Click("ShopButton");
+            yield return null;
+            Click("TabGemShop");
+            yield return null;
+            ClickIn("Box_0", "Buy");
+            yield return null;
+            Assert.That(IsActive("GearBoxReveal"), Is.True);
+            Assert.That(LabelIn("GearBoxReveal", "Title").text, Is.EqualTo("GREEN BOX"));
+            Assert.That(IsActive("Card2"), Is.True, "a Green Box holds 3 cards");
+            Assert.That(IsActive("Card3"), Is.False);
+            yield return new WaitForSecondsRealtime(1.5f);
+            yield return Shot("19_gear_box");
+
+            Click("BoxCollect");
+            yield return null;
+            Assert.That(IsActive("GearBoxReveal"), Is.False);
+            Assert.That(IsActive("Shop"), Is.True);
+        }
+
+        [UnityTest]
         public IEnumerator StakingANewClaimResetsTheCreeks()
         {
             Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild\nLv 0"));
