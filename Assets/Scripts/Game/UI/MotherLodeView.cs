@@ -6,17 +6,22 @@ using UnityEngine.UI;
 namespace NuggetCreek.Game.UI
 {
     /// <summary>
-    /// Mother Lode event over the creek (design doc 3.4): the screen darkens, a vein appears,
-    /// and every swipe across it is a hit. Pays when the timer runs out, then shows the haul.
+    /// Mother Lode event over the creek (design doc 3.4): the screen darkens, a boulder appears,
+    /// and every swipe across it is a hit. The boulder cracks and then shatters as the damage
+    /// grows. Pays when the timer runs out, then shows the haul.
     /// </summary>
     public sealed class MotherLodeView
     {
-        const float VeinSize = 440;
+        const float BoulderSize = 440;
         const float HitPulseSeconds = 0.12f;
+        const float StagePulseSeconds = 0.3f;
+        static readonly string[] BoulderSprites = { "MotherLode/boulder_0", "MotherLode/boulder_1", "MotherLode/boulder_2" };
 
         readonly GameSession session;
         readonly RectTransform root;
-        readonly RectTransform vein;
+        readonly RectTransform boulder;
+        readonly Image boulderImage;
+        readonly Sprite[] boulders = new Sprite[3];
         readonly Text timer;
         readonly Text combo;
         readonly Text hits;
@@ -31,6 +36,8 @@ namespace NuggetCreek.Game.UI
         Vector2? lastPointer;
         bool pointerInside;
         float pulse;
+        float stagePulse;
+        int stage;
 
         public bool IsActive => root.gameObject.activeSelf;
 
@@ -53,20 +60,25 @@ namespace NuggetCreek.Game.UI
             bossBar = Ui.Image("Health", bossBarBack, Palette.GiantNugget);
             bossBar.rectTransform.Fill();
 
-            vein = Ui.Image("Vein", root, Palette.Nugget, Ui.Circle).rectTransform
-                .Box(new Vector2(0.5f, 0.5f), new Vector2(VeinSize, VeinSize), new Vector2(0, 40));
-            vein.GetComponent<Image>().raycastTarget = false;
-            combo = Ui.Label("Combo", vein, "", 110, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            for (int i = 0; i < boulders.Length; i++)
+                boulders[i] = Art.Get(BoulderSprites[i]);
+            boulderImage = Ui.Icon("Boulder", root, boulders[0], Palette.Nugget);
+            boulder = boulderImage.rectTransform.Box(new Vector2(0.5f, 0.5f), new Vector2(BoulderSize, BoulderSize), new Vector2(0, 40));
+            combo = Ui.Label("Combo", boulder, "", 110, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             combo.rectTransform.Fill();
+            // The combo sits on the rock art; an outline keeps it readable.
+            var outline = combo.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0, 0, 0, 0.85f);
+            outline.effectDistance = new Vector2(4, -4);
 
             hits = Ui.Label("Hits", root, "", 40, TextAnchor.MiddleCenter, Palette.TextMuted, FontStyle.Bold);
             hits.rectTransform.Place(new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(0, -290), new Vector2(0, -210));
-            prompt = Ui.Label("Prompt", root, "Swipe back and forth across the vein!", 40, TextAnchor.MiddleCenter, Palette.Text);
+            prompt = Ui.Label("Prompt", root, "Swipe back and forth across the boulder!", 40, TextAnchor.MiddleCenter, Palette.Text);
             prompt.rectTransform.Place(new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(40, -380), new Vector2(-40, -300));
 
             result = Ui.Image("Result", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(860, 560));
-            Text resultTitle = Ui.Label("Title", result, "THE VEIN CRACKED OPEN", 48, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            Text resultTitle = Ui.Label("Title", result, "THE BOULDER CRACKED OPEN", 48, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             resultTitle.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -120), new Vector2(0, -30));
             resultAmount = Ui.Label("Amount", result, "", 44, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
             resultAmount.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 200), new Vector2(-30, -130));
@@ -83,8 +95,11 @@ namespace NuggetCreek.Game.UI
             pointerInside = false;
             root.SetActive(true);
             result.SetActive(false);
-            vein.SetActive(true);
+            boulder.SetActive(true);
             SetRunLabelsActive(true);
+            stage = 0;
+            stagePulse = 0;
+            SetBoulder(0);
             bossBarBack.SetActive(run.IsBossFight);
             title.SetText(run.IsBossFight ? $"BOSS: {GameCatalog.Nuggets[GameCatalog.BossNugget(run.BossRegion)].Name.ToUpperInvariant()}" : "MOTHER LODE!");
             RefreshLabels();
@@ -98,8 +113,18 @@ namespace NuggetCreek.Game.UI
             run.Tick(deltaTime);
             HandleSwipe();
             pulse = Mathf.Max(0, pulse - deltaTime);
-            float scale = 1 + 0.08f * (pulse / HitPulseSeconds) + 0.03f * Mathf.Sin(Time.time * 6);
-            vein.localScale = Vector3.one * scale;
+            stagePulse = Mathf.Max(0, stagePulse - deltaTime);
+            int damageStage = DamageStage();
+            if (damageStage > stage)
+            {
+                stage = damageStage;
+                stagePulse = StagePulseSeconds;
+                SetBoulder(stage);
+            }
+            float scale = 1 + 0.08f * (pulse / HitPulseSeconds) + 0.03f * Mathf.Sin(Time.time * 6)
+                + 0.12f * (stagePulse / StagePulseSeconds);
+            boulder.localScale = Vector3.one * scale;
+            boulder.localRotation = Quaternion.Euler(0, 0, 4 * (pulse / HitPulseSeconds) * Mathf.Sin(Time.time * 60));
             RefreshLabels();
 
             if (run.IsOver)
@@ -119,7 +144,7 @@ namespace NuggetCreek.Game.UI
             int hitCount = run.Hits;
             BigNumber reward = session.FinishMotherLode(run);
             int gems = session.Economy.Config.MotherLodeGemReward;
-            vein.SetActive(false);
+            boulder.SetActive(false);
             SetRunLabelsActive(false);
             bossBarBack.SetActive(false);
             result.SetActive(true);
@@ -136,6 +161,27 @@ namespace NuggetCreek.Game.UI
         {
             root.SetActive(false);
             run = null;
+        }
+
+        /// <summary>
+        /// Boulder damage: 0 whole, 1 cracked, 2 shattered. A boss boulder follows its health;
+        /// a plain Mother Lode follows the best combo, so the rock never heals when a combo drops.
+        /// </summary>
+        int DamageStage()
+        {
+            float damage;
+            if (run.IsBossFight)
+                damage = run.BossHealth > 0 ? Mathf.Clamp01((float)(run.BossDamage / run.BossHealth)) : 0;
+            else
+                damage = run.MaxCombo > 1 ? (run.PeakCombo - 1f) / (run.MaxCombo - 1) : 0;
+            return damage >= 2f / 3 ? 2 : damage >= 1f / 3 ? 1 : 0;
+        }
+
+        void SetBoulder(int damageStage)
+        {
+            Sprite sprite = boulders[damageStage];
+            if (sprite != null)
+                boulderImage.sprite = sprite;
         }
 
         void SetRunLabelsActive(bool active)
@@ -170,9 +216,9 @@ namespace NuggetCreek.Game.UI
             Vector2 from = lastPointer ?? point;
             lastPointer = point;
 
-            Vector2 center = vein.anchoredPosition + (Vector2)root.rect.center;
-            float radius = VeinSize / 2;
-            // A fast swipe can cross the whole vein between two frames; the segment still counts.
+            Vector2 center = boulder.anchoredPosition + (Vector2)root.rect.center;
+            float radius = BoulderSize / 2;
+            // A fast swipe can cross the whole boulder between two frames; the segment still counts.
             bool crossed = DistanceToSegment(center, from, point) <= radius;
             if (crossed && !pointerInside)
             {
