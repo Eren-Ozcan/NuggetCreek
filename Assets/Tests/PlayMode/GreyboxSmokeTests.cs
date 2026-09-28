@@ -245,6 +245,7 @@ namespace NuggetCreek.PlayModeTests
             var progress = new PlayerProgress();
             progress.NuggetCatches[GameCatalog.CommonNugget(0)] = 12;
             progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
+            Compliance.Accept(progress, AgeBand.Adult);
             yield return StopGame();
             SaveStore.Save(progress);
             yield return SceneManager.LoadSceneAsync("Creek");
