@@ -22,6 +22,8 @@ namespace NuggetCreek.Game.UI
             public Text RankUpLabel;
         }
 
+        const float MilestoneHeight = 46;
+
         static readonly string[] MilestoneTexts =
         {
             "The vein opens (2 levels)",
@@ -39,7 +41,9 @@ namespace NuggetCreek.Game.UI
         readonly Text rebirthLabel;
         readonly Text guildText;
         readonly Button watchAd;
-        readonly Text milestones;
+        readonly Image[] milestoneChecks;
+        readonly Text[] milestoneTexts;
+        readonly Color checkOn;
         readonly Text pointsText;
         readonly List<PerkRow> perkRows = new List<PerkRow>();
         bool confirming;
@@ -77,8 +81,22 @@ namespace NuggetCreek.Game.UI
             Ui.PreferredHeight(guildText, 90);
             watchAd = Ui.Button("GuildAd", list, $"Watch ad  +{session.Economy.Config.GuildXpPerAd} Guild XP", Palette.Ad, WatchAd, out _, 38);
             Ui.PreferredHeight(watchAd, 120);
-            milestones = Ui.Label("Milestones", list, "", 30, TextAnchor.UpperLeft, Palette.TextMuted);
-            Ui.PreferredHeight(milestones, 230);
+            RectTransform milestones = Ui.Rect("Milestones", list);
+            int milestoneCount = MilestoneTexts.Length;
+            Ui.PreferredHeight(milestones, milestoneCount * MilestoneHeight);
+            Sprite check = Art.Icon("check");
+            checkOn = check != null ? Color.white : Palette.GemText;
+            milestoneChecks = new Image[milestoneCount];
+            milestoneTexts = new Text[milestoneCount];
+            for (int i = 0; i < milestoneCount; i++)
+            {
+                RectTransform line = Ui.Rect("Milestone", milestones)
+                    .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -(i + 1) * MilestoneHeight), new Vector2(0, -i * MilestoneHeight));
+                milestoneChecks[i] = Ui.Icon("Check", line, check, checkOn);
+                milestoneChecks[i].rectTransform.Box(new Vector2(0, 0.5f), new Vector2(36, 36));
+                milestoneTexts[i] = Ui.Label("Text", line, "", 30, TextAnchor.MiddleLeft, Palette.TextMuted);
+                milestoneTexts[i].rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(50, 0));
+            }
 
             Section(list, "PERKS");
             pointsText = Ui.Label("PerkPoints", list, "", 34, TextAnchor.MiddleLeft, Palette.Text, FontStyle.Bold);
@@ -134,10 +152,13 @@ namespace NuggetCreek.Game.UI
                 watchAd.interactable = canWatch;
 
             int[] levels = session.Economy.Config.GuildMilestoneLevels;
-            var text = new StringBuilder();
-            for (int i = 0; i < levels.Length; i++)
-                text.Append(session.HasMilestone(i) ? "[x] " : "[ ] ").Append($"Lv {levels[i]}: {MilestoneTexts[i]}\n");
-            milestones.SetText(text.ToString().TrimEnd());
+            for (int i = 0; i < milestoneTexts.Length; i++)
+            {
+                bool reached = session.HasMilestone(i);
+                milestoneChecks[i].color = reached ? checkOn : Palette.IconOff;
+                milestoneTexts[i].color = reached ? Palette.Text : Palette.TextMuted;
+                milestoneTexts[i].SetText(i < levels.Length ? $"Lv {levels[i]}: {MilestoneTexts[i]}" : "");
+            }
         }
 
         void RefreshPerks()
