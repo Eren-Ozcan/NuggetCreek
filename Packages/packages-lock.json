@@ -58,6 +58,15 @@
         "com.google.firebase.app": "13.17.0"
       }
     },
+    "com.google.play.games": {
+      "version": "https://github.com/playgameservices/play-games-plugin-for-unity.git?path=/Assets/Public/GooglePlayGames/com.google.play.games#v2.2.1",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.google.external-dependency-manager": "1.2.182"
+      },
+      "hash": "050198623594baf4d333ab99095ae41244f64335"
+    },
     "com.revenuecat.purchases-unity": {
       "version": "9.11.1",
       "depth": 0,

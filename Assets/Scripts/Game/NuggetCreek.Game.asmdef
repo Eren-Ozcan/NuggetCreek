@@ -5,7 +5,8 @@
         "NuggetCreek.Core",
         "UnityEngine.UI",
         "Unity.Notifications.Android",
-        "revenuecat.purchases-unity"
+        "revenuecat.purchases-unity",
+        "Google.Play.Games"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
