@@ -72,6 +72,11 @@ The painted map (`Sprites/Map/`: four stacked panels plus `markers.json`, one ma
 comes from `tools/build_map.py`, which evens out the panel seams; without it `MapPanel` falls
 back to a plain list.
 
+Audio follows the same path: `Assets/Resources/Audio/{Music,SFX}/` (gitignored), masters in
+`game-art/Resources/Audio/`, copied by `fetch-art.sh` when present, file names as in section 6 of
+`docs/AUDIO_PROMPTS.md`. `Game/Sound.cs` plays whatever is there and stays silent for missing
+clips; import settings in `Editor/AudioImportRules.cs`, the pure rules in `Core/SoundRules.cs`.
+
 Fonts are committed (open licences, next to them in `Assets/Fonts/`): `Assets/Fonts/Resources/Fonts/`
 holds `Body` and `BodyBold` (static Fredoka 500/700 cut from the variable font with
 `fontTools.varLib.instancer`) and `Heading` (Ultra, panel titles). `Ui.Font`/`BoldFont`/`HeadingFont`
