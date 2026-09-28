@@ -375,6 +375,8 @@ namespace NuggetCreek.PlayModeTests
             Click("Wash");
             yield return null;
             StringAssert.StartsWith("The pan shows:", Label("WashResult").text);
+            // The sluice rocks first, then the outcome's tile lights up.
+            yield return new WaitForSeconds(0.9f);
             yield return Shot("15_daily");
 
             Click("Close");
