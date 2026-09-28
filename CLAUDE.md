@@ -68,6 +68,9 @@ loaded by `Game/Art.cs`, import settings in `Editor/SpriteImportRules.cs`). On a
 (private pictures repo). Without it the game runs with the greybox shapes. The source sheets and
 the cutter (`tools/cut_sprites.py`, git-excluded) are backed up in `game-art/source/`; after
 re-cutting, copy `Assets/Resources` back there, then commit and push the pictures repo.
+The painted map (`Sprites/Map/`: four stacked panels plus `markers.json`, one marker per creek)
+comes from `tools/build_map.py`, which evens out the panel seams; without it `MapPanel` falls
+back to a plain list.
 
 Fonts are committed (open licences, next to them in `Assets/Fonts/`): `Assets/Fonts/Resources/Fonts/`
 holds `Body` and `BodyBold` (static Fredoka 500/700 cut from the variable font with
