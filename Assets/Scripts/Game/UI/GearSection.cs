@@ -23,6 +23,7 @@ namespace NuggetCreek.Game.UI
             public Text LeftLabel;
             public Button Right;
             public Text RightLabel;
+            public IconBesideText PriceIcon;
             public Action Refresh;
         }
 
@@ -91,20 +92,20 @@ namespace NuggetCreek.Game.UI
 
         void AddThirdSlotRow()
         {
-            Row row = NewRow("ThirdSlot", "", null, "", () => Buy(session.BuyThirdGearSlot()));
+            Row row = NewRow("ThirdSlot", Art.Icon("plus"), "", null, "", () => Buy(session.BuyThirdGearSlot()));
             row.Refresh = () =>
             {
                 row.Root.SetActive(!session.Progress.ThirdGearSlotBought);
                 row.Title.SetText("Third gear slot");
                 row.Detail.SetText("Wear one more piece, for good.");
-                SetButton(row.Right, row.RightLabel, Effects.Gems(session.Economy.Config.GearThirdSlotGems), session.CanAffordGems(session.ThirdGearSlotCost));
+                SetButton(row.Right, row.RightLabel, session.Economy.Config.GearThirdSlotGems.ToString(), session.CanAffordGems(session.ThirdGearSlotCost));
             };
         }
 
         void AddGearRow(int index)
         {
             GearDefinition gear = GameCatalog.Gear[index];
-            Row row = NewRow(gear.Id, "", () => ToggleWear(index), "", () => Buy(session.LevelUpGear(index)));
+            Row row = NewRow(gear.Id, Art.Gear(gear.Id), "", () => ToggleWear(index), "", () => Buy(session.LevelUpGear(index)));
             row.Refresh = () =>
             {
                 int level = session.GearLevel(index);
@@ -117,7 +118,8 @@ namespace NuggetCreek.Game.UI
                 bool worn = session.IsEquipped(index);
                 SetButton(row.Left, row.LeftLabel, worn ? "Take off" : "Wear", worn || HasFreeSlot());
                 int? cost = session.GearLevelUpCost(index);
-                SetButton(row.Right, row.RightLabel, cost.HasValue ? "Lv up  " + Effects.Gems(cost.Value) : "MAX", session.CanAffordGems(cost));
+                SetButton(row.Right, row.RightLabel, cost.HasValue ? cost.Value.ToString() : "MAX", session.CanAffordGems(cost));
+                row.PriceIcon.SetActive(cost.HasValue);
             };
         }
 
@@ -141,19 +143,22 @@ namespace NuggetCreek.Game.UI
                 purchased();
         }
 
-        Row NewRow(string name, string leftText, Action onLeft, string rightText, Action onRight)
+        Row NewRow(string name, Sprite picture, string leftText, Action onLeft, string rightText, Action onRight)
         {
+            const float height = 170;
             Image background = Ui.Image(name, list, Palette.Row);
-            Ui.PreferredHeight(background, 170);
+            Ui.PreferredHeight(background, height);
             var row = new Row { Root = background.rectTransform };
             parts.Add(background.gameObject);
+            float inset = Ui.RowPicture(row.Root, height, picture, out _);
 
             row.Title = Ui.Label("Title", row.Root, name, 42, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
-            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 0), new Vector2(-330, -22));
+            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 0), new Vector2(-330, -22));
             row.Detail = Ui.Label("Detail", row.Root, "", 30, TextAnchor.LowerLeft, Palette.TextMuted);
-            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 22), new Vector2(-330, -80));
+            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 22), new Vector2(-330, -80));
 
             row.Right = Ui.Button("Right", row.Root, rightText, Palette.GemButton, onRight, out row.RightLabel, 32);
+            row.PriceIcon = Ui.PriceIcon(row.RightLabel, Art.Gem, Palette.Gem);
             if (onLeft != null)
             {
                 row.Left = Ui.Button("Left", row.Root, leftText, Palette.ButtonAlt, onLeft, out row.LeftLabel, 32);

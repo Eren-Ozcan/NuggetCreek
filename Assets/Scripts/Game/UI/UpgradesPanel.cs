@@ -16,6 +16,8 @@ namespace NuggetCreek.Game.UI
             public Text Detail;
             public Button Buy;
             public Text BuyLabel;
+            public IconBesideText PriceIcon;
+            public Image Picture;
             public Action Refresh;
         }
 
@@ -129,7 +131,7 @@ namespace NuggetCreek.Game.UI
 
         void AddTierRow()
         {
-            Row row = NewRow("Tier", () =>
+            Row row = NewRow("Tier", Art.Sluice(session.Progress.TierIndex), () =>
             {
                 if (session.BuyNextTier())
                     Purchased?.Invoke();
@@ -138,6 +140,8 @@ namespace NuggetCreek.Game.UI
             {
                 int owned = session.Progress.TierIndex;
                 row.Title.SetText($"Sluice Tier {owned + 1}");
+                if (row.Picture != null)
+                    row.Picture.sprite = Art.Sluice(owned) ?? row.Picture.sprite;
                 if (!session.HasNextTier)
                 {
                     row.Detail.SetText("Best sluice on the creek.");
@@ -160,7 +164,7 @@ namespace NuggetCreek.Game.UI
         void AddUpgradeRow(int index)
         {
             UpgradeDefinition upgrade = GameCatalog.Upgrades[index];
-            Row row = NewRow(upgrade.Id, () =>
+            Row row = NewRow(upgrade.Id, Art.Upgrade(upgrade.Id), () =>
             {
                 if (session.BuyUpgrade(index))
                     Purchased?.Invoke();
@@ -187,7 +191,7 @@ namespace NuggetCreek.Game.UI
 
         Row AddAmosRow()
         {
-            Row row = NewRow("Amos", () =>
+            Row row = NewRow("Amos", Art.Portrait("amos"), () =>
             {
                 if (session.BuyAmosLevel())
                     Purchased?.Invoke();
@@ -200,7 +204,7 @@ namespace NuggetCreek.Game.UI
                     row.Title.SetText("Amos");
                     string firstCap = NumberFormat.Hours(session.Economy.OfflineCapSeconds(1, session.Stats) / 3600);
                     row.Detail.SetText($"\"I'll keep panning while you're gone.\" Starts idle income, {firstCap} away cap.");
-                    SetBuy(row, session.AmosNextCost, null, true, "Hire ");
+                    SetBuy(row, session.AmosNextCost, null, true, "Hire");
                     return;
                 }
                 row.Title.SetText($"Amos  Lv {level}");
@@ -228,11 +232,11 @@ namespace NuggetCreek.Game.UI
         void AddCrewRow(int index)
         {
             CrewDefinition crew = GameCatalog.Crew[index];
-            Row row = NewRow(crew.Id, () =>
+            Row row = NewRow(crew.Id, Art.Portrait(crew.Id), () =>
             {
                 if (session.LevelUpCrew(index))
                     Purchased?.Invoke();
-            });
+            }, gems: true);
             row.Buy.GetComponent<Image>().color = Palette.GemButton;
             row.Refresh = () =>
             {
@@ -248,27 +252,33 @@ namespace NuggetCreek.Game.UI
             };
         }
 
-        Row NewRow(string name, Action onBuy)
+        Row NewRow(string name, Sprite picture, Action onBuy, bool gems = false)
         {
+            const float height = 170;
             Image background = Ui.Image(name, list, Palette.Row);
-            Ui.PreferredHeight(background, 170);
+            Ui.PreferredHeight(background, height);
             var row = new Row { Root = background.rectTransform };
+            float inset = Ui.RowPicture(row.Root, height, picture, out row.Picture);
 
             row.Title = Ui.Label("Title", row.Root, name, 42, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
-            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 0), new Vector2(-330, -22));
+            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 0), new Vector2(-330, -22));
             row.Detail = Ui.Label("Detail", row.Root, "", 32, TextAnchor.LowerLeft, Palette.TextMuted);
-            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 22), new Vector2(-330, -80));
+            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 22), new Vector2(-330, -80));
 
             row.Buy = Ui.Button("Buy", row.Root, "", Palette.Button, onBuy, out row.BuyLabel, 36);
             row.Buy.AsRect().Place(new Vector2(1, 0), Vector2.one, new Vector2(-300, 22), new Vector2(-24, -22));
+            row.PriceIcon = gems ? Ui.PriceIcon(row.BuyLabel, Art.Gem, Palette.Gem) : Ui.PriceIcon(row.BuyLabel, Art.Dollar, Palette.Gold);
 
             rows.Add(row);
             return row;
         }
 
-        void SetBuy(Row row, BigNumber? cost, string fixedText, bool enabled, string prefix = "")
+        /// <summary>A <paramref name="leadWord"/> such as "Hire" comes before the coin: "Hire (coin) $70".</summary>
+        void SetBuy(Row row, BigNumber? cost, string fixedText, bool enabled, string leadWord = null)
         {
-            row.BuyLabel.SetText(fixedText ?? prefix + NumberFormat.Dollars(cost.Value));
+            row.PriceIcon.Lead = leadWord == null ? null : row.PriceIcon.Lead ?? row.PriceIcon.MakeLead(leadWord);
+            row.BuyLabel.SetText(fixedText ?? row.PriceIcon.Lead + NumberFormat.Dollars(cost.Value));
+            row.PriceIcon.SetActive(fixedText == null);
             bool interactable = enabled && session.CanAfford(cost);
             if (row.Buy.interactable != interactable)
                 row.Buy.interactable = interactable;
@@ -276,7 +286,8 @@ namespace NuggetCreek.Game.UI
 
         void SetGemBuy(Row row, int? cost, string fixedText)
         {
-            row.BuyLabel.SetText(fixedText ?? Effects.Gems(cost.Value));
+            row.BuyLabel.SetText(fixedText ?? cost.Value.ToString());
+            row.PriceIcon.SetActive(fixedText == null);
             bool interactable = session.CanAffordGems(cost);
             if (row.Buy.interactable != interactable)
                 row.Buy.interactable = interactable;
