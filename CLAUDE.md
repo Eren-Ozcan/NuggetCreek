@@ -69,6 +69,12 @@ loaded by `Game/Art.cs`, import settings in `Editor/SpriteImportRules.cs`). On a
 the cutter (`tools/cut_sprites.py`, git-excluded) are backed up in `game-art/source/`; after
 re-cutting, copy `Assets/Resources` back there, then commit and push the pictures repo.
 
+Fonts are committed (open licences, next to them in `Assets/Fonts/`): `Assets/Fonts/Resources/Fonts/`
+holds `Body` and `BodyBold` (static Fredoka 500/700 cut from the variable font with
+`fontTools.varLib.instancer`) and `Heading` (Ultra, panel titles). `Ui.Font`/`BoldFont`/`HeadingFont`
+fall back to the built-in font when a file is missing. Panels, rows and buttons use procedural
+rounded sprites (`Ui.Panel`, `Ui.Button`); colours live only in `Palette`.
+
 ## Rules
 
 - **Private material stays out of git.** The design docs (`docs/GAME_DESIGN.md`,
