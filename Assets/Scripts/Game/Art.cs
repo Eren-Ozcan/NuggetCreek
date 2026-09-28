@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using NuggetCreek.Core;
 using UnityEngine;
@@ -53,5 +54,42 @@ namespace NuggetCreek.Game
 
         /// <summary>HUD icon by file name, e.g. "map" or "lock".</summary>
         public static Sprite Icon(string name) => Get("Icons/" + name);
+
+        /// <summary>Painted map panels, bottom (0) to top.</summary>
+        public const int MapPanelCount = 4;
+
+        public static Sprite MapPanel(int index) => Get($"Map/panel_{index + 1}");
+
+        [Serializable]
+        sealed class MarkerFile
+        {
+            public float[] x;
+            public float[] y;
+        }
+
+        static Vector2[] mapMarkers;
+        static bool mapMarkersLoaded;
+
+        /// <summary>
+        /// Each creek's marker on the painted map as fractions of the whole map (y from the
+        /// bottom), written by the map tool next to the panels; null when it is missing.
+        /// </summary>
+        public static Vector2[] MapMarkers
+        {
+            get
+            {
+                if (mapMarkersLoaded)
+                    return mapMarkers;
+                mapMarkersLoaded = true;
+                var file = Resources.Load<TextAsset>("Sprites/Map/markers");
+                MarkerFile data = file != null ? JsonUtility.FromJson<MarkerFile>(file.text) : null;
+                if (data?.x == null || data.y == null || data.x.Length != data.y.Length)
+                    return null;
+                mapMarkers = new Vector2[data.x.Length];
+                for (int i = 0; i < mapMarkers.Length; i++)
+                    mapMarkers[i] = new Vector2(data.x[i], data.y[i]);
+                return mapMarkers;
+            }
+        }
     }
 }

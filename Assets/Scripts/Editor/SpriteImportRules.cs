@@ -5,8 +5,8 @@ namespace NuggetCreek.Editor
 {
     /// <summary>
     /// Import settings for the game art under Resources/Sprites (cut from the art sheets by the
-    /// local sprite tool): UI sprites without mipmaps, ASTC on Android. Creek backgrounds keep
-    /// their full size; everything else is capped at 512, the size the cutter exports.
+    /// local sprite tool): UI sprites without mipmaps, ASTC on Android. Creek backgrounds and
+    /// map panels keep their full size; everything else is capped at 512, the size the cutter exports.
     /// </summary>
     sealed class SpriteImportRules : AssetPostprocessor
     {
@@ -17,7 +17,7 @@ namespace NuggetCreek.Editor
             if (!assetPath.StartsWith(Root))
                 return;
             var importer = (TextureImporter)assetImporter;
-            bool background = assetPath.StartsWith(Root + "Creeks/");
+            bool background = assetPath.StartsWith(Root + "Creeks/") || assetPath.StartsWith(Root + "Map/");
             bool logo = assetPath.StartsWith(Root + "Identity/logo");
 
             importer.textureType = TextureImporterType.Sprite;
