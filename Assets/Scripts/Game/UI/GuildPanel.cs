@@ -157,14 +157,17 @@ namespace NuggetCreek.Game.UI
 
         PerkRow NewPerkRow(Transform list, int index)
         {
-            Image background = Ui.Image(GameCatalog.Perks[index].Id, list, Palette.Row);
-            Ui.PreferredHeight(background, 160);
+            const float height = 160;
+            string id = GameCatalog.Perks[index].Id;
+            Image background = Ui.Image(id, list, Palette.Row);
+            Ui.PreferredHeight(background, height);
             RectTransform rt = background.rectTransform;
             var row = new PerkRow { Index = index };
+            float inset = Ui.RowPicture(rt, height, Art.Perk(id), out _);
             row.Title = Ui.Label("Title", rt, "", 40, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
-            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 0), new Vector2(-330, -20));
+            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 0), new Vector2(-330, -20));
             row.Detail = Ui.Label("Detail", rt, "", 30, TextAnchor.LowerLeft, Palette.TextMuted);
-            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 20), new Vector2(-330, -76));
+            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 20), new Vector2(-330, -76));
             row.RankUp = Ui.Button("RankUp", rt, "", Palette.Button, () => session.RankUpPerk(index), out row.RankUpLabel, 34);
             row.RankUp.AsRect().Place(new Vector2(1, 0), Vector2.one, new Vector2(-300, 22), new Vector2(-24, -22));
             return row;

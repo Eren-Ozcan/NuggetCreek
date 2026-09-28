@@ -23,6 +23,7 @@ namespace NuggetCreek.Game.UI
 
         static readonly string[] TabNames = { "OFFERS", "GEM SHOP", "GEMS" };
         static readonly string[] BoxNames = { "Green Box", "Orange Box", "Red Box" };
+        static readonly string[] BoxSprites = { "Chests/box_green", "Chests/box_orange", "Chests/box_red" };
 
         sealed class Row
         {
@@ -31,6 +32,7 @@ namespace NuggetCreek.Game.UI
             public Text Detail;
             public Button Buy;
             public Text BuyLabel;
+            public IconBesideText PriceIcon;
             public Action Refresh;
         }
 
@@ -165,7 +167,7 @@ namespace NuggetCreek.Game.UI
 
         void AddOfferRow(Transform list, ShopItem item)
         {
-            Row row = NewRow(list, "Offer_" + item.Kind, () => BuyReal(item));
+            Row row = NewRow(list, "Offer_" + item.Kind, OfferPicture(item), () => BuyReal(item));
             row.Refresh = () =>
             {
                 double left = session.OfferSecondsLeft(item);
@@ -182,7 +184,7 @@ namespace NuggetCreek.Game.UI
 
         void AddGemRow(Transform list, ShopItem item)
         {
-            Row row = NewRow(list, "Gems_" + item.Id, () => BuyReal(item));
+            Row row = NewRow(list, "Gems_" + item.Id, Art.Gem, () => BuyReal(item));
             row.Refresh = () =>
             {
                 row.Title.SetText(item.Name);
@@ -193,7 +195,7 @@ namespace NuggetCreek.Game.UI
 
         void AddBoostRow(Transform list, ShopBoost boost, string name, string detail)
         {
-            Row row = NewRow(list, "Boost_" + boost, () => BuyBoost(boost));
+            Row row = NewRow(list, "Boost_" + boost, BoostPicture(boost), () => BuyBoost(boost), gemPrice: true);
             row.Refresh = () =>
             {
                 row.Title.SetText(name);
@@ -205,15 +207,15 @@ namespace NuggetCreek.Game.UI
                 else
                     row.Detail.SetText(detail);
                 double cooldown = session.BoostCooldown(boost);
-                string label = cooldown > 0 ? "OUT OF STOCK " + CandidateModal.Clock(cooldown) : Effects.Gems(session.BoostGems);
-                SetButton(row, label, session.CanBuyBoost(boost));
+                string label = cooldown > 0 ? "OUT OF STOCK " + CandidateModal.Clock(cooldown) : session.BoostGems.ToString();
+                SetButton(row, label, session.CanBuyBoost(boost), price: cooldown <= 0);
             };
         }
 
         void AddLodeRow(Transform list)
         {
             int gems = session.Economy.Config.MotherLodeSummonGems;
-            Row row = NewRow(list, "SummonLode", () => SummonLodeRequested?.Invoke());
+            Row row = NewRow(list, "SummonLode", Art.Get("MotherLode/boulder_0"), () => SummonLodeRequested?.Invoke(), gemPrice: true);
             row.Refresh = () =>
             {
                 // Known once a natural Mother Lode has come (design doc 8.2c).
@@ -221,37 +223,62 @@ namespace NuggetCreek.Game.UI
                 row.Root.SetActive(known);
                 row.Title.SetText("Mother Lode");
                 row.Detail.SetText("Call the Mother Lode now");
-                SetButton(row, Effects.Gems(gems), session.CanAffordGems(gems));
+                SetButton(row, gems.ToString(), session.CanAffordGems(gems), price: true);
             };
         }
 
         void AddBoxRow(Transform list, int box)
         {
             EconomyConfig config = session.Economy.Config;
-            Row row = NewRow(list, "Box_" + box, () => BuyBox(box));
+            Row row = NewRow(list, "Box_" + box, Art.Get(BoxSprites[box]), () => BuyBox(box), gemPrice: true);
             row.Refresh = () =>
             {
                 int start = box * 3;
                 row.Title.SetText($"{BoxNames[box]}  -  {config.GearBoxCards[box]} cards");
                 string odds = $"At least 1 {config.GearBoxGuarantee[box]}.  C {config.GearBoxOdds[start] * 100:0}% / R {config.GearBoxOdds[start + 1] * 100:0}% / L {config.GearBoxOdds[start + 2] * 100:0}%";
                 row.Detail.SetText(session.GearUnlocked ? odds : "Opens with your first creek chest");
-                SetButton(row, Effects.Gems(config.GearBoxGems[box]), session.GearUnlocked && session.CanAffordGems(config.GearBoxGems[box]));
+                SetButton(row, config.GearBoxGems[box].ToString(), session.GearUnlocked && session.CanAffordGems(config.GearBoxGems[box]), price: true);
             };
         }
 
-        Row NewRow(Transform list, string name, Action onBuy)
+        /// <summary>Real-money rows show a store price, so only Gem-priced rows get the Gem icon.</summary>
+        Row NewRow(Transform list, string name, Sprite picture, Action onBuy, bool gemPrice = false)
         {
+            const float height = 170;
             Image background = Ui.Image(name, list, Palette.Row);
-            Ui.PreferredHeight(background, 170);
+            Ui.PreferredHeight(background, height);
             var row = new Row { Root = background.rectTransform };
+            float inset = Ui.RowPicture(row.Root, height, picture, out _);
             row.Title = Ui.Label("Title", row.Root, "", 42, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
-            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 0), new Vector2(-330, -22));
+            row.Title.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 0), new Vector2(-330, -22));
             row.Detail = Ui.Label("Detail", row.Root, "", 30, TextAnchor.LowerLeft, Palette.TextMuted);
-            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(28, 16), new Vector2(-330, -80));
+            row.Detail.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 16), new Vector2(-330, -80));
             row.Buy = Ui.Button("Buy", row.Root, "", Palette.GemButton, onBuy, out row.BuyLabel, 32);
             row.Buy.AsRect().Place(new Vector2(1, 0), Vector2.one, new Vector2(-300, 22), new Vector2(-24, -22));
+            if (gemPrice)
+                row.PriceIcon = Ui.PriceIcon(row.BuyLabel, Art.Gem, Palette.Gem);
             rows.Add(row);
             return row;
+        }
+
+        static Sprite BoostPicture(ShopBoost boost)
+        {
+            switch (boost)
+            {
+                case ShopBoost.GoldWash: return Art.GoldDust;
+                case ShopBoost.ExtraShift: return Art.Icon("timer");
+                default: return Art.NuggetIcon;
+            }
+        }
+
+        static Sprite OfferPicture(ShopItem item)
+        {
+            switch (item.Kind)
+            {
+                case ShopKind.RemoveAds: return Art.Icon("watch_ad");
+                case ShopKind.GearSlot: return Art.Icon("plus");
+                default: return Art.Icon("gift");
+            }
         }
 
         static void Section(Transform list, string text)
@@ -260,9 +287,11 @@ namespace NuggetCreek.Game.UI
             Ui.PreferredHeight(label, 70);
         }
 
-        static void SetButton(Row row, string text, bool interactable)
+        static void SetButton(Row row, string text, bool interactable, bool price = false)
         {
             row.BuyLabel.SetText(text);
+            if (row.PriceIcon != null)
+                row.PriceIcon.SetActive(price);
             if (row.Buy.interactable != interactable)
                 row.Buy.interactable = interactable;
         }
