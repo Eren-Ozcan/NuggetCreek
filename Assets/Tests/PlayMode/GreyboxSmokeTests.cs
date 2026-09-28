@@ -278,6 +278,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             StringAssert.StartsWith("NEW COMMON GEAR", LabelIn("ChestModal", "ChestReward").text);
             Assert.That(Label("Dollars").text, Is.Not.EqualTo("$0"));
+            yield return new WaitForSecondsRealtime(1);
             yield return Shot("12_chest_reward");
 
             Click("ChestCollect");

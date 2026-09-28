@@ -12,6 +12,10 @@ namespace NuggetCreek.Game.UI
     /// </summary>
     public sealed class ChestModal
     {
+        const float ShakeSeconds = 0.35f;
+        const float OpeningSeconds = 0.2f;
+        const float PopSeconds = 0.3f;
+
         readonly GameSession session;
         readonly IRewardedAds ads;
         readonly RectTransform root;
@@ -22,7 +26,13 @@ namespace NuggetCreek.Game.UI
         readonly Button open;
         readonly Button doubleButton;
         readonly Button collect;
+        readonly Image picture;
+        readonly CanvasGroup rewardGroup;
+        readonly Sprite closedSprite = Art.Get("Chests/creek_closed");
+        readonly Sprite openingSprite = Art.Get("Chests/creek_opening");
+        readonly Sprite openSprite = Art.Get("Chests/creek_open");
         ChestReward shown;
+        float openedAt;
 
         public bool IsOpen => root.gameObject.activeSelf;
 
@@ -34,7 +44,7 @@ namespace NuggetCreek.Game.UI
             this.ads = ads;
             root = Ui.Image("ChestModal", canvas, Palette.Dim).rectTransform.Fill();
             RectTransform card = Ui.Image("Card", root, Palette.Panel).rectTransform
-                .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1000));
+                .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1240));
 
             Text title = Ui.Label("Title", card, "CREEK CHEST", 56, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));
@@ -44,11 +54,16 @@ namespace NuggetCreek.Game.UI
             Text contents = Ui.Label("Odds", card, odds, 32, TextAnchor.MiddleCenter, Palette.TextMuted);
             contents.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -260), new Vector2(-40, -140));
 
-            status = Ui.Label("ChestStatus", card, "", 44, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
-            status.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -380), new Vector2(-40, -280));
+            picture = Ui.Icon("ChestPicture", card, closedSprite);
+            picture?.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(170, -610), new Vector2(-170, -280));
 
-            reward = Ui.Label("ChestReward", card, "", 40, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
-            reward.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -620), new Vector2(-40, -400));
+            // Dollars and the card fade in once the lid is open.
+            RectTransform rewardArea = Ui.Rect("RewardArea", card).Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -940), new Vector2(-40, -610));
+            rewardGroup = rewardArea.gameObject.AddComponent<CanvasGroup>();
+            status = Ui.Label("ChestStatus", rewardArea, "", 44, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
+            status.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -90), Vector2.zero);
+            reward = Ui.Label("ChestReward", rewardArea, "", 40, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            reward.rectTransform.Place(Vector2.zero, Vector2.one, Vector2.zero, new Vector2(0, -100));
 
             openNow = Ui.Button("OpenNow", card, "", Palette.GemButton, OpenNow, out openNowLabel, 40);
             openNow.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(40, 170), new Vector2(-40, 290));
@@ -88,6 +103,7 @@ namespace NuggetCreek.Game.UI
                 return;
             if (shown != null)
             {
+                AnimateOpening(Time.unscaledTime - openedAt);
                 status.SetText("+" + NumberFormat.Dollars(shown.Doubled ? shown.Dollars * 2 : shown.Dollars));
                 reward.SetText(CardText(shown.Card));
                 openNow.SetActive(false);
@@ -102,6 +118,8 @@ namespace NuggetCreek.Game.UI
             reward.SetText("");
             doubleButton.SetActive(false);
             bool ready = session.ChestReady;
+            rewardGroup.alpha = 1;
+            ShowPicture(closedSprite, ready ? Motion.Bob(Time.unscaledTime) : 1, 0);
             status.SetText(ready ? "Ready!" : "Opens in " + CandidateModal.Clock(session.Progress.ChestSecondsLeft));
             open.SetActive(ready);
             int? cost = session.ChestInstantCost;
@@ -114,6 +132,31 @@ namespace NuggetCreek.Game.UI
                     openNow.interactable = affordable;
             }
             collect.SetActive(true);
+        }
+
+        /// <summary>
+        /// Lid animation after Open: the closed chest shakes, pops through the opening frame to
+        /// the open one, and the reward fades in. Buttons work from the first frame.
+        /// </summary>
+        void AnimateOpening(float t)
+        {
+            if (t < ShakeSeconds)
+                ShowPicture(closedSprite, 1, Motion.Shake(t, ShakeSeconds));
+            else if (t < ShakeSeconds + OpeningSeconds)
+                ShowPicture(openingSprite, 1.05f, 0);
+            else
+                ShowPicture(openSprite, Motion.Punch(t - ShakeSeconds - OpeningSeconds, PopSeconds), 0);
+            rewardGroup.alpha = Motion.FadeIn(t, ShakeSeconds + OpeningSeconds, 0.2f);
+        }
+
+        void ShowPicture(Sprite sprite, float scale, float degrees)
+        {
+            if (picture == null)
+                return;
+            if (sprite != null && picture.sprite != sprite)
+                picture.sprite = sprite;
+            picture.rectTransform.localScale = Vector3.one * scale;
+            picture.rectTransform.localRotation = Quaternion.Euler(0, 0, degrees);
         }
 
         /// <summary>Player-facing line for one gear card.</summary>
@@ -136,6 +179,7 @@ namespace NuggetCreek.Game.UI
         void Claim()
         {
             shown = session.ClaimChest();
+            openedAt = Time.unscaledTime;
             Refresh();
         }
 
