@@ -9,15 +9,15 @@ namespace NuggetCreek.Game.UI
     /// <summary>
     /// Full-screen daily screen (design doc 7.1, 12.1 screen 12): login streak with the ad
     /// rescue, the three daily jobs and the Daily Wash with its listed odds. The Wash is a
-    /// sluice, never a wheel (brand rule): the button says WASH.
+    /// sluice, never a wheel (brand rule): the button says WASH. The player's own sluice sits
+    /// above the outcomes, each a tile with its odds; a wash rocks the sluice and lights the
+    /// tile it turned up.
     /// </summary>
     public sealed class DailyPanel
     {
-        static readonly string[] WashNames =
-        {
-            "3 Gems", "8 Gems", "25 Gems", "Income x2 for 30 min", "Income x2 for 2 h",
-            "Income x3 for 1 h", "Income x4 for 30 min", "A creek chest",
-        };
+        const float WashShakeSeconds = 0.7f;
+        const float TileHeight = 200;
+        const int TileColumns = 4;
 
         sealed class JobRow
         {
@@ -36,10 +36,13 @@ namespace NuggetCreek.Game.UI
         readonly Button rescue;
         readonly Text rescueLabel;
         readonly JobRow[] jobs = new JobRow[3];
-        readonly Text washText;
+        readonly Image sluice;
+        readonly Image[] washTiles;
         readonly Button wash;
         readonly Text washLabel;
         readonly Text washResult;
+        int washOutcome = -1;
+        float washedAt;
 
         public bool IsOpen => root.gameObject.activeSelf;
 
@@ -71,8 +74,16 @@ namespace NuggetCreek.Game.UI
                 jobs[i] = NewJobRow(list, i);
 
             Section(list, "DAILY WASH");
-            washText = Ui.Label("WashOdds", list, OddsText(), 28, TextAnchor.UpperLeft, Palette.TextMuted);
-            Ui.PreferredHeight(washText, 290);
+            // The player's sluice as the wash; without the art the tiles stand alone.
+            Sprite sluiceArt = Art.Sluice(session.Progress.TierIndex);
+            if (sluiceArt != null)
+            {
+                RectTransform sluiceBox = Ui.Rect("WashSluice", list);
+                Ui.PreferredHeight(sluiceBox, 300);
+                sluice = Ui.Icon("Sluice", sluiceBox, sluiceArt);
+                sluice.rectTransform.Fill();
+            }
+            washTiles = NewWashTiles(list);
             wash = Ui.Button("Wash", list, "", Palette.Button, Wash, out washLabel, 44);
             Ui.PreferredHeight(wash, 130);
             washResult = Ui.Label("WashResult", list, "", 38, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
@@ -84,6 +95,7 @@ namespace NuggetCreek.Game.UI
         public void Open()
         {
             washResult.SetText("");
+            washOutcome = -1;
             root.SetActive(true);
             Refresh();
         }
@@ -141,6 +153,7 @@ namespace NuggetCreek.Game.UI
                     row.Claim.interactable = can;
             }
 
+            AnimateWash(Time.unscaledTime - washedAt);
             wash.SetActive(true);
             bool free = session.CanWashFree;
             washLabel.SetText(free ? "WASH  (free)" : session.CanWashWithAd ? $"WASH  (watch ad, {session.WashesLeftToday} left)" : "Washed out for today");
@@ -181,13 +194,83 @@ namespace NuggetCreek.Game.UI
             }
         }
 
-        string OddsText()
+        /// <summary>One tile per wash outcome: picture, what it gives and its chance, from the config.</summary>
+        Image[] NewWashTiles(Transform list)
         {
-            double[] chances = session.Economy.Config.WashChances;
-            var text = new StringBuilder("Odds:\n");
-            for (int i = 0; i < chances.Length; i++)
-                text.Append($"{WashNames[i]}  {chances[i] * 100:0}%\n");
-            return text.ToString().TrimEnd();
+            EconomyConfig config = session.Economy.Config;
+            int count = config.WashChances.Length;
+            RectTransform grid = Ui.Rect("WashOdds", list);
+            int rows = (count + TileColumns - 1) / TileColumns;
+            Ui.PreferredHeight(grid, rows * TileHeight + (rows - 1) * 12);
+            var layout = grid.gameObject.AddComponent<GridLayoutGroup>();
+            // 1032 = the list's 1080 minus its padding.
+            layout.cellSize = new Vector2((1032 - (TileColumns - 1) * 12) / TileColumns, TileHeight);
+            layout.spacing = new Vector2(12, 12);
+            layout.childAlignment = TextAnchor.UpperCenter;
+
+            var tiles = new Image[count];
+            for (int i = 0; i < count; i++)
+            {
+                tiles[i] = Ui.Panel("Outcome" + i, grid, Palette.Row);
+                RectTransform rt = tiles[i].rectTransform;
+                Image icon = Ui.Icon("Icon", rt, WashSprite(config, i), WashColor(config, i));
+                icon.rectTransform.Box(new Vector2(0.5f, 1), new Vector2(84, 84), new Vector2(0, -14));
+                Text name = Ui.Label("Name", rt, WashName(config, i), 28, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+                name.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(6, 44), new Vector2(-6, -100));
+                Text chance = Ui.Label("Chance", rt, $"{config.WashChances[i] * 100:0}%", 26, TextAnchor.MiddleCenter, Palette.TextMuted);
+                chance.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(6, 10), new Vector2(-6, 46));
+            }
+            return tiles;
+        }
+
+        static Sprite WashSprite(EconomyConfig config, int outcome) =>
+            config.WashGems[outcome] > 0 ? Art.Gem
+            : config.WashChests[outcome] > 0 ? Art.Get("Chests/creek_closed")
+            : Art.Icon("level_up");
+
+        static Color WashColor(EconomyConfig config, int outcome) =>
+            config.WashGems[outcome] > 0 ? Palette.Gem : config.WashChests[outcome] > 0 ? Palette.Amos : Palette.Gold;
+
+        /// <summary>Short tile text, e.g. "8 Gems" or "x2  2h".</summary>
+        static string WashName(EconomyConfig config, int outcome)
+        {
+            if (config.WashGems[outcome] > 0)
+                return Effects.Gems(config.WashGems[outcome]);
+            if (config.WashChests[outcome] > 0)
+                return "Creek chest";
+            return $"x{config.WashMultipliers[outcome]:0.#}  {TextFormat.Duration(config.WashMinutes[outcome] * 60)}";
+        }
+
+        /// <summary>What the result line says, e.g. "All income x2 for 2h".</summary>
+        static string WashResultText(EconomyConfig config, int outcome)
+        {
+            if (config.WashGems[outcome] > 0 || config.WashChests[outcome] > 0)
+                return WashName(config, outcome);
+            return $"All income x{config.WashMultipliers[outcome]:0.#} for {TextFormat.Duration(config.WashMinutes[outcome] * 60)}";
+        }
+
+        /// <summary>The sluice rocks while the water runs, then the outcome's tile lights up with a pop.</summary>
+        void AnimateWash(float t)
+        {
+            if (sluice != null)
+            {
+                // Follows tier upgrades bought while the game runs.
+                Sprite picture = Art.Sluice(session.Progress.TierIndex);
+                if (picture != null && sluice.sprite != picture)
+                    sluice.sprite = picture;
+                sluice.rectTransform.localRotation = Quaternion.Euler(0, 0, washOutcome >= 0 ? Motion.Shake(t, WashShakeSeconds, 6) : 0);
+            }
+
+            bool shown = washOutcome >= 0 && t >= WashShakeSeconds;
+            for (int i = 0; i < washTiles.Length; i++)
+            {
+                bool lit = shown && i == washOutcome;
+                washTiles[i].color = lit ? Palette.Highlight : Palette.Row;
+                washTiles[i].rectTransform.localScale = Vector3.one * (lit ? Motion.Punch(t - WashShakeSeconds, 0.4f) : 1);
+            }
+            Color result = washResult.color;
+            result.a = washOutcome >= 0 ? Motion.FadeIn(t, WashShakeSeconds, 0.2f) : 1;
+            washResult.color = result;
         }
 
         JobRow NewJobRow(Transform list, int slot)
@@ -255,7 +338,9 @@ namespace NuggetCreek.Game.UI
         {
             if (outcome < 0)
                 return;
-            washResult.SetText("The pan shows: " + WashNames[outcome]);
+            washOutcome = outcome;
+            washedAt = Time.unscaledTime;
+            washResult.SetText("The pan shows: " + WashResultText(session.Economy.Config, outcome));
             Changed?.Invoke();
             Refresh();
         }
