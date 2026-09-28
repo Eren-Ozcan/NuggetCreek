@@ -45,7 +45,7 @@ namespace NuggetCreek.Game.UI
             }
 
             Text body = Ui.Label("Body", card,
-                "We save your progress on this phone. Analytics, crash reports and ads keep the game free " +
+                "We save your progress on this phone and, if you use Google Play Games, in your Google account. Analytics, crash reports and ads keep the game free " +
                 "and help us fix it. Ad choices can be changed any time in Settings.\n\n" +
                 "Tap Accept to agree to our Privacy Policy.",
                 34, TextAnchor.UpperLeft, Palette.TextMuted);
