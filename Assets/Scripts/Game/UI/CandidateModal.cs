@@ -18,6 +18,8 @@ namespace NuggetCreek.Game.UI
             public Text Effect;
             public Button Hire;
             public Text HireLabel;
+            public Image Portrait;
+            public IconBesideText GemIcon;
             public int CrewIndex = -1;
         }
 
@@ -87,9 +89,13 @@ namespace NuggetCreek.Game.UI
                 CrewDefinition crew = GameCatalog.Crew[slot.CrewIndex];
                 slot.Root.name = "Candidate_" + crew.Id;
                 slot.Name.SetText(crew.Name);
+                if (slot.Portrait != null)
+                    slot.Portrait.sprite = Art.Portrait(crew.Id) ?? slot.Portrait.sprite;
                 slot.Effect.SetText($"{Effects.PerLevel(crew.Stat, crew.PerLevel)} per level, up to Lv {GameCatalog.CrewMaxLevel}.");
                 // The tutorial pays for the first hire (design doc 9.1).
-                slot.HireLabel.SetText(cost == 0 ? "Hire  Free" : "Hire  " + Effects.Gems(cost ?? 0));
+                slot.GemIcon.Lead ??= slot.GemIcon.MakeLead("Hire");
+                slot.HireLabel.SetText(cost == 0 ? "Hire  Free" : slot.GemIcon.Lead + (cost ?? 0));
+                slot.GemIcon.SetActive(cost != 0);
                 bool affordable = session.CanAffordGems(cost);
                 if (slot.Hire.interactable != affordable)
                     slot.Hire.interactable = affordable;
@@ -106,15 +112,20 @@ namespace NuggetCreek.Game.UI
         Slot AddSlot(RectTransform card, int position)
         {
             var slot = new Slot();
+            const float height = 300;
             slot.Root = Ui.Image("Candidate", card, Palette.Row).rectTransform
-                .Box(new Vector2(0.5f, 1), new Vector2(860, 300), new Vector2(0, -220 - position * 330));
+                .Box(new Vector2(0.5f, 1), new Vector2(860, height), new Vector2(0, -220 - position * 330));
+            // Smaller than the card so the effect text keeps room above the Hire button.
+            // Built with any portrait; Refresh swaps in the candidate's own.
+            float inset = Ui.RowPicture(slot.Root, height - 80, Art.Portrait(GameCatalog.Crew[0].Id), out slot.Portrait);
 
             slot.Name = Ui.Label("Name", slot.Root, "", 46, TextAnchor.UpperLeft, Palette.Text, FontStyle.Bold);
-            slot.Name.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 0), new Vector2(-30, -26));
+            slot.Name.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 0), new Vector2(-30, -26));
             slot.Effect = Ui.Label("Effect", slot.Root, "", 34, TextAnchor.UpperLeft, Palette.TextMuted);
-            slot.Effect.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 0), new Vector2(-30, -90));
+            slot.Effect.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(inset, 0), new Vector2(-30, -90));
 
             slot.Hire = Ui.Button("Hire", slot.Root, "", Palette.GemButton, () => Hire(slot), out slot.HireLabel, 38);
+            slot.GemIcon = Ui.PriceIcon(slot.HireLabel, Art.Gem, Palette.Gem);
             slot.Hire.AsRect().Box(new Vector2(1, 0), new Vector2(340, Ui.TapHeight), new Vector2(-30, 30));
             return slot;
         }
