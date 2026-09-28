@@ -38,6 +38,8 @@ namespace NuggetCreek.Game.UI
         public static readonly Color GemText = new Color32(0x1C, 0x7A, 0x66, 0xFF);
         public static readonly Color GemButton = new Color32(0x24, 0x86, 0x70, 0xFF);
         public static readonly Color Badge = new Color32(0xD8, 0x3A, 0x2A, 0xFF);
+        /// <summary>Mist over the painted map above the next creek to unlock.</summary>
+        public static readonly Color Fog = new Color(0.95f, 0.92f, 0.85f, 0.82f);
         /// <summary>Tint for a star not earned yet or a milestone not reached: a faint shape on cream.</summary>
         public static readonly Color IconOff = new Color(0.53f, 0.40f, 0.29f, 0.3f);
     }
