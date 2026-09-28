@@ -31,5 +31,14 @@ namespace NuggetCreek.Game
                 : null;
 
         public static Sprite GoldDust => Get("Currency/dust");
+
+        public static Sprite Dollar => Get("Currency/dollar");
+
+        public static Sprite Gem => Get("Currency/gem");
+
+        public static Sprite GuildEmblem => Get("Identity/guild_emblem");
+
+        /// <summary>HUD icon by file name, e.g. "map" or "lock".</summary>
+        public static Sprite Icon(string name) => Get("Icons/" + name);
     }
 }

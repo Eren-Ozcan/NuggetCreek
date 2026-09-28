@@ -104,6 +104,20 @@ namespace NuggetCreek.Game.UI
             return image;
         }
 
+        /// <summary>
+        /// Sprite icon that keeps its aspect and ignores taps. Without the sprite (art not
+        /// fetched) it is a plain circle in the fallback colour, or nothing when there is none.
+        /// </summary>
+        public static Image Icon(string name, Transform parent, Sprite sprite, Color? fallback = null)
+        {
+            if (sprite == null && fallback == null)
+                return null;
+            Image image = Image(name, parent, sprite != null ? Color.white : fallback.Value, sprite != null ? sprite : Circle);
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+            return image;
+        }
+
         public static Text Label(string name, Transform parent, string text, int size,
             TextAnchor alignment = TextAnchor.MiddleCenter, Color? color = null, FontStyle style = FontStyle.Normal)
         {
