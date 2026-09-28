@@ -80,6 +80,9 @@ namespace NuggetCreek.Game
         Text crewChipLabel;
         Button summonLode;
         PrivacyGate gate;
+        CloudSync cloud;
+        CloudChoiceModal cloudChoice;
+        PlayerProgress pendingCloud;
         SettingsPanel settings;
 
         float autosaveIn = AutosaveSeconds;
@@ -127,7 +130,15 @@ namespace NuggetCreek.Game
             notifications = new NoNotifications();
 #endif
             lateDouble = new LateDoubleOffer(config);
+            CreateCloud();
             BuildUi();
+        }
+
+        void CreateCloud()
+        {
+            cloud = new CloudSync(CloudSync.CreateSlot(), () => session.Progress, SaveStore.LoadDamaged);
+            cloud.Failed += (stage, code) => session.Events.Emit("save_error", ("stage", stage), ("code", code));
+            cloud.Found += OnCloudFound;
         }
 
         void Start()
@@ -138,6 +149,7 @@ namespace NuggetCreek.Game
                 gate.Open();
             else
                 admob?.Start(Compliance.Audience(session.Progress.AgeBand));
+            cloud.Start(false);
             ReturnFromNotifications();
             // Preload before the offline modal opens so most returns open on Ready (3.3.1 rule 3).
             ads.Load();
@@ -166,7 +178,7 @@ namespace NuggetCreek.Game
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
             bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen || shop.IsOpen
-                || gate.IsOpen || settings.IsOpen;
+                || gate.IsOpen || settings.IsOpen || cloudChoice.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -231,7 +243,7 @@ namespace NuggetCreek.Game
                 pausedAtUtc = DateTime.UtcNow;
                 wasPaused = true;
                 ScheduleNotifications();
-                Save();
+                Save(true);
                 return;
             }
             if (wasPaused)
@@ -250,9 +262,12 @@ namespace NuggetCreek.Game
             }
         }
 
-        void OnApplicationQuit() => Save();
+        void OnApplicationQuit() => Save(true);
 
-        void Save()
+        void Save() => Save(false);
+
+        /// <param name="leaving">The app is going to the background: upload to the cloud now.</param>
+        void Save(bool leaving)
         {
             if (resetting)
                 return;
@@ -261,6 +276,7 @@ namespace NuggetCreek.Game
             if (!returnPending && !offlineModal.HasUnclaimed)
                 clock.StampLeave(session.Progress);
             SaveStore.Save(session.Progress);
+            cloud.Upload(leaving);
         }
 
         // --- Ads (design doc 8.4) ---
@@ -633,13 +649,45 @@ namespace NuggetCreek.Game
                 shop.Close();
                 SummonMotherLode();
             };
-            settings = new SettingsPanel(session.Progress, () => admob != null && admob.PrivacyOptionsRequired, root);
+            settings = new SettingsPanel(session.Progress, () => admob != null && admob.PrivacyOptionsRequired, cloud, root);
             settings.Changed += Save;
             settings.PrivacyChoicesRequested += () => admob?.ShowPrivacyOptions();
             settings.DeleteConfirmed += DeleteMyData;
             // Last, so it covers everything on a first launch.
             gate = new PrivacyGate(root);
             gate.Accepted += AcceptGate;
+            // Above the gate: a restored save answers it.
+            cloudChoice = new CloudChoiceModal(root);
+            cloudChoice.KeepLocal += () =>
+            {
+                session.Events.Emit("cloud_restore", ("stage", "ask"), ("code", "kept_local"));
+                cloud.KeepLocal();
+            };
+            cloudChoice.LoadCloud += () => RestoreFromCloud(pendingCloud, "chosen");
+        }
+
+        // --- Cloud backup (design doc 13.1) ---
+
+        void OnCloudFound(PlayerProgress found, CloudChoice choice)
+        {
+            if (choice == CloudChoice.RestoreCloud)
+            {
+                RestoreFromCloud(found, SaveStore.LoadDamaged ? "damaged" : "fresh");
+                return;
+            }
+            pendingCloud = found;
+            cloudChoice.Open(session.Progress, found);
+        }
+
+        /// <summary>Writes the cloud copy as this phone's save and starts over from it.</summary>
+        void RestoreFromCloud(PlayerProgress restored, string reason)
+        {
+            session.Events.Emit("cloud_restore", ("stage", reason), ("code", "ok"));
+            CloudSave.PrepareRestored(restored);
+            notifications.CancelAll();
+            resetting = true;
+            SaveStore.Save(restored);
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
         // --- Privacy (design doc 14.2) ---
@@ -673,6 +721,7 @@ namespace NuggetCreek.Game
             notifications.CancelAll();
             FirebaseServices.DeleteData();
             admob?.ResetConsent();
+            cloud.Delete();
             ResetGame();
         }
 
