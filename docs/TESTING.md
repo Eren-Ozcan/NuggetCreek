@@ -5,8 +5,8 @@ before every Play upload.
 
 | Layer | Where | Count | Time | Run |
 |---|---|---:|---:|---|
-| Core unit tests | `tests/NuggetCreek.Core.Tests` | 428 | < 1 s | `dotnet test tests/NuggetCreek.Core.Tests` |
-| PlayMode tests | `Assets/Tests/PlayMode` | 23 | ~2.5 min | `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>` (editor closed) |
+| Core unit tests | `tests/NuggetCreek.Core.Tests` | 439 | < 1 s | `dotnet test tests/NuggetCreek.Core.Tests` |
+| PlayMode tests | `Assets/Tests/PlayMode` | 24 | ~2.5 min | `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>` (editor closed) |
 | Balance bot | `tests/NuggetCreek.Balance` | 5 runs x 30 game days | ~25 s | `dotnet run --project tests/NuggetCreek.Balance` |
 | Device pass | `scripts/android-device-tests.sh` | 8 steps | ~8 min | build a dev or measure APK, connect a phone, run the script |
 
@@ -17,7 +17,7 @@ minutes of taps).
 
 Every rule in `NuggetCreek.Core` without Unity: economy formulas (parity with the reference
 implementation in the design doc tools), offline earnings and the trusted clock, saves and
-migrations, shop, IAP grants, ads pacing, notifications, daily systems, prestige, compliance.
+migrations, the cloud backup rules, shop, IAP grants, ads pacing, notifications, daily systems, prestige, compliance.
 `NormalizeTests` covers saves that are signed but out of range: negative amounts, more creeks,
 tiers or Amos levels than this build or its Remote Config has, unknown daily job kinds.
 
@@ -90,7 +90,9 @@ a development build adds about 50 MB of code.
   art lands.
 - **Real purchases and real ads.** Store purchases run on the test sheet until the Play
   Console app and RevenueCat key exist; ads use Google's test units in development builds.
-- **Play Games cloud backup** is not built yet.
+- **Play Games cloud backup**: the rules (which save wins, what a restore resets) are unit
+  tested; the Play Games calls themselves wait for the Play Console app and its Play Games
+  project. Until then every build runs without a cloud slot. Checklist in `docs/CLOUD_SAVE.md`.
 - **Clock tampering on a device** needs a rooted phone; covered by the core tests only.
 - **Low-end GPU and 30 FPS floor**: measured only on POT-LX1 (about 55 FPS).
 - **Swipe input device path**: the tests call `CreekView.Sweep` directly; the touch-to-sweep
