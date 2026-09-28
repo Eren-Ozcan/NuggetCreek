@@ -108,6 +108,9 @@ namespace NuggetCreek.Game
             // Saves from before the setting keep vibration on.
             public int vibration = (int)VibrationMode.All;
             public bool highContrast;
+            // Saves from before the settings keep music and effects on.
+            public bool musicOn = true;
+            public bool soundOn = true;
         }
 
         public static bool HasSave => PlayerPrefs.HasKey(Key);
@@ -225,6 +228,8 @@ namespace NuggetCreek.Game
                 TermsAccepted = data.termsAccepted,
                 Vibration = (VibrationMode)data.vibration,
                 HighContrast = data.highContrast,
+                MusicOn = data.musicOn,
+                SoundOn = data.soundOn,
             };
             SaveMigration.Upgrade(progress, data.version);
             progress.Normalize();
@@ -318,6 +323,8 @@ namespace NuggetCreek.Game
                 termsAccepted = progress.TermsAccepted,
                 vibration = (int)progress.Vibration,
                 highContrast = progress.HighContrast,
+                musicOn = progress.MusicOn,
+                soundOn = progress.SoundOn,
             };
             PlayerPrefs.SetString(Key, SaveEnvelope.Wrap(JsonUtility.ToJson(data), SaveKey.Current()));
             PlayerPrefs.Save();

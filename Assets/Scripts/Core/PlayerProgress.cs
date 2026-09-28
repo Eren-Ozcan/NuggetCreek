@@ -241,6 +241,10 @@ namespace NuggetCreek.Core
         /// <summary>Dark outline around every collectible.</summary>
         public bool HighContrast;
 
+        /// <summary>Music and sound effects switch separately (design doc 15.5).</summary>
+        public bool MusicOn = true;
+        public bool SoundOn = true;
+
         /// <summary>Brings arrays saved by an older catalog up to the current size.</summary>
         public void Normalize()
         {
