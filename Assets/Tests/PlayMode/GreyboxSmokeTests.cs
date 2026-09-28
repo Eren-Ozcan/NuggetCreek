@@ -80,7 +80,7 @@ namespace NuggetCreek.PlayModeTests
         {
             Assert.That(Label("Dollars").text, Is.EqualTo("$0"));
             Assert.That(Label("Goal").text, Does.Contain("swipe up 15 Gold Dust by hand  0/15"));
-            Assert.That(Label("Gems").text, Is.EqualTo("0 Gems"));
+            Assert.That(Label("Gems").text, Is.EqualTo("0"));
 
             yield return WaitFor(() => GameObject.Find("GoldDust") != null, 3);
             yield return Shot("1_creek_fresh");
@@ -178,7 +178,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             Assert.That(IsActive("CandidateModal"), Is.False);
             Assert.That(IsActive("CrewChip"), Is.False);
-            Assert.That(Label("Gems").text, Is.EqualTo("50 Gems"), "the free hire costs nothing");
+            Assert.That(Label("Gems").text, Is.EqualTo("50"), "the free hire costs nothing");
 
             Click("UpgradesButton");
             yield return null;
@@ -210,7 +210,7 @@ namespace NuggetCreek.PlayModeTests
             }
             yield return Shot("9_mother_lode_result");
             StringAssert.Contains("+1 Gem", LabelIn("Result", "Amount").text);
-            Assert.That(Label("Gems").text, Is.EqualTo("1 Gem"));
+            Assert.That(Label("Gems").text, Is.EqualTo("1"));
             Assert.That(Label("Dollars").text, Is.Not.EqualTo("$0"));
 
             Click("LodeCollect");
@@ -295,7 +295,7 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator StakingANewClaimResetsTheCreeks()
         {
-            Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild Lv 0"));
+            Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild\nLv 0"));
             Click("+$1T");
             yield return UnlockCreek("Willow Bend");
             yield return UnlockCreek("Pine Hollow");
@@ -331,7 +331,7 @@ namespace NuggetCreek.PlayModeTests
 
             Click("ClaimStreak");
             yield return null;
-            Assert.That(Label("Gems").text, Is.EqualTo("5 Gems"));
+            Assert.That(Label("Gems").text, Is.EqualTo("5"));
             Assert.That(LabelIn("ClaimStreak", "Label").text, Is.EqualTo("Come back tomorrow"));
 
             Click("Wash");
@@ -367,21 +367,21 @@ namespace NuggetCreek.PlayModeTests
             ClickIn("StoreSheet", "Cancel");
             yield return null;
             Assert.That(IsActive("StoreSheet"), Is.False);
-            Assert.That(Label("Gems").text, Is.EqualTo("0 Gems"), "a cancelled sheet grants nothing");
+            Assert.That(Label("Gems").text, Is.EqualTo("0"), "a cancelled sheet grants nothing");
 
             ClickIn("Gems_nc.gems.handful", "Buy");
             yield return null;
             yield return Shot("17_shop_test_sheet");
             ClickIn("StoreSheet", "Buy");
             yield return WaitFor(() => !IsActive("StoreSheet"), 3);
-            Assert.That(Label("Gems").text, Is.EqualTo("40 Gems"));
+            Assert.That(Label("Gems").text, Is.EqualTo("40"));
             StringAssert.Contains("You got: 40 Gems", Label("ShopResult").text);
 
             Click("TabGemShop");
             yield return null;
             ClickIn("Boost_RichVein", "Buy");
             yield return null;
-            Assert.That(Label("Gems").text, Is.EqualTo("35 Gems"));
+            Assert.That(Label("Gems").text, Is.EqualTo("35"));
             StringAssert.StartsWith("OUT OF STOCK", LabelIn("Boost_RichVein", "Label").text);
             yield return Shot("18_shop_gem_shop");
 

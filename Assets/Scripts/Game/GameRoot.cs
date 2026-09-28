@@ -64,6 +64,8 @@ namespace NuggetCreek.Game
 
         Text dollarsLabel;
         Text gemsLabel;
+        // Buttons whose icon turns into a lock while their feature is closed, with the open icon.
+        readonly Dictionary<Button, (Image icon, Sprite open)> lockIcons = new Dictionary<Button, (Image, Sprite)>();
         Button goalButton;
         Button goalAd;
         Text goalAdLabel;
@@ -463,15 +465,25 @@ namespace NuggetCreek.Game
             RectTransform top = Ui.Image("TopBar", root, Palette.Bar).rectTransform
                 .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -topHeight), Vector2.zero);
 
-            Ui.Button("SettingsButton", top, "Settings", Palette.ButtonAlt, OpenSettings, out _, 26).AsRect()
-                .Box(new Vector2(0, 1), new Vector2(140, Ui.TapHeight), new Vector2(16, -14));
+            Button settingsButton = Ui.Button("SettingsButton", top, "Settings", Palette.ButtonAlt, OpenSettings, out Text settingsLabel, 26);
+            settingsButton.AsRect().Box(new Vector2(0, 1), new Vector2(Ui.TapHeight, Ui.TapHeight), new Vector2(16, -14));
+            Image settingsIcon = Ui.Icon("Icon", settingsButton.transform, Art.Icon("settings"));
+            if (settingsIcon != null)
+            {
+                settingsIcon.rectTransform.Fill(16);
+                settingsLabel.SetText("");
+            }
             dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
-            dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(200, Ui.TapHeight), new Vector2(166, -14));
+            dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(210, Ui.TapHeight), new Vector2(146, -14));
+            LeadIcon(dailyButton, dailyLabel, Art.Icon("gift"));
             guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
             guildButton.AsRect().Box(Vector2.one, new Vector2(230, Ui.TapHeight), new Vector2(-16, -14));
+            LeadIcon(guildButton, guildLabel, Art.GuildEmblem);
 
+            // The coin sits just left of the amount, however long it gets.
             dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Gold, FontStyle.Bold);
-            dollarsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(376, -144), new Vector2(-256, -4));
+            dollarsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(460, -144), new Vector2(-256, -4));
+            IconBesideText.Attach(dollarsLabel, Art.Dollar, Palette.Gold, 92);
             // Late-game amounts are long; shrink rather than wrap.
             dollarsLabel.resizeTextForBestFit = true;
             dollarsLabel.resizeTextMinSize = 56;
@@ -479,8 +491,10 @@ namespace NuggetCreek.Game
             // Best fit only shrinks text that may not overflow.
             dollarsLabel.verticalOverflow = VerticalWrapMode.Truncate;
 
+            Ui.Icon("GemIcon", top, Art.Gem, Palette.Gem).rectTransform
+                .Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, -202), new Vector2(80, -148));
             gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.MiddleLeft, Palette.Gem, FontStyle.Bold);
-            gemsLabel.rectTransform.Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(30, -206), new Vector2(330, -144));
+            gemsLabel.rectTransform.Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(92, -206), new Vector2(330, -144));
             statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
             statusLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(330, -206), new Vector2(-30, -144));
             statusLabel.resizeTextForBestFit = true;
@@ -491,6 +505,12 @@ namespace NuggetCreek.Game
             goalButton = Ui.Button("GoalButton", top, "", Color.clear, ClaimGoal, out goalLabel, 34);
             goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(20, 4), new Vector2(-250, 4 + Ui.TapHeight));
             goalLabel.name = "Goal";
+            Image goalIcon = Ui.Icon("Icon", goalButton.transform, Art.Icon("goals"));
+            if (goalIcon != null)
+            {
+                goalIcon.rectTransform.Place(Vector2.zero, new Vector2(0, 1), new Vector2(0, 20), new Vector2(80, -20));
+                goalLabel.rectTransform.offsetMin = new Vector2(88, 8);
+            }
             // Goal bonus (design doc 8.4): a rewarded ad for a few Gems, a handful of times a day.
             goalAd = Ui.Button("GoalAd", top, "", Palette.Ad, WatchGoalAd, out goalAdLabel, 28);
             goalAd.AsRect().Place(new Vector2(1, 0), new Vector2(1, 0), new Vector2(-240, 4), new Vector2(-20, 4 + Ui.TapHeight));
@@ -501,8 +521,10 @@ namespace NuggetCreek.Game
             // Map / Upgrades / Shop (design doc 12.2).
             mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
             mapButton.AsRect().Place(Vector2.zero, new Vector2(1 / 3f, 1), new Vector2(30, 30), new Vector2(-10, -30));
+            TopIcon(mapButton, mapLabel, Art.Icon("map"));
             upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 40);
             upgradesButton.AsRect().Place(new Vector2(1 / 3f, 0), new Vector2(0.53f, 1), new Vector2(10, 30), new Vector2(-4, -30));
+            TopIcon(upgradesButton, upgradesLabel, Art.Icon("upgrades"));
             // Quick buy (design doc 12.2, v0.19): one tap buys the cheapest affordable sluice
             // upgrade without opening the panel; holding keeps buying.
             quickBuyButton = Ui.Button("QuickBuy", bottom, "", Palette.ButtonAlt, QuickBuy, out quickBuyLabel, 28);
@@ -510,6 +532,7 @@ namespace NuggetCreek.Game
             quickBuyButton.gameObject.AddComponent<HoldRepeat>().Repeat = QuickBuy;
             shopButton = Ui.Button("ShopButton", bottom, "Shop", Palette.GemButton, OpenShop, out shopLabel, 44);
             shopButton.AsRect().Place(new Vector2(2 / 3f, 0), Vector2.one, new Vector2(10, 30), new Vector2(-30, -30));
+            TopIcon(shopButton, shopLabel, Art.Icon("shop"));
 
             lateDoubleChip = Ui.Button("LateDouble", root, "Double your last haul?", Palette.Ad, WatchLateDouble, out _, 34);
             lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, Ui.TapHeight), new Vector2(0, -topHeight - 20));
@@ -675,8 +698,8 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
-            SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily: tomorrow");
-            gemsLabel.SetText(Effects.Gems(progress.Gems));
+            SetLock(dailyButton, dailyLabel, Feature.Daily, daily.AnythingToCollect() ? "Daily  (!)" : "Daily", "Daily\ntomorrow");
+            gemsLabel.SetText(progress.Gems.ToString());
             RefreshGoal();
             RefreshGoalAd();
 
@@ -690,7 +713,7 @@ namespace NuggetCreek.Game
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
             chestChipLabel.SetText(ChestChipText());
-            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", "Guild: Red Gulch");
+            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild\nLv {session.GuildLevel}", "Guild\nRed Gulch");
             claimChip.SetActive(session.RebirthSuggested && !guild.IsOpen && !motherLode.IsActive);
 
             float now = Time.realtimeSinceStartup;
@@ -744,6 +767,43 @@ namespace NuggetCreek.Game
             label.SetText(unlocked ? open : locked);
             if (button.interactable != unlocked)
                 button.interactable = unlocked;
+            if (lockIcons.TryGetValue(button, out (Image icon, Sprite open) entry))
+            {
+                Sprite sprite = unlocked ? entry.open : Art.Icon("lock") ?? entry.open;
+                if (entry.icon.sprite != sprite)
+                    entry.icon.sprite = sprite;
+            }
+        }
+
+        /// <summary>Icon on the left of a top bar button; the label keeps the rest.</summary>
+        void LeadIcon(Button button, Text label, Sprite sprite)
+        {
+            Image icon = Ui.Icon("Icon", button.transform, sprite);
+            if (icon == null)
+                return;
+            icon.rectTransform.Place(Vector2.zero, new Vector2(0, 1), new Vector2(10, 26), new Vector2(78, -26));
+            label.rectTransform.offsetMin = new Vector2(80, 8);
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 18;
+            label.resizeTextMaxSize = Mathf.RoundToInt(label.fontSize * Ui.TextScale);
+            label.verticalOverflow = VerticalWrapMode.Truncate;
+            lockIcons[button] = (icon, sprite);
+        }
+
+        /// <summary>Icon above the label of a bottom bar button.</summary>
+        void TopIcon(Button button, Text label, Sprite sprite)
+        {
+            Image icon = Ui.Icon("Icon", button.transform, sprite);
+            if (icon == null)
+                return;
+            icon.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -84), new Vector2(0, -8));
+            label.rectTransform.offsetMax = new Vector2(-8, -84);
+            // Locked buttons say what opens them in two lines; shrink rather than spill.
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = 20;
+            label.resizeTextMaxSize = Mathf.RoundToInt(label.fontSize * Ui.TextScale);
+            label.verticalOverflow = VerticalWrapMode.Truncate;
+            lockIcons[button] = (icon, sprite);
         }
 
         // --- Mother Lode ---
