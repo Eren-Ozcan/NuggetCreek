@@ -6,8 +6,9 @@ using UnityEngine.UI;
 namespace NuggetCreek.Game.UI
 {
     /// <summary>
-    /// Mother Lode event over the creek (design doc 3.4): the screen darkens, a boulder appears,
-    /// and every swipe across it is a hit. The boulder cracks and then shatters as the damage
+    /// Mother Lode event over the creek (design doc 3.4): the screen darkens, a boulder rolls in
+    /// from the top-left corner and across the creek to the bottom-right one, the longest way
+    /// over the screen, and every swipe across it is a hit. The boulder cracks and then shatters as the damage
     /// grows. Pays when the timer runs out, then shows the haul.
     /// </summary>
     public sealed class MotherLodeView
@@ -15,6 +16,8 @@ namespace NuggetCreek.Game.UI
         const float BoulderSize = 440;
         const float HitPulseSeconds = 0.12f;
         const float StagePulseSeconds = 0.3f;
+        /// <summary>How much faster the boulder moves at the corners than in the middle, where most hits land.</summary>
+        const float CornerRush = 0.6f;
         static readonly string[] BoulderSprites = { "MotherLode/boulder_0", "MotherLode/boulder_1", "MotherLode/boulder_2" };
 
         readonly GameSession session;
@@ -38,31 +41,34 @@ namespace NuggetCreek.Game.UI
         float pulse;
         float stagePulse;
         int stage;
+        float runSeconds;
 
         public bool IsActive => root.gameObject.activeSelf;
 
         public event Action Finished;
 
-        public MotherLodeView(GameSession session, Transform canvas, RectTransform area)
+        /// <param name="topInset">Screen kept by the controls at the top; the labels start under it.</param>
+        /// <param name="sideInset">Width kept by the button columns down both sides; the labels stay between them.</param>
+        public MotherLodeView(GameSession session, Transform canvas, RectTransform area, float topInset = 0, float sideInset = 0)
         {
             this.session = session;
             root = Ui.Image("MotherLode", canvas, new Color(0.05f, 0.04f, 0.03f, 0.88f)).rectTransform;
             root.Place(area.anchorMin, area.anchorMax, area.offsetMin, area.offsetMax);
+            // The boulder starts and ends past the corners; it must not spill over the bars.
+            root.gameObject.AddComponent<RectMask2D>();
 
             title = Ui.Title("Title", root, "MOTHER LODE!", 64, Palette.Gold);
-            title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -140), new Vector2(-30, -30));
-            // Boss names are long in the wide heading font; shrink rather than spill.
-            title.resizeTextForBestFit = true;
-            title.resizeTextMinSize = 36;
-            title.resizeTextMaxSize = 64;
-            title.verticalOverflow = VerticalWrapMode.Truncate;
-            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            float side = Mathf.Max(30, sideInset);
+            title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(side, -140 - topInset), new Vector2(-side, -30 - topInset));
+            // The wide heading font on a narrow phone; shrink rather than spill.
+            FitInto(title, 36);
             timer = Ui.Label("Timer", root, "", 44, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
-            timer.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -220), new Vector2(0, -140));
+            timer.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -220 - topInset), new Vector2(0, -140 - topInset));
 
             // Boss health (design doc 3.4.1): shrinks as the combo hits land.
             bossBarBack = Ui.Image("BossBar", root, Palette.Text).rectTransform;
-            bossBarBack.Place(new Vector2(0, 1), Vector2.one, new Vector2(80, -290), new Vector2(-80, -240));
+            float barSide = Mathf.Max(80, sideInset);
+            bossBarBack.Place(new Vector2(0, 1), Vector2.one, new Vector2(barSide, -290 - topInset), new Vector2(-barSide, -240 - topInset));
             bossBar = Ui.Image("Health", bossBarBack, Palette.GiantNugget);
             bossBar.rectTransform.Fill();
 
@@ -85,18 +91,32 @@ namespace NuggetCreek.Game.UI
             result = Ui.Panel("Result", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(860, 560));
             Text resultTitle = Ui.Title("Title", result, "THE BOULDER CRACKED OPEN", 48);
-            resultTitle.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -120), new Vector2(0, -30));
+            resultTitle.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -120), new Vector2(-30, -30));
+            // The heading font is wide and a boss adds lines to the haul; shrink both rather than spill.
+            FitInto(resultTitle, 28);
             resultAmount = Ui.Label("Amount", result, "", 44, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             resultAmount.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 200), new Vector2(-30, -130));
+            FitInto(resultAmount, 24);
             Ui.Button("LodeCollect", result, "Collect", Palette.Button, Close, out _, 44).AsRect()
                 .Box(new Vector2(0.5f, 0), new Vector2(420, 140), new Vector2(0, 40));
 
             root.SetActive(false);
         }
 
+        /// <summary>Shrinks a label from its size down to <paramref name="minSize"/> until its text fits its box.</summary>
+        static void FitInto(Text label, int minSize)
+        {
+            label.resizeTextForBestFit = true;
+            label.resizeTextMinSize = minSize;
+            label.resizeTextMaxSize = label.fontSize;
+            label.verticalOverflow = VerticalWrapMode.Truncate;
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+        }
+
         public void Begin(MotherLodeRun newRun)
         {
             run = newRun;
+            runSeconds = Mathf.Max(0.1f, (float)run.SecondsLeft);
             lastPointer = null;
             pointerInside = false;
             root.SetActive(true);
@@ -107,7 +127,9 @@ namespace NuggetCreek.Game.UI
             stagePulse = 0;
             SetBoulder(0);
             bossBarBack.SetActive(run.IsBossFight);
-            title.SetText(run.IsBossFight ? $"BOSS: {GameCatalog.Nuggets[GameCatalog.BossNugget(run.BossRegion)].Name.ToUpperInvariant()}" : "MOTHER LODE!");
+            // A boss needs no heading: its health bar says what it is.
+            title.SetActive(!run.IsBossFight);
+            title.SetText("MOTHER LODE!");
             RefreshLabels();
         }
 
@@ -117,6 +139,7 @@ namespace NuggetCreek.Game.UI
                 return;
 
             run.Tick(deltaTime);
+            PlaceBoulder();
             HandleSwipe();
             pulse = Mathf.Max(0, pulse - deltaTime);
             stagePulse = Mathf.Max(0, stagePulse - deltaTime);
@@ -208,6 +231,22 @@ namespace NuggetCreek.Game.UI
                 float left = 1 - Mathf.Clamp01((float)(run.BossDamage / run.BossHealth));
                 bossBar.rectTransform.anchorMax = new Vector2(left, 1);
             }
+        }
+
+        /// <summary>
+        /// From just outside the top-left corner to just outside the bottom-right one over the
+        /// run: quick at the corners, slow through the middle.
+        /// </summary>
+        void PlaceBoulder()
+        {
+            float t = 1 - Mathf.Clamp01((float)run.SecondsLeft / runSeconds);
+            float along = t + CornerRush * Mathf.Sin(2 * Mathf.PI * t) / (2 * Mathf.PI);
+            Vector2 half = root.rect.size / 2;
+            float reach = BoulderSize * 0.35f;
+            var from = new Vector2(-half.x - reach, half.y + reach);
+            var to = new Vector2(half.x + reach, -half.y - reach);
+            var drift = new Vector2(0, 30 * Mathf.Sin(t * Mathf.PI * 3));
+            boulder.anchoredPosition = Vector2.Lerp(from, to, along) + drift;
         }
 
         void HandleSwipe()
