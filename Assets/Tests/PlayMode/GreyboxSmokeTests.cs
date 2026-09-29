@@ -538,6 +538,136 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(SaveStore.Load().AgeBand, Is.EqualTo(AgeBand.Unknown));
         }
 
+        [UnityTest]
+        public IEnumerator GoldDriftsDownTheWaterBesideTheDredge()
+        {
+            var creek = UnityEngine.Object.FindAnyObjectByType<CreekView>();
+            var river = UnityEngine.Object.FindAnyObjectByType<RiverView>();
+            var dredge = UnityEngine.Object.FindAnyObjectByType<DredgeView>();
+            Transform water = creek.transform.Find("Gold");
+            var lastY = new System.Collections.Generic.Dictionary<Transform, float>();
+            int moves = 0;
+            float end = Time.realtimeSinceStartup + 20;
+            while (moves < 40 || lastY.Count < 3)
+            {
+                Assert.That(Time.realtimeSinceStartup, Is.LessThan(end), $"only {lastY.Count} pieces seen, {moves} moves");
+                yield return null;
+                float top = creek.AreaSize.y;
+                foreach (RectTransform gold in water)
+                {
+                    Vector2 p = gold.anchoredPosition;
+                    float half = gold.sizeDelta.x / 2;
+                    bool leftLane = p.x - half >= river.WaterLeft && p.x + half <= dredge.HullLeft;
+                    bool rightLane = p.x - half >= dredge.HullRight && p.x + half <= river.WaterRight;
+                    Assert.That(leftLane || rightLane,
+                        $"{gold.name} at x {p.x:0} is off the water lanes {river.WaterLeft:0}-{dredge.HullLeft:0} / {dredge.HullRight:0}-{river.WaterRight:0}");
+                    if (lastY.TryGetValue(gold, out float y))
+                    {
+                        Assert.That(p.y, Is.LessThanOrEqualTo(y), "gold only drifts downstream");
+                        if (p.y < y)
+                            moves++;
+                    }
+                    else
+                    {
+                        Assert.That(p.y, Is.GreaterThan(top * 0.8f), "gold comes in at the top of the creek");
+                    }
+                    lastY[gold] = p.y;
+                }
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator DredgeShowsEveryTierAndSwapsQuietlyOnRebirth()
+        {
+            var creek = UnityEngine.Object.FindAnyObjectByType<CreekView>();
+            var dredge = UnityEngine.Object.FindAnyObjectByType<DredgeView>();
+            GameObject flash = dredge.transform.Find("Body/Flash").gameObject;
+            GameSession session = RobustnessTests.Session();
+            PlayerProgress progress = session.Progress;
+            Assert.That(dredge.ShownTier, Is.EqualTo(0));
+            Assert.That(flash.activeSelf, Is.False, "no show for the tier the game starts on");
+            yield return Shot("dredge_tier_01");
+
+            // Bought behind the Upgrades panel, the new tier waits for the creek to be in view.
+            Click("UpgradesButton");
+            yield return null;
+            progress.TierIndex = 1;
+            yield return null;
+            yield return null;
+            Assert.That(dredge.ShownTier, Is.EqualTo(0), "no show behind the panel");
+            Click("Close");
+            yield return null;
+            yield return null;
+            Assert.That(dredge.ShownTier, Is.EqualTo(1));
+            Assert.That(flash.activeSelf, Is.True, "tier 2 arrives with a flash");
+            Assert.That(LabelIn("Caption", "Title").text, Is.EqualTo("SLUICE TIER 2"));
+            yield return new WaitForSeconds(0.3f);
+            yield return Shot("dredge_show");
+            yield return new WaitForSeconds(0.7f);
+            yield return Shot("dredge_tier_02");
+
+            for (int tier = 2; tier < session.Economy.Config.TierCount; tier++)
+            {
+                progress.TierIndex = tier;
+                yield return null;
+                Assert.That(dredge.ShownTier, Is.EqualTo(tier));
+                Assert.That(flash.activeSelf, Is.True, $"tier {tier + 1} arrives with a flash");
+                yield return new WaitForSeconds(1);
+                yield return Shot($"dredge_tier_{tier + 1:00}");
+            }
+
+            // With the cut parts (local art only), chains slide and buckets dip.
+            if (Art.DredgePart("tier_10_flow_ladder") != null)
+            {
+                var chain = dredge.transform.Find("Body/Art/tier_10_flow_ladder").GetComponent<RawImage>();
+                float before = chain.uvRect.y;
+                yield return new WaitForSeconds(0.3f);
+                Assert.That(chain.uvRect.y, Is.Not.EqualTo(before), "the bucket chain moves");
+
+                progress.TierIndex = 4;
+                yield return null;
+                Transform bucket = dredge.transform.Find("Body/Art/tier_05_bucket");
+                yield return WaitFor(() => bucket.localScale.x < 0.9f, 7);
+                yield return Shot("dredge_bucket_dip");
+                progress.TierIndex = 9;
+                yield return null;
+            }
+
+            // A catch flies from the water to the chest.
+            Transform water = creek.transform.Find("Gold");
+            yield return WaitFor(() => water.childCount > 0, 5);
+            var gold = (RectTransform)water.GetChild(0);
+            creek.Sweep(gold.anchoredPosition, gold.anchoredPosition);
+            Assert.That(gold.parent.name, Is.EqualTo("Flights"));
+            yield return new WaitForSeconds(0.15f);
+            yield return Shot("gold_flight");
+            yield return new WaitForSeconds(0.5f);
+            Assert.That(gold == null, "the gold is gone once it lands in the chest");
+
+            progress.TierIndex = 0;
+            yield return null;
+            Assert.That(dredge.ShownTier, Is.EqualTo(0));
+            Assert.That(flash.activeSelf, Is.False, "a rebirth swaps the dredge without the show");
+        }
+
+        [UnityTest]
+        public IEnumerator DredgeSailsToANewCreek()
+        {
+            var river = UnityEngine.Object.FindAnyObjectByType<RiverView>();
+            PlayerProgress progress = RobustnessTests.Session().Progress;
+            Assert.That(river.Traveling, Is.False);
+            progress.RegionsUnlocked = 2;
+            progress.RegionIndex = 1;
+            yield return null;
+            yield return null;
+            Assert.That(river.Traveling, Is.True, "a new creek starts the journey");
+            Assert.That(LabelIn("Caption", "Title").text, Is.EqualTo(GameCatalog.RegionNames[1]));
+            yield return new WaitForSeconds(1);
+            Assert.That(river.Travel, Is.GreaterThan(0.5f), "full speed in the middle of the journey");
+            yield return Shot("creek_travel");
+            yield return WaitFor(() => !river.Traveling, 3);
+        }
+
         // --- helpers ---
 
         /// <summary>

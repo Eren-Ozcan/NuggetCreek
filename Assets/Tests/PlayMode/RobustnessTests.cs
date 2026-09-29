@@ -283,6 +283,51 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(small, Is.Empty, "tap targets under 48 dp:\n" + string.Join("\n", small));
         }
 
+        [UnityTest]
+        public IEnumerator DredgeAndChestFitEveryScreenAtEveryTier()
+        {
+            yield return SceneManager.LoadSceneAsync("Creek");
+            yield return null;
+            Press("Skip intro");
+            yield return null;
+            var creek = UnityEngine.Object.FindAnyObjectByType<CreekView>();
+            var river = UnityEngine.Object.FindAnyObjectByType<RiverView>();
+            var dredge = UnityEngine.Object.FindAnyObjectByType<DredgeView>();
+            var chest = (RectTransform)dredge.transform.Find("Body/Art/Chest");
+            GameSession session = Session();
+            var findings = new List<string>();
+
+            foreach (Vector2Int screen in Screens)
+            {
+                yield return Resize(screen);
+                for (int tier = 0; tier < session.Economy.Config.TierCount; tier++)
+                {
+                    session.Progress.TierIndex = tier;
+                    yield return null;
+                    yield return null;
+                    string where = $"{screen.x}x{screen.y} tier {tier + 1}";
+                    var creekRect = new Rect(Vector2.zero, creek.AreaSize);
+                    if (!Inside(dredge.ArtBounds, creekRect))
+                        findings.Add($"{where}: dredge {dredge.ArtBounds} leaves the creek {creekRect.size}");
+                    if (!Inside(dredge.ChestBounds, creekRect))
+                        findings.Add($"{where}: chest {dredge.ChestBounds} leaves the creek");
+                    // The lanes beside the hull must fit a Nugget with room to wander.
+                    float lane = Mathf.Min(dredge.HullLeft - river.WaterLeft, river.WaterRight - dredge.HullRight);
+                    if (lane < 150)
+                        findings.Add($"{where}: water lane only {lane:0} px wide");
+                    Rect chestOnScreen = ScreenRect(chest, Camera.main);
+                    foreach (Selectable control in UnityEngine.Object.FindObjectsByType<Selectable>(FindObjectsSortMode.None))
+                        if (control.isActiveAndEnabled && !IsDebug(control) && ScreenRect((RectTransform)control.transform, Camera.main).Overlaps(chestOnScreen))
+                            findings.Add($"{where}: {Path(control.transform)} covers the chest");
+                }
+            }
+            yield return Resize(Vector2Int.zero);
+            Assert.That(findings, Is.Empty, string.Join("\n", findings));
+        }
+
+        static bool Inside(Rect inner, Rect outer) =>
+            inner.xMin >= outer.xMin && inner.yMin >= outer.yMin && inner.xMax <= outer.xMax && inner.yMax <= outer.yMax;
+
         static RenderTexture target;
 
         /// <summary>Renders the UI through the camera at the given size; zero restores the overlay.</summary>
@@ -382,7 +427,7 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
         }
 
-        static GameSession Session()
+        internal static GameSession Session()
         {
             var root = UnityEngine.Object.FindAnyObjectByType<GameRoot>();
             return (GameSession)typeof(GameRoot).GetField("session", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(root);
