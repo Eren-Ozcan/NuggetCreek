@@ -8,8 +8,9 @@ namespace NuggetCreek.Game.UI
     /// <summary>
     /// The moving pieces on the shown tier's drawing, as the sprite tool cut them (parts.json):
     /// bucket chains, belts and wheels that slide along, buckets and the sweep ring that dip into
-    /// the water, smoke from the chimneys and drips from the spray pipes. Without the file the
-    /// dredge simply stands still.
+    /// the water, smoke from the chimneys and drips from the spray pipes. A grab bucket opens its
+    /// jaws on the way down, bites shut on the bottom and lets the water out once it is up.
+    /// Without the file the dredge simply stands still.
     /// </summary>
     public sealed class DredgeParts
     {
@@ -20,6 +21,12 @@ namespace NuggetCreek.Game.UI
         const float DipDepth = 0.78f;
         const float SmokeEvery = 0.22f;
         const float SprayEvery = 0.12f;
+        const float BiteSeconds = 0.35f;
+        /// <summary>The grab opens this long before it drops, so it goes down open.</summary>
+        const float OpenSeconds = 0.5f;
+        /// <summary>Hanging, it lets the water out through half-open jaws once.</summary>
+        const float DrainAt = 3.2f;
+        const float DrainSeconds = 0.9f;
 
         sealed class Flow
         {
@@ -30,7 +37,14 @@ namespace NuggetCreek.Game.UI
 
         sealed class Dip
         {
-            public Image Image;
+            public RectTransform Rect;
+            public readonly List<Image> Images = new List<Image>();
+            public RectTransform LeftJaw;
+            public RectTransform RightJaw;
+            public float JawOpen;
+            public float JawShut;
+            /// <summary>Where the water pours out between the jaws, as a fraction of the part's width.</summary>
+            public float MouthX;
             public float Phase;
             public bool Splashed;
         }
@@ -85,10 +99,11 @@ namespace NuggetCreek.Game.UI
                 }
                 else
                 {
-                    Image image = Ui.Image(part.file, art, Color.white, sprite);
-                    image.raycastTarget = false;
-                    dips.Add(new Dip { Image = image, Phase = UnityEngine.Random.Range(0, DipEvery) });
-                    rect = image.rectTransform;
+                    var dip = new Dip { Phase = UnityEngine.Random.Range(0, DipEvery) };
+                    rect = dip.Rect = Ui.Rect(part.file, art);
+                    if (!(part.jaws && BuildJaws(dip, part)))
+                        dip.Images.Add(Piece("Bucket", rect, sprite, new Vector2(0.5f, 0.5f)));
+                    dips.Add(dip);
                 }
                 rect.anchorMin = new Vector2(part.x0, part.y0);
                 rect.anchorMax = new Vector2(part.x1, part.y1);
@@ -136,6 +151,58 @@ namespace NuggetCreek.Game.UI
             }
         }
 
+        /// <summary>
+        /// Builds a grab from its three layers, each the size of the part: the two halves swing
+        /// about their own hinges under the fixed layer (head, centre column, side arm), which is
+        /// drawn last so it covers where they meet it. False when a layer is missing.
+        /// </summary>
+        bool BuildJaws(Dip dip, DredgePart part)
+        {
+            Sprite leftSprite = Art.DredgePart(part.file + "_left");
+            Sprite rightSprite = Art.DredgePart(part.file + "_right");
+            Sprite fixedSprite = Art.DredgePart(part.file + "_fixed");
+            if (leftSprite == null || rightSprite == null || fixedSprite == null || part.hinges == null || part.hinges.Length < 4)
+                return false;
+            Image left = Piece("LeftJaw", dip.Rect, leftSprite, new Vector2(part.hinges[0], part.hinges[1]));
+            Image right = Piece("RightJaw", dip.Rect, rightSprite, new Vector2(part.hinges[2], part.hinges[3]));
+            dip.Images.Add(left);
+            dip.Images.Add(right);
+            dip.Images.Add(Piece("Head", dip.Rect, fixedSprite, new Vector2(0.5f, 0.5f)));
+            dip.LeftJaw = left.rectTransform;
+            dip.RightJaw = right.rectTransform;
+            dip.JawOpen = part.jawOpen;
+            dip.JawShut = part.jawShut;
+            dip.MouthX = (part.hinges[0] + part.hinges[2]) / 2;
+            return true;
+        }
+
+        /// <summary>A layer covering the whole part, turning about <paramref name="pivot"/>.</summary>
+        static Image Piece(string name, RectTransform parent, Sprite sprite, Vector2 pivot)
+        {
+            Image image = Ui.Image(name, parent, Color.white, sprite);
+            image.raycastTarget = false;
+            RectTransform rect = image.rectTransform;
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            rect.pivot = pivot;
+            return image;
+        }
+
+        /// <summary>How far open a grab's jaws are, 0 shut to 1 wide, at a point of its dip cycle.</summary>
+        static float JawOpening(float t)
+        {
+            if (t < DipDown)
+                return 1;
+            if (t < DipDown + BiteSeconds)
+                return 1 - Mathf.SmoothStep(0, 1, (t - DipDown) / BiteSeconds);
+            if (t >= DrainAt && t < DrainAt + DrainSeconds)
+                return 0.45f * Mathf.Sin(Mathf.PI * (t - DrainAt) / DrainSeconds);
+            if (t >= DipEvery - OpenSeconds)
+                return Mathf.SmoothStep(0, 1, (t - (DipEvery - OpenSeconds)) / OpenSeconds);
+            return 0;
+        }
+
         /// <summary>Hangs and sways, sinks into the water with a splash, waits, and comes up dripping.</summary>
         void TickDip(Dip dip, float deltaTime)
         {
@@ -151,10 +218,26 @@ namespace NuggetCreek.Game.UI
             else
                 depth = 0;
 
-            RectTransform rect = dip.Image.rectTransform;
+            RectTransform rect = dip.Rect;
             rect.localScale = Vector3.one * Mathf.Lerp(1, DipDepth, depth);
             rect.localRotation = Quaternion.Euler(0, 0, (1 - depth) * 3 * Mathf.Sin(time * 1.4f + dip.Phase));
-            dip.Image.color = Color.Lerp(Color.white, Palette.Underwater, depth);
+            Color tint = Color.Lerp(Color.white, Palette.Underwater, depth);
+            foreach (Image image in dip.Images)
+                image.color = tint;
+            if (dip.LeftJaw != null)
+            {
+                float angle = Mathf.Lerp(dip.JawShut, dip.JawOpen, JawOpening(t));
+                dip.LeftJaw.localRotation = Quaternion.Euler(0, 0, -angle);
+                dip.RightJaw.localRotation = Quaternion.Euler(0, 0, angle);
+                // Water pours out of the half-open jaws.
+                if (t >= DrainAt && t < DrainAt + DrainSeconds && UnityEngine.Random.value < deltaTime * 30)
+                {
+                    Rect r = rect.rect;
+                    Vector2 mouth = toArea(rect.TransformPoint(new Vector3(r.x + dip.MouthX * r.width, r.yMin)));
+                    particles.Emit(mouth + new Vector2(UnityEngine.Random.Range(-14f, 14f), 0), new Vector2(0, -60),
+                        UnityEngine.Random.Range(9, 14), 0.4f, Palette.Droplet, Ui.Circle, -600);
+                }
+            }
 
             if (t < DipDown)
                 dip.Splashed = false;

@@ -69,6 +69,8 @@ screen is a top-down river drawn in code (`UI/RiverView.cs`) with the tier's dre
 it after re-cutting a dredge); the side-view creek paintings are only used on the map. Cutting a
 dredge also writes its silhouette, its moving parts and `Dredge/parts.json` (part rects, chimneys,
 spray points; the spec is `DREDGE_PARTS` in the cutter), which `UI/DredgeParts.cs` animates.
+A grab bucket (`jaws` in the spec) is cut into `_fixed`, `_left` and `_right` layers with its own
+hinges; check new masks with a quick offline pose render before looking in the game.
 Painted top-down rivers go in `Sprites/Rivers/river_NN.png` and replace the code river per creek. On a fresh clone run
 `scripts/fetch-art.sh`, which copies them from `C:\Projects\pictures\nugget-creek\game-art\`
 (private pictures repo). Without it the game runs with the greybox shapes. The source sheets and

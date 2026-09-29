@@ -164,5 +164,13 @@ namespace NuggetCreek.Game
         public float repeat;
         public float pivotX;
         public float pivotY;
+        /// <summary>A grab bucket drawn in three layers: <c>file_fixed</c> stays put, <c>file_left</c> and <c>file_right</c> swing open.</summary>
+        public bool jaws;
+        /// <summary>The left and the right half's hinge as x, y pairs, fractions of the part from its bottom-left corner.</summary>
+        public float[] hinges;
+        /// <summary>The halves' angle in degrees when wide open.</summary>
+        public float jawOpen;
+        /// <summary>The halves' angle in degrees when bitten shut; below 0 closes past the drawing.</summary>
+        public float jawShut;
     }
 }
