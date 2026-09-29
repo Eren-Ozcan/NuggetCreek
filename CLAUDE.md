@@ -62,8 +62,14 @@ folders from it (all gitignored).
 
 ## Game art
 
-Sprites, crew portraits and creek backgrounds live in `Assets/Resources/Sprites/` (gitignored;
-loaded by `Game/Art.cs`, import settings in `Editor/SpriteImportRules.cs`). On a fresh clone run
+Sprites, crew portraits, the 10 dredge tiers and creek backgrounds live in `Assets/Resources/Sprites/`
+(gitignored; loaded by `Game/Art.cs`, import settings in `Editor/SpriteImportRules.cs`). The main
+screen is a top-down river drawn in code (`UI/RiverView.cs`) with the tier's dredge in the middle
+(`UI/DredgeView.cs`, whose table holds each tier's hull and chest position on its drawing; re-measure
+it after re-cutting a dredge); the side-view creek paintings are only used on the map. Cutting a
+dredge also writes its silhouette, its moving parts and `Dredge/parts.json` (part rects, chimneys,
+spray points; the spec is `DREDGE_PARTS` in the cutter), which `UI/DredgeParts.cs` animates.
+Painted top-down rivers go in `Sprites/Rivers/river_NN.png` and replace the code river per creek. On a fresh clone run
 `scripts/fetch-art.sh`, which copies them from `C:\Projects\pictures\nugget-creek\game-art\`
 (private pictures repo). Without it the game runs with the greybox shapes. The source sheets and
 the cutter (`tools/cut_sprites.py`, git-excluded) are backed up in `game-art/source/`; after

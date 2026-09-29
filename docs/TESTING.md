@@ -6,7 +6,7 @@ before every Play upload.
 | Layer | Where | Count | Time | Run |
 |---|---|---:|---:|---|
 | Core unit tests | `tests/NuggetCreek.Core.Tests` | 439 | < 1 s | `dotnet test tests/NuggetCreek.Core.Tests` |
-| PlayMode tests | `Assets/Tests/PlayMode` | 24 | ~2.5 min | `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>` (editor closed) |
+| PlayMode tests | `Assets/Tests/PlayMode` | 28 | ~3 min | `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>` (editor closed) |
 | Balance bot | `tests/NuggetCreek.Balance` | 5 runs x 30 game days | ~25 s | `dotnet run --project tests/NuggetCreek.Balance` |
 | Device pass | `scripts/android-device-tests.sh` | 8 steps | ~8 min | build a dev or measure APK, connect a phone, run the script |
 
@@ -25,7 +25,14 @@ tiers or Amos levels than this build or its Remote Config has, unknown daily job
 
 `GreyboxSmokeTests` press the real buttons of the code-built UI through each feature: the
 age screen, onboarding locks, Amos, tiers, crew, Mother Lode, chests, rebirth, daily,
-shop, offline return, interstitial timing, settings and data deletion, save reload.
+shop, offline return, interstitial timing, settings and data deletion, save reload. On the
+main screen: gold enters at the top and drifts down only in the water lanes beside the
+dredge, never on a bank or under the hull; every dredge tier shows (one screenshot each),
+a tier bought behind the Upgrades panel waits for it to close, then arrives with its flash
+and caption, and a rebirth swaps back without them; with the local art, the bucket chain
+slides and the clamshell bucket dips; a catch flies to the chest and is gone once it lands;
+a new creek starts the journey with the creek's name. Screenshots switch the resolution
+right before they render, so short-lived effects (smoke, sparkles) can sit off place in them.
 
 `RobustnessTests` look for what a feature test does not:
 
@@ -42,6 +49,9 @@ shop, offline return, interstitial timing, settings and data deletion, save relo
   1440p) and a 4:3 tablet: no control may leave the screen, and on the 1080 x 2340 and
   1080 x 2400 phones no control may be under 48 dp, Android's minimum touch target
   (`Ui.TapHeight`, 120 reference units). List items count for size, not position.
+  The dredge and its chest stay inside the creek at all 10 tiers on every screen shape,
+  the water lanes beside the hull stay at least 150 px wide, and no HUD control covers the
+  chest.
 
 ## Device pass
 
