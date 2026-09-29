@@ -29,6 +29,14 @@ namespace NuggetCreek.Game.UI
         public static float FadeIn(float t, float start, float seconds) =>
             seconds <= 0 ? (t >= start ? 1 : 0) : Mathf.Clamp01((t - start) / seconds);
 
+        /// <summary>0 to 1 over <paramref name="t"/> in 0..1, overshooting a little before it settles.</summary>
+        public static float EaseOutBack(float t)
+        {
+            const float overshoot = 1.7f;
+            t -= 1;
+            return 1 + t * t * ((overshoot + 1) * t + overshoot);
+        }
+
         /// <summary>Gentle idle breathing for something waiting to be tapped.</summary>
         public static float Bob(float time, float amount = 0.04f) => 1 + amount * Mathf.Sin(time * 4);
     }
