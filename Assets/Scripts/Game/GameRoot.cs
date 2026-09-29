@@ -183,6 +183,7 @@ namespace NuggetCreek.Game
             if (motherLode.IsActive)
             {
                 motherLode.Tick(dt);
+                creek.TickScenery(dt);
             }
             else
             {
@@ -304,7 +305,8 @@ namespace NuggetCreek.Game
 
         /// <summary>
         /// Plays the interstitial a creek unlock, tier or rebirth earned once the screen is calm:
-        /// no panel, modal, Pete line, Mother Lode or return in progress (studio ad policy 2-4).
+        /// no panel, modal, Pete line, Mother Lode, return, tier show or journey to a creek in
+        /// progress (studio ad policy 2-4).
         /// </summary>
         void UpdateInterstitial(bool modalOpen)
         {
@@ -315,7 +317,7 @@ namespace NuggetCreek.Game
                 interstitials.Load();
 
             bool settled = !modalOpen && !motherLode.IsActive && !returnPending && !offlineModal.HasUnclaimed
-                && !pete.IsShowing && !ads.IsShowing && !interstitials.IsShowing;
+                && !pete.IsShowing && !ads.IsShowing && !interstitials.IsShowing && !creek.ShowPlaying;
             settledFor = settled ? settledFor + Time.unscaledDeltaTime : 0;
             if (session.PendingInterstitial == null || settledFor < BreakSettleSeconds)
                 return;
