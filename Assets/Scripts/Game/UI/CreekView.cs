@@ -28,6 +28,17 @@ namespace NuggetCreek.Game.UI
         const float LaneMargin = 14;
         /// <summary>Side-to-side wander of gold in the current.</summary>
         const float WanderPixels = 14;
+        /// <summary>
+        /// Where gold turns up (design doc 3.1.3): from the top, from under a bank, or rising to the
+        /// surface anywhere on the open water, so the finger has to look all over the creek, not
+        /// only along the top. The rest comes in from the top.
+        /// </summary>
+        const float BankEntryShare = 0.25f;
+        const float SurfaceShare = 0.35f;
+        /// <summary>Gold that turns up in the water, not over the edge, grows in over this time.</summary>
+        const float EmergeSeconds = 0.3f;
+        /// <summary>The finger has to move this far, in creek pixels, before a stroke collects.</summary>
+        const float MinSwipeStep = 6;
         const float FlightSeconds = 0.45f;
         /// <summary>Gold scale at the top of its arc to the chest, and when it lands.</summary>
         const float FlightPeak = 1.9f;
@@ -45,8 +56,12 @@ namespace NuggetCreek.Game.UI
             public float Size;
             public float Age;
             public float Lifetime;
+            /// <summary>Its path: a curve from where it enters to where it leaves the creek.</summary>
             public Vector2 Start;
-            public float Speed;
+            public Vector2 Bend;
+            public Vector2 End;
+            /// <summary>Turned up in the water (from a bank or rising): it grows in instead of drifting in.</summary>
+            public bool Emerges;
             public float Wander;
             public float GlintIn;
         }
@@ -74,10 +89,10 @@ namespace NuggetCreek.Game.UI
         RectTransform goldLayer;
         RectTransform flightLayer;
         Particles particles;
+        SwipeTrail trail;
 
         /// <summary>The swipe area in pixels, the space <see cref="Sweep"/> works in.</summary>
         public Vector2 AreaSize => area.rect.size;
-        RectTransform amos;
         Text hint;
         Text vein;
         Text banner;
@@ -101,35 +116,53 @@ namespace NuggetCreek.Game.UI
         /// <summary>False while a modal covers the creek.</summary>
         public bool InputEnabled { get; set; } = true;
 
-        public void Init(GameSession gameSession)
+        /// <summary>Screen kept by the controls at the top and bottom; gold never rises under them.</summary>
+        float stageTop;
+        float stageBottom;
+
+        /// <summary>The open water between the controls, as heights in <see cref="AreaSize"/>: where gold may turn up.</summary>
+        public float OpenWaterBottom => stageBottom;
+        public float OpenWaterTop => AreaSize.y - stageTop;
+
+        /// <param name="topInset">Screen kept by the controls at the top; the dredge stays below it.</param>
+        /// <param name="bottomInset">Screen kept by the controls at the bottom.</param>
+        public void Init(GameSession gameSession, float topInset = 0, float bottomInset = 0)
         {
             session = gameSession;
             area = (RectTransform)transform;
+            stageTop = topInset;
+            stageBottom = bottomInset;
             gameObject.AddComponent<RectMask2D>();
 
             // Bottom to top: water, gold under the surface, the dredge, gold in flight, sparkles.
             river = Ui.Rect("River", area).Fill().gameObject.AddComponent<RiverView>();
             river.Init(area);
+            RectTransform wakeLayer = Ui.Rect("Wake", area).Fill();
             goldLayer = Ui.Rect("Gold", area).Fill();
             RectTransform dredgeLayer = Ui.Rect("Dredge", area).Fill();
             flightLayer = Ui.Rect("Flights", area).Fill();
             particles = new Particles(Ui.Rect("Particles", area).Fill());
             dredge = dredgeLayer.gameObject.AddComponent<DredgeView>();
-            dredge.Init(session, area, particles);
+            dredge.Init(session, area, wakeLayer, particles);
+            dredge.SetStage(topInset, bottomInset);
+            GameObject trailObject = Ui.Rect("SwipeTrail", area).Fill().gameObject;
+            trailObject.AddComponent<CanvasRenderer>();
+            trail = trailObject.AddComponent<SwipeTrail>();
 
             hint = Legible(Ui.Label("Hint", area, "Swipe over the glinting gold!", 44, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold));
             hint.rectTransform.Place(new Vector2(0, 0.45f), new Vector2(1, 0.55f));
 
             vein = Legible(Ui.Label("Vein", area, "", 34, TextAnchor.MiddleLeft, Palette.Gold, FontStyle.Bold));
-            vein.rectTransform.Box(new Vector2(0, 1), new Vector2(520, 60), new Vector2(30, -30));
+            vein.rectTransform.Box(new Vector2(0.5f, 0), new Vector2(520, 60), new Vector2(0, bottomInset + 10));
+            vein.alignment = TextAnchor.MiddleCenter;
 
             // A short banner, not a modal: a new Nugget type must not stop the swipe.
             banner = Legible(Ui.Label("NewNugget", area, "", 44, TextAnchor.MiddleCenter, Palette.GiantNugget, FontStyle.Bold));
-            banner.rectTransform.Place(new Vector2(0, 0.78f), new Vector2(1, 0.86f));
+            banner.rectTransform.Place(new Vector2(0, 0.74f), new Vector2(1, 0.8f));
             banner.SetActive(false);
 
             // A new tier or creek gets a heading over the upper creek; like the banner, no modal.
-            caption = Ui.Rect("Caption", area).Place(new Vector2(0, 0.64f), new Vector2(1, 0.8f)).gameObject.AddComponent<CanvasGroup>();
+            caption = Ui.Rect("Caption", area).Place(new Vector2(0, 0.6f), new Vector2(1, 0.74f)).gameObject.AddComponent<CanvasGroup>();
             caption.blocksRaycasts = false;
             captionTitle = Legible(Ui.Title("Title", caption.transform, "", 76, Palette.TextLight));
             captionTitle.rectTransform.Place(new Vector2(0, 0.4f), Vector2.one);
@@ -138,30 +171,6 @@ namespace NuggetCreek.Game.UI
             caption.gameObject.SetActive(false);
             string multiplier = session.Economy.Config.TierMultiplier.ToString("0.#", CultureInfo.InvariantCulture);
             dredge.TierArrived += tier => ShowCaption($"SLUICE TIER {tier + 1}", $"x{multiplier} income, 2 new upgrades");
-
-            Image amosBody = Ui.Image("AmosMarker", area, Palette.Amos, Ui.Circle);
-            amos = amosBody.rectTransform.Box(new Vector2(0, 0), new Vector2(130, 130), new Vector2(30, 30));
-            Sprite amosFace = Art.Portrait("amos");
-            if (amosFace != null)
-            {
-                // His portrait in a cream ring instead of the name disc.
-                amosBody.color = Palette.Panel;
-                Image inner = Ui.Image("Inner", amos, Color.white, Ui.Circle);
-                inner.rectTransform.Fill(7);
-                inner.raycastTarget = false;
-                inner.gameObject.AddComponent<Mask>().showMaskGraphic = false;
-                Image face = Ui.Image("Face", inner.transform, Color.white, amosFace);
-                face.rectTransform.Fill();
-                face.raycastTarget = false;
-            }
-            Text amosName = Ui.Label("Name", amos, "AMOS", 30, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
-            amosName.rectTransform.Fill();
-            if (amosFace != null)
-            {
-                amosName.alignment = TextAnchor.LowerCenter;
-                amosName.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(-20, -8), new Vector2(20, 32));
-                Legible(amosName);
-            }
 
             ScheduleNextSpawn();
         }
@@ -199,10 +208,10 @@ namespace NuggetCreek.Game.UI
         /// </summary>
         public void TickScenery(float deltaTime)
         {
-            float currentSpeed = CurrentSpeed;
             FollowRegion();
-            river.Tick(deltaTime, currentSpeed);
-            dredge.Tick(deltaTime, currentSpeed, InputEnabled, river.Travel);
+            river.Tick(deltaTime);
+            dredge.Tick(deltaTime, RiverView.FlowSpeed, InputEnabled, river.Travel);
+            trail.Tick(deltaTime);
             AgeFlights(deltaTime);
             particles.Tick(deltaTime);
             AgeCaption(deltaTime);
@@ -249,12 +258,6 @@ namespace NuggetCreek.Game.UI
             caption.alpha = Mathf.Clamp01((CaptionSeconds - captionAge) / 0.5f);
         }
 
-        /// <summary>
-        /// Pixels per second the water carries gold: from entering at the top to leaving at the
-        /// bottom takes the collectible lifetime, so upgrades that extend it slow the current.
-        /// </summary>
-        float CurrentSpeed => (area.rect.height + NuggetSize) / (float)session.CollectibleLifetimeSeconds;
-
         void ScheduleNextSpawn()
         {
             double rate = session.SpawnRate;
@@ -269,15 +272,45 @@ namespace NuggetCreek.Game.UI
             float size = SizeOf(kind);
             Rect bounds = area.rect;
 
-            // Enters above the creek in the water on one side of the dredge, never on the banks.
+            // Stays in the water on one side of the dredge, never under it or on the banks.
             bool left = UnityEngine.Random.value < 0.5f;
             float laneMin = left ? river.WaterLeft + LaneMargin : dredge.HullRight + LaneMargin;
             float laneMax = left ? dredge.HullLeft - LaneMargin : river.WaterRight - LaneMargin;
             float room = WanderPixels + size / 2;
-            float x = laneMax - laneMin > room * 2
+            float LaneX() => laneMax - laneMin > room * 2
                 ? UnityEngine.Random.Range(laneMin + room, laneMax - room)
                 : (laneMin + laneMax) / 2;
-            var start = new Vector2(x, bounds.height + size / 2);
+
+            // Enters from the top, washes out from under its bank, or rises to the surface out on
+            // the water; the current carries it out at the bottom either way. Never upstream.
+            float roll = UnityEngine.Random.value;
+            bool fromBank = roll < BankEntryShare;
+            bool rises = !fromBank && roll < BankEntryShare + SurfaceShare;
+            // The open water between the controls, where rising gold can be seen and reached.
+            float lowest = stageBottom + 60;
+            float highest = Mathf.Max(lowest, bounds.height - stageTop - 60);
+            Vector2 start;
+            Vector2 bend;
+            if (fromBank)
+            {
+                // A wobble inside the water line, so the wobble never carries it onto the sand.
+                float bankX = left ? river.WaterLeft + WanderPixels : river.WaterRight - WanderPixels;
+                start = new Vector2(bankX, UnityEngine.Random.Range(Mathf.Lerp(lowest, highest, 0.2f), highest));
+                bend = new Vector2(LaneX(), start.y - bounds.height * UnityEngine.Random.Range(0.08f, 0.2f));
+            }
+            else if (rises)
+            {
+                start = new Vector2(LaneX(), UnityEngine.Random.Range(Mathf.Lerp(lowest, highest, 0.15f), highest));
+                bend = new Vector2(LaneX(), start.y * UnityEngine.Random.Range(0.4f, 0.7f));
+                // Rings spread where it breaks the surface.
+                particles.Emit(start, Vector2.zero, size * 0.8f, 0.7f, Palette.Foam, Ui.Ring, 0, 0, 2.4f);
+            }
+            else
+            {
+                start = new Vector2(LaneX(), bounds.height + size / 2);
+                bend = new Vector2(LaneX(), bounds.height * UnityEngine.Random.Range(0.35f, 0.65f));
+            }
+            var end = new Vector2(LaneX(), -size / 2);
 
             // Rich and Giant Nuggets glow behind the drawing; without art the circle is the target.
             bool glow = sprite == null || kind == CollectibleKind.RichNugget || kind == CollectibleKind.GiantNugget;
@@ -316,7 +349,9 @@ namespace NuggetCreek.Game.UI
                 Size = size,
                 Lifetime = lifetime,
                 Start = start,
-                Speed = (bounds.height + size) / lifetime,
+                Bend = bend,
+                End = end,
+                Emerges = fromBank || rises,
                 Wander = UnityEngine.Random.Range(0, Mathf.PI * 2),
                 GlintIn = UnityEngine.Random.Range(0.1f, 0.4f),
             });
@@ -345,11 +380,13 @@ namespace NuggetCreek.Game.UI
                     continue;
                 }
 
-                var position = new Vector2(
-                    c.Start.x + WanderPixels * Mathf.Sin(c.Wander + c.Age * 1.7f),
-                    c.Start.y - c.Speed * c.Age);
+                // Every path takes the whole lifetime, so upgrades that extend it slow the gold.
+                float t = c.Age / c.Lifetime;
+                Vector2 position = Bezier(c.Start, c.Bend, c.End, t) + new Vector2(WanderPixels * Mathf.Sin(c.Wander + c.Age * 1.7f), 0);
+                Vector2 velocity = BezierSlope(c.Start, c.Bend, c.End, t) / c.Lifetime;
                 c.Root.anchoredPosition = position;
-                c.Root.localScale = Vector3.one * (1 + 0.05f * Mathf.Sin(c.Wander + c.Age * 6));
+                float grow = c.Emerges ? Motion.EaseOutBack(Mathf.Clamp01(c.Age / EmergeSeconds)) : 1;
+                c.Root.localScale = Vector3.one * (grow * (1 + 0.05f * Mathf.Sin(c.Wander + c.Age * 6)));
 
                 // Glints come and go on the gold and drift with it.
                 c.GlintIn -= deltaTime;
@@ -357,7 +394,7 @@ namespace NuggetCreek.Game.UI
                 {
                     c.GlintIn = UnityEngine.Random.Range(0.25f, 0.6f);
                     float scale = c.Size / DustSize;
-                    particles.Emit(position + UnityEngine.Random.insideUnitCircle * (c.Size * 0.35f), new Vector2(0, -c.Speed),
+                    particles.Emit(position + UnityEngine.Random.insideUnitCircle * (c.Size * 0.35f), velocity,
                         UnityEngine.Random.Range(24, 40) * scale, 0.45f, Palette.Glint, Ui.Sparkle, 0, 90);
                 }
             }
@@ -381,10 +418,24 @@ namespace NuggetCreek.Game.UI
             RectTransformUtility.ScreenPointToLocalPointInRectangle(area, screen, null, out Vector2 local);
             // Local space is centred on the pivot; collectibles are placed from the bottom-left corner.
             Vector2 point = local - area.rect.min;
-            Vector2 from = lastPointer ?? point;
+            trail.Add(point, lastPointer == null);
+            // A swipe, not a tap: only a moving finger collects.
+            if (lastPointer is Vector2 from)
+            {
+                if ((point - from).sqrMagnitude < MinSwipeStep * MinSwipeStep)
+                    return;
+                Sweep(from, point);
+            }
             lastPointer = point;
-            Sweep(from, point);
         }
+
+        static Vector2 Bezier(Vector2 a, Vector2 b, Vector2 c, float t)
+        {
+            float u = 1 - t;
+            return u * u * a + 2 * u * t * b + t * t * c;
+        }
+
+        static Vector2 BezierSlope(Vector2 a, Vector2 b, Vector2 c, float t) => 2 * (1 - t) * (b - a) + 2 * t * (c - b);
 
         /// <summary>
         /// Collects everything within reach of one finger stroke, in creek-area pixels from its
@@ -541,20 +592,19 @@ namespace NuggetCreek.Game.UI
             }
         }
 
+        /// <summary>Amos works on the dredge: what he pans rises from its chest now and then.</summary>
         void UpdateAmos(float deltaTime, BigNumber idleEarned)
         {
-            amos.SetActive(session.IdleActive);
             if (!session.IdleActive)
                 return;
 
-            amos.localScale = Vector3.one * (1 + 0.04f * Mathf.Sin(Time.time * 3));
             amosPending += idleEarned;
             amosTimer += deltaTime;
             if (amosTimer < AmosPopupEvery)
                 return;
             amosTimer = 0;
             if (!amosPending.IsZero)
-                ShowPopup(amos.anchoredPosition + new Vector2(65, 150), "+" + NumberFormat.Dollars(amosPending), 34, Palette.TextLight);
+                ShowPopup(dredge.ChestPoint + new Vector2(0, 90), "+" + NumberFormat.Dollars(amosPending), 34, Palette.TextLight);
             amosPending = BigNumber.Zero;
         }
 
