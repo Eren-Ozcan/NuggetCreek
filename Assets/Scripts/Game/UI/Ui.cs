@@ -19,6 +19,8 @@ namespace NuggetCreek.Game.UI
         public static readonly Color Foam = new Color(0.95f, 0.98f, 0.96f, 0.85f);
         /// <summary>The pale strip behind the dredge; its alpha is the strength at the stern.</summary>
         public static readonly Color WakeStrip = new Color(0.93f, 0.98f, 0.96f, 0.42f);
+        /// <summary>The swipe streak on the water.</summary>
+        public static readonly Color Trail = new Color(1, 0.99f, 0.93f, 0.95f);
         public static readonly Color Sand = new Color32(0xD3, 0xBE, 0x9A, 0xFF);
         public static readonly Color WetSand = new Color32(0x9C, 0x86, 0x66, 0xFF);
         public static readonly Color Pine = new Color32(0x2E, 0x1B, 0x15, 0xFF);
