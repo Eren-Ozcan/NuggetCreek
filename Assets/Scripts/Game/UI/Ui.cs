@@ -12,7 +12,24 @@ namespace NuggetCreek.Game.UI
     public static class Palette
     {
         public static readonly Color Background = new Color32(0x3B, 0x2A, 0x20, 0xFF);
-        public static readonly Color Water = new Color32(0x2E, 0x6F, 0x8E, 0xFF);
+        // The river seen from above. Sand stays a pale tan: yellow is kept for gold.
+        public static readonly Color Water = new Color32(0x46, 0x87, 0x84, 0xFF);
+        public static readonly Color DeepWater = new Color(0.2f, 0.4f, 0.38f, 0.6f);
+        public static readonly Color Current = new Color(0.78f, 0.91f, 0.87f, 0.4f);
+        public static readonly Color Foam = new Color(0.95f, 0.98f, 0.96f, 0.85f);
+        public static readonly Color Sand = new Color32(0xD3, 0xBE, 0x9A, 0xFF);
+        public static readonly Color WetSand = new Color32(0x9C, 0x86, 0x66, 0xFF);
+        public static readonly Color Pine = new Color32(0x2E, 0x1B, 0x15, 0xFF);
+        public static readonly Color PineLight = new Color32(0x5C, 0x3A, 0x2B, 0xFF);
+        public static readonly Color Rock = new Color32(0xA7, 0x47, 0x2B, 0xFF);
+        /// <summary>Multiplies gold drawn under the water: dimmer and olive, so a catch lights it up.</summary>
+        public static readonly Color Underwater = new Color(0.66f, 0.7f, 0.42f, 0.85f);
+        public static readonly Color Glint = new Color32(0xFF, 0xF6, 0xD0, 0xFF);
+        public static readonly Color Droplet = new Color(0.83f, 0.94f, 0.92f, 0.9f);
+        public static readonly Color Shadow = new Color(0.05f, 0.1f, 0.1f, 0.28f);
+        public static readonly Color Smoke = new Color(0.86f, 0.85f, 0.83f, 0.85f);
+        /// <summary>The flash over the creek when a new dredge lands.</summary>
+        public static readonly Color Wash = new Color(1, 0.98f, 0.9f, 0.35f);
         public static readonly Color Bar = new Color32(0xF4, 0xE9, 0xD0, 0xFF);
         public static readonly Color Panel = new Color32(0xF4, 0xE9, 0xD0, 0xFF);
         public static readonly Color Row = new Color32(0xE8, 0xD6, 0xAF, 0xFF);
@@ -48,7 +65,7 @@ namespace NuggetCreek.Game.UI
     public static class Ui
     {
         static Font font, boldFont, headingFont;
-        static Sprite circle, rounded, raised;
+        static Sprite circle, rounded, raised, glow, sparkle, ring;
 
         /// <summary>Body font; the built-in one until Fonts/Resources is imported.</summary>
         public static Font Font => font ??= Resources.Load<Font>("Fonts/Body")
@@ -75,6 +92,15 @@ namespace NuggetCreek.Game.UI
         public static Font HeadingFont => headingFont ??= Resources.Load<Font>("Fonts/Heading") ?? BoldFont ?? Font;
 
         public static Sprite Circle => circle ??= CreateCircle(128);
+
+        /// <summary>Round glow that fades out toward its edge, for flashes and halos.</summary>
+        public static Sprite Glow => glow ??= CreateGlow(128);
+
+        /// <summary>Four-pointed twinkle with a soft core, for glints on gold.</summary>
+        public static Sprite Sparkle => sparkle ??= CreateSparkle(64);
+
+        /// <summary>Soft-edged ring, for a wave spreading over the water.</summary>
+        public static Sprite Ring => ring ??= CreateRing(256);
 
         /// <summary>Corner radius of panels, rows and buttons in reference units.</summary>
         public const int Radius = 26;
@@ -369,6 +395,61 @@ namespace NuggetCreek.Game.UI
                 float distance = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius));
                 byte alpha = (byte)(Mathf.Clamp01(radius - distance) * 255);
                 pixels[y * size + x] = new Color32(255, 255, 255, alpha);
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return Sprite.Create(texture, new UnityEngine.Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100);
+        }
+
+        static Sprite CreateGlow(int size)
+        {
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            float radius = size / 2f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float k = Mathf.Clamp01(1 - Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius)) / radius);
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)(k * k * 255));
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return Sprite.Create(texture, new UnityEngine.Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100);
+        }
+
+        static Sprite CreateRing(int size)
+        {
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            float radius = size / 2f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float r = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(radius, radius)) / radius;
+                // Brightest just inside the edge, fading inward, with a soft outer rim.
+                float alpha = Mathf.Clamp01((1 - r) * 40) * Mathf.Clamp01((r - 0.82f) / 0.14f);
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)(alpha * 255));
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return Sprite.Create(texture, new UnityEngine.Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100);
+        }
+
+        static Sprite CreateSparkle(int size)
+        {
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            float half = size / 2f;
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = Mathf.Abs(x + 0.5f - half) / half;
+                float dy = Mathf.Abs(y + 0.5f - half) / half;
+                // Two thin rays that taper to the tips, over a small round core.
+                float rays = Mathf.Max(Mathf.Clamp01(1 - dx - dy * 7), Mathf.Clamp01(1 - dy - dx * 7));
+                float core = Mathf.Clamp01(1 - Mathf.Sqrt(dx * dx + dy * dy) * 3.2f);
+                float alpha = Mathf.Clamp01(rays * 1.6f + core);
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)(alpha * 255));
             }
             texture.SetPixels32(pixels);
             texture.Apply();
