@@ -22,6 +22,8 @@ namespace NuggetCreek.Game.UI
             public float Age;
             public float Life;
             public float EndScale;
+            /// <summary>Height over width: above 1 for streaks drawn out along their angle.</summary>
+            public float Stretch;
             public Color Color;
         }
 
@@ -36,16 +38,18 @@ namespace NuggetCreek.Game.UI
 
         /// <summary>
         /// One particle; it ends at <paramref name="endScale"/> times its size, below 1 for sparks that
-        /// shrink away and above 1 for smoke that spreads.
+        /// shrink away and above 1 for smoke that spreads. A <paramref name="stretch"/> above 1 draws it
+        /// out into a streak along <paramref name="angle"/> (degrees, 0 = up); without an angle it
+        /// lands at a random turn.
         /// </summary>
         public void Emit(Vector2 position, Vector2 velocity, float size, float life, Color color, Sprite sprite,
-            float gravity = 0, float spin = 0, float endScale = 0.35f)
+            float gravity = 0, float spin = 0, float endScale = 0.35f, float stretch = 1, float angle = float.NaN)
         {
             Particle p = spare.Count > 0 ? spare.Pop() : Create();
             p.Rect.gameObject.SetActive(true);
             p.Rect.SetAsLastSibling();
             p.Rect.anchoredPosition = position;
-            p.Rect.localRotation = Quaternion.Euler(0, 0, Random.Range(0, 90f));
+            p.Rect.localRotation = Quaternion.Euler(0, 0, float.IsNaN(angle) ? Random.Range(0, 90f) : angle);
             p.Image.sprite = sprite;
             p.Velocity = velocity;
             p.Gravity = gravity;
@@ -54,6 +58,7 @@ namespace NuggetCreek.Game.UI
             p.Age = 0;
             p.Life = life;
             p.EndScale = endScale;
+            p.Stretch = stretch;
             p.Color = color;
             Place(p);
             live.Add(p);
@@ -98,7 +103,7 @@ namespace NuggetCreek.Game.UI
             float k = p.Age / p.Life;
             float grow = Mathf.Clamp01(k / 0.15f);
             float scale = grow * Mathf.Lerp(1, p.EndScale, Mathf.Clamp01((k - 0.3f) / 0.7f));
-            p.Rect.sizeDelta = Vector2.one * (p.Size * scale);
+            p.Rect.sizeDelta = new Vector2(p.Size * scale, p.Size * scale * p.Stretch);
             Color color = p.Color;
             color.a *= Mathf.Clamp01((1 - k) / 0.4f);
             p.Image.color = color;
