@@ -59,9 +59,9 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(SaveStore.Load().AgeBand, Is.EqualTo(AgeBand.Adult));
 
             Assert.That(Find("UpgradesButton").GetComponent<Button>().interactable, Is.False);
-            Assert.That(LabelIn("UpgradesButton", "Label").text, Is.EqualTo("Upgrades\nswipe 15 by hand"));
-            Assert.That(LabelIn("MapButton", "Label").text, Is.EqualTo("Map\nhire Amos first"));
-            Assert.That(LabelIn("ShopButton", "Label").text, Is.EqualTo("Shop\nreach Pine Hollow"));
+            Assert.That(LabelIn("UpgradesButton", "Label").text, Is.EqualTo("Swipe 15 by hand"));
+            Assert.That(LabelIn("MapButton", "Label").text, Is.EqualTo("Hire Amos"));
+            Assert.That(LabelIn("ShopButton", "Label").text, Is.EqualTo("Pine Hollow"));
             Assert.That(Find("GuildButton").GetComponent<Button>().interactable, Is.False);
             StringAssert.StartsWith("Old Pete: Something's glinting", LabelIn("Pete", "Label").text);
             yield return Shot("0_onboarding");
@@ -104,7 +104,7 @@ namespace NuggetCreek.PlayModeTests
             Click("Close");
             yield return new WaitForSeconds(2.5f);
             StringAssert.Contains("Amos +$", Label("Status").text);
-            Assert.That(GameObject.Find("AmosMarker"), Is.Not.Null);
+            Assert.That(GameObject.Find("Crew_amos"), Is.Not.Null);
             yield return Shot("3_creek_with_amos");
         }
 
@@ -132,11 +132,13 @@ namespace NuggetCreek.PlayModeTests
             Click("+$1M");
             yield return null;
             StringAssert.StartsWith("+ ", LabelIn("QuickBuy", "Label").text);
-            // $1M minus $30 still shows as $1M; the button moves on to the next level instead.
-            string before = LabelIn("QuickBuy", "Label").text;
+            // The label is the price, which the next upgrade may share, so check the level bought.
+            GameSession session = RobustnessTests.Session();
+            int index = session.QuickBuyUpgrade;
+            int level = session.UpgradeLevel(index);
             Click("QuickBuy");
             yield return null;
-            Assert.That(LabelIn("QuickBuy", "Label").text, Is.Not.EqualTo(before));
+            Assert.That(session.UpgradeLevel(index), Is.EqualTo(level + 1));
             Assert.That(IsActive("Upgrades"), Is.False, "no panel opens");
         }
 
@@ -236,7 +238,7 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator CollectionShowsSavedStars()
         {
-            StringAssert.StartsWith("Nuggets  0/138", LabelIn("CollectionButton", "Label").text);
+            StringAssert.StartsWith("0/138", LabelIn("CollectionButton", "Label").text);
             Click("CollectionButton");
             yield return null;
             Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("???"));
@@ -253,7 +255,7 @@ namespace NuggetCreek.PlayModeTests
             yield return SceneManager.LoadSceneAsync("Creek");
             yield return null;
 
-            StringAssert.StartsWith("Nuggets  3/138", LabelIn("CollectionButton", "Label").text);
+            StringAssert.StartsWith("3/138", LabelIn("CollectionButton", "Label").text);
             Click("CollectionButton");
             yield return null;
             Assert.That(LabelIn("pebble", "Title").text, Is.EqualTo("Pebble"));
@@ -333,7 +335,7 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator StakingANewClaimResetsTheCreeks()
         {
-            Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild\nLv 0"));
+            Assert.That(LabelIn("GuildButton", "Label").text, Is.EqualTo("Guild Lv 0"));
             Click("+$1T");
             yield return UnlockCreek("Willow Bend");
             yield return UnlockCreek("Pine Hollow");
@@ -557,8 +559,10 @@ namespace NuggetCreek.PlayModeTests
                 {
                     Vector2 p = gold.anchoredPosition;
                     float half = gold.sizeDelta.x / 2;
-                    bool leftLane = p.x - half >= river.WaterLeft && p.x + half <= dredge.HullLeft;
-                    bool rightLane = p.x - half >= dredge.HullRight && p.x + half <= river.WaterRight;
+                    // Gold washing out from under a bank starts half under it, so only its centre
+                    // has to be over the water; it never touches the hull.
+                    bool leftLane = p.x >= river.WaterLeft && p.x + half <= dredge.HullLeft;
+                    bool rightLane = p.x - half >= dredge.HullRight && p.x <= river.WaterRight;
                     Assert.That(leftLane || rightLane,
                         $"{gold.name} at x {p.x:0} is off the water lanes {river.WaterLeft:0}-{dredge.HullLeft:0} / {dredge.HullRight:0}-{river.WaterRight:0}");
                     if (lastY.TryGetValue(gold, out float y))
@@ -569,7 +573,11 @@ namespace NuggetCreek.PlayModeTests
                     }
                     else
                     {
-                        Assert.That(p.y, Is.GreaterThan(top * 0.8f), "gold comes in at the top of the creek");
+                        // It drifts in at the top, or washes out of a bank or rises in the open water,
+                        // never under the controls.
+                        bool fromTop = p.y > top * 0.8f;
+                        bool inOpenWater = p.y >= creek.OpenWaterBottom && p.y <= creek.OpenWaterTop;
+                        Assert.That(fromTop || inOpenWater, $"{gold.name} turned up at y {p.y:0}, under the controls");
                     }
                     lastY[gold] = p.y;
                 }

@@ -194,7 +194,8 @@ namespace NuggetCreek.PlayModeTests
                 string.Join(", ", counts.OrderByDescending(p => p.Value).Select(p => $"{p.Key} {p.Value}")));
         }
 
-        static bool IsDebug(Component control) => control.transform.parent != null && control.transform.parent.name == "Debug";
+        static bool IsDebug(Component control) =>
+            control.name == "DebugToggle" || (control.transform.parent != null && control.transform.parent.name == "Debug");
 
         /// <summary>Only what a finger could reach: the button is not under a full-screen panel opened after it.</summary>
         static bool Reachable(Button button)
