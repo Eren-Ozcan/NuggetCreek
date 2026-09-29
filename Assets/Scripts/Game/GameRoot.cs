@@ -79,6 +79,13 @@ namespace NuggetCreek.Game
         Button crewChip;
         Text crewChipLabel;
         Button summonLode;
+        Image creekBadge;
+        int shownBadgeRegion = -1;
+        Image quickBuyIcon;
+        Text quickBuyLevel;
+        RectTransform crewColumn;
+        readonly List<Button> crewFaces = new List<Button>();
+        int shownCrewFaces = -1;
         PrivacyGate gate;
         CloudSync cloud;
         CloudChoiceModal cloudChoice;
@@ -475,126 +482,36 @@ namespace NuggetCreek.Game
             Transform root = canvas.transform;
             // Its purchase sheet puts itself on top when it opens.
             store = CreateStore(root);
-            const float topHeight = 330;
-            const float bottomHeight = 220;
-
-            RectTransform creekRect = Ui.Rect("Creek", root).Place(Vector2.zero, Vector2.one, new Vector2(0, bottomHeight), new Vector2(0, -topHeight));
+            // The creek fills the screen and the controls float over the water (design doc 12.2):
+            // the money card at the top, the guild badge and the crew down the left, events down
+            // the right, the map, the upgrade button and the shop along the bottom. The dredge
+            // works in the band between the top and bottom controls.
+            RectTransform creekRect = Ui.Rect("Creek", root).Fill();
             creek = creekRect.gameObject.AddComponent<CreekView>();
-            creek.Init(session);
-            // Above the creek, below the bars, so the Dollar counter stays in view during the event.
-            motherLode = new MotherLodeView(session, root, creekRect);
+            creek.Init(session, HudTop, HudBottom);
+            // Above the creek, below the controls, so the Dollar counter stays in view during the event.
+            motherLode = new MotherLodeView(session, root, creekRect, HudTop, SideMargin + SideSize + SideGap);
             motherLode.Finished += Save;
 
-            // Three rows (design doc 12.2): buttons and the Dollar counter, Gems and status, the
-            // goal bar. Every control is at least TapHeight tall: 48 dp on a 1080 px wide phone.
-            RectTransform top = Ui.Image("TopBar", root, Palette.Bar).rectTransform
-                .Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -topHeight), Vector2.zero);
-            // A dark rule where the cream bar meets the painting.
-            Ui.Image("Edge", top, Palette.Text).rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(0, -6), Vector2.zero);
-
-            Button settingsButton = Ui.Button("SettingsButton", top, "Settings", Palette.ButtonAlt, OpenSettings, out Text settingsLabel, 26);
-            settingsButton.AsRect().Box(new Vector2(0, 1), new Vector2(Ui.TapHeight, Ui.TapHeight), new Vector2(16, -14));
-            Image settingsIcon = Ui.Icon("Icon", settingsButton.transform, Art.Icon("settings"));
-            if (settingsIcon != null)
-            {
-                settingsIcon.rectTransform.Fill(16);
-                settingsLabel.SetText("");
-            }
-            dailyButton = Ui.Button("DailyButton", top, "", Palette.ButtonAlt, () => daily.Open(), out dailyLabel, 30);
-            dailyButton.AsRect().Box(new Vector2(0, 1), new Vector2(210, Ui.TapHeight), new Vector2(146, -14));
-            LeadIcon(dailyButton, dailyLabel, Art.Icon("gift"));
-            guildButton = Ui.Button("GuildButton", top, "", Palette.ButtonAlt, () => guild.Open(), out guildLabel, 30);
-            guildButton.AsRect().Box(Vector2.one, new Vector2(230, Ui.TapHeight), new Vector2(-16, -14));
-            LeadIcon(guildButton, guildLabel, Art.GuildEmblem);
-
-            // The coin sits just left of the amount, however long it gets.
-            dollarsLabel = Ui.Label("Dollars", top, "", 104, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
-            dollarsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(460, -144), new Vector2(-256, -4));
-            IconBesideText.Attach(dollarsLabel, Art.Dollar, Palette.Gold, 92);
-            // Late-game amounts are long; shrink rather than wrap.
-            dollarsLabel.resizeTextForBestFit = true;
-            dollarsLabel.resizeTextMinSize = 56;
-            dollarsLabel.resizeTextMaxSize = 104;
-            // Best fit only shrinks text that may not overflow.
-            dollarsLabel.verticalOverflow = VerticalWrapMode.Truncate;
-
-            Ui.Icon("GemIcon", top, Art.Gem, Palette.Gem).rectTransform
-                .Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(26, -202), new Vector2(80, -148));
-            gemsLabel = Ui.Label("Gems", top, "", 40, TextAnchor.MiddleLeft, Palette.GemText, FontStyle.Bold);
-            gemsLabel.rectTransform.Place(new Vector2(0, 1), new Vector2(0, 1), new Vector2(92, -206), new Vector2(330, -144));
-            statusLabel = Ui.Label("Status", top, "", 36, TextAnchor.MiddleCenter, Palette.TextMuted);
-            statusLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(330, -206), new Vector2(-30, -144));
-            statusLabel.resizeTextForBestFit = true;
-            statusLabel.resizeTextMinSize = 24;
-            statusLabel.resizeTextMaxSize = 36;
-            statusLabel.verticalOverflow = VerticalWrapMode.Truncate;
-
-            goalButton = Ui.Button("GoalButton", top, "", Palette.Row, ClaimGoal, out goalLabel, 34);
-            goalButton.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(20, 4), new Vector2(-250, 4 + Ui.TapHeight));
-            // An unfinished goal is a plain strip, not a greyed-out button.
-            ColorBlock goalColors = goalButton.colors;
-            goalColors.disabledColor = Color.white;
-            goalButton.colors = goalColors;
-            goalLabel.name = "Goal";
-            Image goalIcon = Ui.Icon("Icon", goalButton.transform, Art.Icon("goals"));
-            if (goalIcon != null)
-            {
-                goalIcon.rectTransform.Place(Vector2.zero, new Vector2(0, 1), new Vector2(0, 20), new Vector2(80, -20));
-                goalLabel.rectTransform.offsetMin = new Vector2(88, 8);
-            }
-            // Goal bonus (design doc 8.4): a rewarded ad for a few Gems, a handful of times a day.
-            goalAd = Ui.Button("GoalAd", top, "", Palette.Ad, WatchGoalAd, out goalAdLabel, 28);
-            goalAd.AsRect().Place(new Vector2(1, 0), new Vector2(1, 0), new Vector2(-240, 4), new Vector2(-20, 4 + Ui.TapHeight));
-            goalAd.SetActive(false);
-
-            RectTransform bottom = Ui.Image("BottomBar", root, Palette.Bar).rectTransform
-                .Place(Vector2.zero, new Vector2(1, 0), Vector2.zero, new Vector2(0, bottomHeight));
-            Ui.Image("Edge", bottom, Palette.Text).rectTransform.Place(new Vector2(0, 1), Vector2.one, Vector2.zero, new Vector2(0, 6));
-            // Map / Upgrades / Shop (design doc 12.2).
-            mapButton = Ui.Button("MapButton", bottom, "Map", Palette.ButtonAlt, OpenMap, out mapLabel, 44);
-            mapButton.AsRect().Place(Vector2.zero, new Vector2(1 / 3f, 1), new Vector2(30, 30), new Vector2(-10, -30));
-            TopIcon(mapButton, mapLabel, Art.Icon("map"));
-            upgradesButton = Ui.Button("UpgradesButton", bottom, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 40);
-            upgradesButton.AsRect().Place(new Vector2(1 / 3f, 0), new Vector2(0.53f, 1), new Vector2(10, 30), new Vector2(-4, -30));
-            TopIcon(upgradesButton, upgradesLabel, Art.Icon("upgrades"));
-            // Quick buy (design doc 12.2, v0.19): one tap buys the cheapest affordable sluice
-            // upgrade without opening the panel; holding keeps buying.
-            quickBuyButton = Ui.Button("QuickBuy", bottom, "", Palette.ButtonAlt, QuickBuy, out quickBuyLabel, 28);
-            quickBuyButton.AsRect().Place(new Vector2(0.53f, 0), new Vector2(2 / 3f, 1), new Vector2(4, 30), new Vector2(-10, -30));
-            quickBuyButton.gameObject.AddComponent<HoldRepeat>().Repeat = QuickBuy;
-            shopButton = Ui.Button("ShopButton", bottom, "Shop", Palette.GemButton, OpenShop, out shopLabel, 44);
-            shopButton.AsRect().Place(new Vector2(2 / 3f, 0), Vector2.one, new Vector2(10, 30), new Vector2(-30, -30));
-            TopIcon(shopButton, shopLabel, Art.Icon("shop"));
+            BuildTop(root);
+            BuildSideColumns(root);
+            BuildBottom(root);
 
             lateDoubleChip = Ui.Button("LateDouble", root, "Double your last haul?", Palette.Ad, WatchLateDouble, out _, 34);
-            lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, Ui.TapHeight), new Vector2(0, -topHeight - 20));
+            lateDoubleChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(560, Ui.TapHeight), new Vector2(0, -HudTop - 10));
+            Float(lateDoubleChip);
             lateDoubleChip.SetActive(false);
 
-            crewChip = Ui.Button("CrewChip", root, "", Palette.GemButton, () => candidateModal.Open(), out crewChipLabel, 34);
-            crewChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, Ui.TapHeight), new Vector2(20, -topHeight - 20));
-            crewChip.SetActive(false);
-
-            Button collectionButton = Ui.Button("CollectionButton", root, "", Palette.ButtonAlt, () => collection.Open(), out collectionLabel, 32);
-            collectionButton.AsRect().Box(new Vector2(1, 0), new Vector2(300, Ui.TapHeight), new Vector2(-20, bottomHeight + 155));
-
             claimChip = Ui.Button("ClaimChip", root, "New claim?", Palette.Button, () => guild.Open(), out _, 32);
-            claimChip.AsRect().Box(new Vector2(0, 1), new Vector2(360, Ui.TapHeight), new Vector2(20, -topHeight - 150));
+            claimChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(360, Ui.TapHeight), new Vector2(0, -HudTop - 130));
+            Float(claimChip);
             claimChip.SetActive(false);
 
-            chestChip = Ui.Button("ChestChip", root, "", Palette.Nugget, () => chestModal.Open(), out chestChipLabel, 32);
-            chestChip.AsRect().Box(new Vector2(1, 0), new Vector2(300, Ui.TapHeight), new Vector2(-20, bottomHeight + 290));
-            chestChip.SetActive(false);
-
-            summonLode = Ui.Button("SummonLode", root, "", Palette.GemButton, SummonMotherLode, out Text summonLabel, 32);
-            summonLode.AsRect().Box(new Vector2(1, 0), new Vector2(400, Ui.TapHeight), new Vector2(-20, bottomHeight + 20));
-            summonLabel.SetText($"Mother Lode  {Effects.Gems(session.Economy.Config.MotherLodeSummonGems)}");
-            summonLode.SetActive(false);
-
-            pete = new PeteBanner(session, root, bottomHeight);
+            pete = new PeteBanner(session, root, HudBottom);
 
             // Before the panels so full-screen modals cover them.
             if (Debug.isDebugBuild)
-                BuildDebugButtons(root, topHeight);
+                BuildDebugButtons(root, HudTop);
 
             upgrades = new UpgradesPanel(session, root);
             collection = new CollectionPanel(session, root);
@@ -755,6 +672,254 @@ namespace NuggetCreek.Game
             session.Events.Emit("shop_open", ("from", "hud"));
         }
 
+        /// <summary>Height kept clear at the top for the money card and the goal strip.</summary>
+        const float HudTop = 336;
+        /// <summary>Height kept clear at the bottom for the map, the upgrade button and the shop.</summary>
+        const float HudBottom = 250;
+        /// <summary>Gap between the screen edge and the button columns down each side.</summary>
+        const float SideMargin = 14;
+        const float SideSize = 118;
+        const float SideGap = 12;
+        /// <summary>Crew faces shown down the left; the rest are in the Upgrades panel.</summary>
+        const int CrewFaces = 6;
+
+        void BuildTop(Transform root)
+        {
+            // The money card: the creek's picture on its left edge, the Dollars, the creek and
+            // Amos's rate under them, the Gems pill in its corner.
+            RectTransform card = Ui.Panel("MoneyCard", root, Palette.Panel).rectTransform
+                .Box(new Vector2(0.5f, 1), new Vector2(600, 172), new Vector2(30, -26));
+            Float(card);
+
+            Image badgeRing = Ui.Image("CreekBadge", card, Palette.Text, Ui.Circle);
+            badgeRing.raycastTarget = false;
+            badgeRing.rectTransform.Box(new Vector2(0, 0.5f), new Vector2(150, 150), new Vector2(-62, 0));
+            Image badgeMask = Ui.Image("Mask", badgeRing.transform, Color.white, Ui.Circle);
+            badgeMask.raycastTarget = false;
+            badgeMask.rectTransform.Fill(7);
+            badgeMask.gameObject.AddComponent<Mask>().showMaskGraphic = true;
+            creekBadge = Ui.Image("Creek", badgeMask.transform, Color.white);
+            creekBadge.raycastTarget = false;
+            creekBadge.preserveAspect = false;
+            creekBadge.rectTransform.Fill();
+
+            dollarsLabel = Ui.Label("Dollars", card, "", 84, TextAnchor.MiddleCenter, Palette.Text, FontStyle.Bold);
+            dollarsLabel.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(96, -112), new Vector2(-150, -8));
+            // Late-game amounts are long; shrink rather than wrap. Best fit only shrinks text that may not overflow.
+            dollarsLabel.resizeTextForBestFit = true;
+            dollarsLabel.resizeTextMinSize = 44;
+            dollarsLabel.resizeTextMaxSize = 84;
+            dollarsLabel.verticalOverflow = VerticalWrapMode.Truncate;
+
+            statusLabel = Ui.Label("Status", card, "", 28, TextAnchor.MiddleCenter, Palette.TextMuted);
+            statusLabel.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(96, 14), new Vector2(-20, 62));
+            statusLabel.resizeTextForBestFit = true;
+            statusLabel.resizeTextMinSize = 18;
+            statusLabel.resizeTextMaxSize = 28;
+            statusLabel.verticalOverflow = VerticalWrapMode.Truncate;
+
+            RectTransform gems = Ui.Panel("GemPill", card, Palette.GemButton).rectTransform
+                .Box(Vector2.one, new Vector2(136, 66), new Vector2(-12, -16));
+            Ui.Icon("GemIcon", gems, Art.Gem, Palette.Gem).rectTransform
+                .Place(Vector2.zero, new Vector2(0, 1), new Vector2(8, 10), new Vector2(52, -10));
+            gemsLabel = Ui.Label("Gems", gems, "", 34, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
+            gemsLabel.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(52, 4), new Vector2(-8, -4));
+            gemsLabel.resizeTextForBestFit = true;
+            gemsLabel.resizeTextMinSize = 20;
+            gemsLabel.resizeTextMaxSize = 34;
+
+            // The goal strip under the card: what to do next, green when it can be claimed.
+            goalButton = Ui.Button("GoalButton", root, "", Palette.Row, ClaimGoal, out goalLabel, 28);
+            goalButton.AsRect().Box(new Vector2(0.5f, 1), new Vector2(600, Ui.TapHeight), new Vector2(30, -204));
+            Float(goalButton);
+            // An unfinished goal is a plain strip, not a greyed-out button.
+            ColorBlock goalColors = goalButton.colors;
+            goalColors.disabledColor = Color.white;
+            goalButton.colors = goalColors;
+            goalLabel.name = "Goal";
+            goalLabel.resizeTextForBestFit = true;
+            goalLabel.resizeTextMinSize = 18;
+            goalLabel.resizeTextMaxSize = 28;
+            goalLabel.verticalOverflow = VerticalWrapMode.Truncate;
+            Image goalIcon = Ui.Icon("Icon", goalButton.transform, Art.Icon("goals"));
+            if (goalIcon != null)
+            {
+                goalIcon.rectTransform.Place(Vector2.zero, new Vector2(0, 1), new Vector2(10, 16), new Vector2(66, -10));
+                goalLabel.rectTransform.offsetMin = new Vector2(72, 8);
+            }
+
+            // The corners: the guild badge on the left, settings on the right.
+            guildButton = SquareButton("GuildButton", root, Art.GuildEmblem, Palette.ButtonAlt, () => guild.Open(), out guildLabel);
+            guildButton.AsRect().Box(new Vector2(0, 1), new Vector2(136, 150), new Vector2(14, -26));
+
+            Button settingsButton = SquareButton("SettingsButton", root, Art.Icon("settings"), Palette.ButtonAlt, OpenSettings, out Text settingsLabel);
+            settingsButton.AsRect().Box(Vector2.one, new Vector2(SideSize, SideSize), new Vector2(-14, -26));
+            settingsLabel.SetText(Art.Icon("settings") != null ? "" : "Settings");
+        }
+
+        void BuildSideColumns(Transform root)
+        {
+            // Left: a new crew candidate on top, then the crew's faces.
+            crewColumn = Column("CrewColumn", root, new Vector2(0, 1), new Vector2(SideMargin, -196), TextAnchor.UpperLeft);
+            crewChip = SquareButton("CrewChip", crewColumn, Art.Icon("plus"), Palette.GemButton, () => candidateModal.Open(), out crewChipLabel);
+            crewChip.SetActive(false);
+
+            // Right: things that come and go.
+            RectTransform events = Column("EventColumn", root, Vector2.one, new Vector2(-SideMargin, -164), TextAnchor.UpperRight);
+            dailyButton = SquareButton("DailyButton", events, Art.Icon("gift"), Palette.ButtonAlt, () => daily.Open(), out dailyLabel);
+            chestChip = SquareButton("ChestChip", events, Art.Get("Chests/creek_closed") ?? Art.Icon("timer"), Palette.Nugget, () => chestModal.Open(), out chestChipLabel);
+            chestChip.SetActive(false);
+            Button collectionButton = SquareButton("CollectionButton", events, Art.NuggetIcon, Palette.ButtonAlt, () => collection.Open(), out collectionLabel);
+            summonLode = SquareButton("SummonLode", events, Art.Get("MotherLode/boulder_0"), Palette.GemButton, SummonMotherLode, out Text summonLabel);
+            summonLabel.SetText(Effects.Gems(session.Economy.Config.MotherLodeSummonGems));
+            summonLode.SetActive(false);
+            // Goal bonus (design doc 8.4): a rewarded ad for a few Gems, a handful of times a day.
+            goalAd = SquareButton("GoalAd", events, Art.Icon("watch_ad"), Palette.Ad, WatchGoalAd, out goalAdLabel);
+            goalAd.SetActive(false);
+        }
+
+        void BuildBottom(Transform root)
+        {
+            mapButton = SquareButton("MapButton", root, Art.Icon("map"), Palette.ButtonAlt, OpenMap, out mapLabel, 150);
+            mapButton.AsRect().Box(Vector2.zero, new Vector2(150, 150), new Vector2(20, 40));
+            shopButton = SquareButton("ShopButton", root, Art.Icon("shop"), Palette.GemButton, OpenShop, out shopLabel, 150);
+            shopButton.AsRect().Box(new Vector2(1, 0), new Vector2(150, 150), new Vector2(-20, 40));
+
+            // The upgrade button (design doc 12.2, v0.19): its left half buys the cheapest
+            // affordable upgrade at once and keeps buying while held; its right half opens the panel.
+            RectTransform card = Ui.Panel("UpgradeCard", root, Palette.Panel).rectTransform
+                .Box(new Vector2(0.5f, 0), new Vector2(400, 190), new Vector2(0, 30));
+            Float(card);
+            quickBuyButton = Ui.Button("QuickBuy", card, "", Palette.ButtonAlt, QuickBuy, out quickBuyLabel, 30);
+            quickBuyButton.AsRect().Place(Vector2.zero, new Vector2(0.5f, 1), new Vector2(12, 12), new Vector2(-4, -12));
+            quickBuyButton.gameObject.AddComponent<HoldRepeat>().Repeat = QuickBuy;
+            quickBuyIcon = Ui.Image("UpgradeIcon", quickBuyButton.transform, Color.white);
+            quickBuyIcon.raycastTarget = false;
+            quickBuyIcon.preserveAspect = true;
+            quickBuyIcon.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(24, 58), new Vector2(-24, -12));
+            quickBuyLabel.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(4, 14), new Vector2(-4, 56));
+            quickBuyLabel.resizeTextForBestFit = true;
+            quickBuyLabel.resizeTextMinSize = 16;
+            quickBuyLabel.resizeTextMaxSize = 30;
+            quickBuyLabel.verticalOverflow = VerticalWrapMode.Truncate;
+            quickBuyLevel = Ui.Label("Level", quickBuyButton.transform, "", 26, TextAnchor.UpperLeft, Palette.TextLight, FontStyle.Bold);
+            quickBuyLevel.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(12, 0), new Vector2(0, -8));
+            Outlined(quickBuyLevel);
+            Outlined(quickBuyLabel);
+
+            upgradesButton = Ui.Button("UpgradesButton", card, "Upgrades", Palette.Button, () => OpenUpgrades(false), out upgradesLabel, 26);
+            upgradesButton.AsRect().Place(new Vector2(0.5f, 0), Vector2.one, new Vector2(4, 12), new Vector2(-12, -12));
+            Image chevrons = Ui.Icon("Icon", upgradesButton.transform, Art.Icon("level_up") ?? Art.Icon("upgrades"));
+            if (chevrons != null)
+            {
+                chevrons.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(24, 58), new Vector2(-24, -12));
+                lockIcons[upgradesButton] = (chevrons, chevrons.sprite);
+            }
+            upgradesLabel.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(4, 14), new Vector2(-4, 56));
+            upgradesLabel.resizeTextForBestFit = true;
+            upgradesLabel.resizeTextMinSize = 14;
+            upgradesLabel.resizeTextMaxSize = 26;
+            upgradesLabel.verticalOverflow = VerticalWrapMode.Truncate;
+        }
+
+        /// <summary>A column that stacks its visible children from its corner, skipping hidden ones.</summary>
+        static RectTransform Column(string name, Transform root, Vector2 corner, Vector2 position, TextAnchor alignment)
+        {
+            RectTransform column = Ui.Rect(name, root).Box(corner, new Vector2(SideSize, 1100), position);
+            var layout = column.gameObject.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = SideGap;
+            layout.childAlignment = alignment;
+            layout.childControlWidth = false;
+            layout.childControlHeight = false;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+            return column;
+        }
+
+        /// <summary>A square control floating over the water: an icon with a short caption under it.</summary>
+        Button SquareButton(string name, Transform parent, Sprite icon, Color color, System.Action onClick, out Text caption, float size = SideSize)
+        {
+            Button button = Ui.Button(name, parent, "", color, onClick, out caption, 24);
+            button.AsRect().sizeDelta = new Vector2(size, size);
+            float captionHeight = size * 0.3f;
+            Image image = Ui.Icon("Icon", button.transform, icon);
+            if (image != null)
+            {
+                image.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(14, captionHeight + 4), new Vector2(-14, -10));
+                lockIcons[button] = (image, icon);
+            }
+            caption.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(4, 12), new Vector2(-4, captionHeight + 10));
+            caption.resizeTextForBestFit = true;
+            caption.resizeTextMinSize = 12;
+            caption.resizeTextMaxSize = Mathf.RoundToInt(size * 0.2f);
+            caption.verticalOverflow = VerticalWrapMode.Truncate;
+            Outlined(caption);
+            Float(button);
+            return button;
+        }
+
+        /// <summary>A soft drop shadow, so a control reads as lying on the water.</summary>
+        static void Float(Component control)
+        {
+            var shadow = control.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(0, 0.08f, 0.08f, 0.35f);
+            shadow.effectDistance = new Vector2(0, -8);
+        }
+
+        static void Outlined(Text label)
+        {
+            var outline = label.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0, 0, 0, 0.45f);
+            outline.effectDistance = new Vector2(2, -2);
+        }
+
+        /// <summary>Shows the first hired crew down the left; tapping a face opens their row.</summary>
+        void RefreshCrewColumn()
+        {
+            int hired = session.CrewHiredCount + (session.IdleActive ? 1 : 0);
+            if (hired == shownCrewFaces)
+                return;
+            shownCrewFaces = hired;
+            foreach (Button face in crewFaces)
+                Destroy(face.gameObject);
+            crewFaces.Clear();
+            if (session.IdleActive)
+                AddCrewFace("amos", true);
+            for (int i = 0; i < GameCatalog.Crew.Count && crewFaces.Count < CrewFaces; i++)
+            {
+                if (session.CrewLevel(i) > 0)
+                    AddCrewFace(GameCatalog.Crew[i].Id, false);
+            }
+        }
+
+        void AddCrewFace(string id, bool amos)
+        {
+            Button face = Ui.Button("Crew_" + id, crewColumn, "", Palette.Panel, () => OpenUpgrades(amos), out Text label, 20);
+            face.AsRect().sizeDelta = new Vector2(SideSize - 14, SideSize - 14);
+            Image picture = Ui.Icon("Face", face.transform, Art.Portrait(id), Palette.Amos);
+            picture.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(8, 8 + Ui.Lip), new Vector2(-8, -8));
+            label.SetText("");
+            Float(face);
+            crewFaces.Add(face);
+        }
+
+        void RefreshCreekBadge()
+        {
+            int region = session.Progress.RegionIndex;
+            if (region == shownBadgeRegion)
+                return;
+            shownBadgeRegion = region;
+            Sprite painting = Art.Creek(region);
+            creekBadge.sprite = painting;
+            creekBadge.color = painting != null ? Color.white : Palette.Water;
+            // Cover the circle: the painting is wider than tall.
+            if (painting != null)
+            {
+                float aspect = painting.rect.width / painting.rect.height;
+                creekBadge.rectTransform.Place(new Vector2(0.5f - aspect / 2, 0), new Vector2(0.5f + aspect / 2, 1), Vector2.zero, Vector2.zero);
+            }
+        }
+
         void RefreshHud()
         {
             PlayerProgress progress = session.Progress;
@@ -765,22 +930,24 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
-            SetLock(dailyButton, dailyLabel, Feature.Daily, "Daily", "Daily\ntomorrow", daily.AnythingToCollect());
+            SetLock(dailyButton, dailyLabel, Feature.Daily, "Daily", "Tomorrow", daily.AnythingToCollect());
             gemsLabel.SetText(progress.Gems.ToString());
+            RefreshCreekBadge();
+            RefreshCrewColumn();
             RefreshGoal();
             RefreshGoalAd();
 
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
-            SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, "Upgrades", "Upgrades\nswipe 15 by hand", upgradeBadge);
+            SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, "Upgrades", "Swipe 15 by hand", upgradeBadge);
             RefreshQuickBuy();
-            SetLock(mapButton, mapLabel, Feature.Map, "Map", "Map\nhire Amos first", mapBadge);
-            SetLock(shopButton, shopLabel, Feature.Shop, "Shop", "Shop\nreach Pine Hollow", shop.HasTimedOffer());
-            collectionLabel.SetText($"Nuggets  {session.TotalStars}/{session.MaxStars}");
+            SetLock(mapButton, mapLabel, Feature.Map, "Map", "Hire Amos", mapBadge);
+            SetLock(shopButton, shopLabel, Feature.Shop, "Shop", "Pine Hollow", shop.HasTimedOffer());
+            collectionLabel.SetText($"{session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
             chestChipLabel.SetText(ChestChipText());
-            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild\nLv {session.GuildLevel}", "Guild\nRed Gulch");
+            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", "Red Gulch");
             claimChip.SetActive(session.RebirthSuggested && !guild.IsOpen && !motherLode.IsActive);
 
             float now = Time.realtimeSinceStartup;
@@ -797,7 +964,7 @@ namespace NuggetCreek.Game
             if (summonLode.interactable != canSummon)
                 summonLode.interactable = canSummon;
             if (session.HasCandidates)
-                crewChipLabel.SetText($"New crew  {CandidateModal.Clock(progress.CandidateSecondsLeft)}");
+                crewChipLabel.SetText(CandidateModal.Clock(progress.CandidateSecondsLeft));
         }
 
         /// <summary>A locked button stays visible and says what opens it (design doc 9.1, 12.2).</summary>
@@ -819,14 +986,21 @@ namespace NuggetCreek.Game
             int index = session.QuickBuyUpgrade;
             if (index < 0)
             {
-                quickBuyLabel.SetText("Quick buy\n-");
+                quickBuyLabel.SetText("-");
+                quickBuyLevel.SetText("");
+                quickBuyIcon.color = quickBuyIcon.sprite != null ? Palette.IconOff : Color.clear;
                 if (quickBuyButton.interactable)
                     quickBuyButton.interactable = false;
                 return;
             }
             UpgradeDefinition upgrade = GameCatalog.Upgrades[index];
             int count = session.AffordableUpgradeCount;
-            quickBuyLabel.SetText($"+ {upgrade.Name} L{session.UpgradeLevel(index) + 1}\n{NumberFormat.Dollars(session.UpgradeCost(index).Value)}" + (count > 1 ? $"  ({count})" : ""));
+            quickBuyLabel.SetText("+ " + NumberFormat.Dollars(session.UpgradeCost(index).Value));
+            quickBuyLevel.SetText($"L{session.UpgradeLevel(index) + 1}" + (count > 1 ? $"  x{count}" : ""));
+            Sprite icon = Art.Upgrade(upgrade.Id);
+            if (quickBuyIcon.sprite != icon)
+                quickBuyIcon.sprite = icon;
+            quickBuyIcon.color = icon != null ? Color.white : Color.clear;
             if (!quickBuyButton.interactable)
                 quickBuyButton.interactable = true;
         }
@@ -846,37 +1020,6 @@ namespace NuggetCreek.Game
                 if (entry.icon.sprite != sprite)
                     entry.icon.sprite = sprite;
             }
-        }
-
-        /// <summary>Icon on the left of a top bar button; the label keeps the rest.</summary>
-        void LeadIcon(Button button, Text label, Sprite sprite)
-        {
-            Image icon = Ui.Icon("Icon", button.transform, sprite);
-            if (icon == null)
-                return;
-            icon.rectTransform.Place(Vector2.zero, new Vector2(0, 1), new Vector2(10, 26), new Vector2(78, -26));
-            label.rectTransform.offsetMin = new Vector2(80, 8);
-            label.resizeTextForBestFit = true;
-            label.resizeTextMinSize = 18;
-            label.resizeTextMaxSize = Mathf.RoundToInt(label.fontSize * Ui.TextScale);
-            label.verticalOverflow = VerticalWrapMode.Truncate;
-            lockIcons[button] = (icon, sprite);
-        }
-
-        /// <summary>Icon above the label of a bottom bar button.</summary>
-        void TopIcon(Button button, Text label, Sprite sprite)
-        {
-            Image icon = Ui.Icon("Icon", button.transform, sprite);
-            if (icon == null)
-                return;
-            icon.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -84), new Vector2(0, -8));
-            label.rectTransform.offsetMax = new Vector2(-8, -84);
-            // Locked buttons say what opens them in two lines; shrink rather than spill.
-            label.resizeTextForBestFit = true;
-            label.resizeTextMinSize = 20;
-            label.resizeTextMaxSize = Mathf.RoundToInt(label.fontSize * Ui.TextScale);
-            label.verticalOverflow = VerticalWrapMode.Truncate;
-            lockIcons[button] = (icon, sprite);
         }
 
         // --- Mother Lode ---
@@ -925,7 +1068,7 @@ namespace NuggetCreek.Game
             goalAd.SetActive(show);
             if (!show)
                 return;
-            goalAdLabel.SetText($"+{session.Economy.Config.GoalAdGems} Gems (ad)");
+            goalAdLabel.SetText($"+{session.Economy.Config.GoalAdGems} Gems");
             if (goalAd.interactable != ads.IsLoaded)
                 goalAd.interactable = ads.IsLoaded;
         }
@@ -1011,7 +1154,19 @@ namespace NuggetCreek.Game
 
         void BuildDebugButtons(Transform root, float topHeight)
         {
-            RectTransform column = Ui.Rect("Debug", root).Box(Vector2.one, new Vector2(200, 1500), new Vector2(-10, -topHeight - 10));
+            // Folded away behind a small toggle so it does not cover the creek. Hidden, not
+            // inactive: the PlayMode tests press these buttons by name.
+            RectTransform column = Ui.Rect("Debug", root).Box(new Vector2(0.5f, 1), new Vector2(200, 1500), new Vector2(0, -topHeight - 10));
+            var fold = column.gameObject.AddComponent<CanvasGroup>();
+            void ShowDebug(bool show)
+            {
+                fold.alpha = show ? 1 : 0;
+                fold.blocksRaycasts = show;
+            }
+            ShowDebug(false);
+            Button toggle = Ui.Button("DebugToggle", root, "DEV", new Color(0, 0, 0, 0.35f), () => ShowDebug(fold.alpha < 0.5f), out _, 26);
+            // Bottom left, between the map and the creek: clear of the side columns.
+            toggle.AsRect().Box(Vector2.zero, new Vector2(96, 64), new Vector2(20, 200));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+$1T", () => session.Earn(1e12));
