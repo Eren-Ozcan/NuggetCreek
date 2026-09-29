@@ -7,9 +7,10 @@ namespace NuggetCreek.Game.UI
     /// <summary>
     /// The creek seen from above: the creek's painted river when it exists, otherwise one drawn
     /// in code (teal water with deeper pools, sandy banks and round pine tops), with current
-    /// streaks over either. The land scrolls down slowly, so the dredge seems to work its way
-    /// upstream; the streaks run with the current at the speed the gold drifts. Moving to another
-    /// creek, the dredge gets under way: the land races by and the new creek's river takes over.
+    /// lines and ripples over either. The land scrolls down slowly, so the dredge seems to work its
+    /// way upstream; the current lines and, a little slower, the ripples run down with the water.
+    /// Moving to another creek, the dredge gets under way: the land races by and the new creek's
+    /// river takes over.
     /// </summary>
     public sealed class RiverView : MonoBehaviour
     {
@@ -20,6 +21,10 @@ namespace NuggetCreek.Game.UI
         /// <summary>Taller than any creek area, so two stacked tiles always cover it.</summary>
         const float TileHeight = 2200;
         const float LandSpeed = 55;
+        /// <summary>How fast the water looks to run, in creek pixels a second; foam behind the dredge drifts at it too.</summary>
+        public const float FlowSpeed = 170;
+        /// <summary>Ripples ride a little slower than the current lines, which gives the water depth.</summary>
+        const float RippleShare = 0.65f;
         const float TravelSeconds = 2.2f;
         /// <summary>Extra land speed, in multiples of the normal one, at the height of a journey.</summary>
         const float TravelRush = 11;
@@ -31,6 +36,8 @@ namespace NuggetCreek.Game.UI
         RectTransform painted;
         readonly Image[] paintings = new Image[PaintedTiles];
         RectTransform current;
+        RectTransform ripples;
+        float rippleOffset;
         float landOffset;
         float paintedOffset;
         float currentOffset;
@@ -75,11 +82,13 @@ namespace NuggetCreek.Game.UI
                 rt.pivot = new Vector2(0.5f, 0.5f);
                 rt.localScale = new Vector3(1, i % 2 == 0 ? 1 : -1, 1);
             }
+            ripples = Strip("Ripples", TileHeight * 2);
             current = Strip("Current", TileHeight * 2);
             // Both tiles of a strip get the same seed, so the second repeats the first seamlessly.
             for (int tile = 0; tile < 2; tile++)
             {
                 BuildLand(Tile(land, tile), new System.Random(11));
+                BuildRipples(Tile(ripples, tile), new System.Random(31));
                 BuildCurrent(Tile(current, tile), new System.Random(23));
             }
             Paint(null);
@@ -99,7 +108,7 @@ namespace NuggetCreek.Game.UI
             }
         }
 
-        public void Tick(float deltaTime, float currentSpeed)
+        public void Tick(float deltaTime)
         {
             travelAge += deltaTime;
             float rush = Travel;
@@ -113,7 +122,9 @@ namespace NuggetCreek.Game.UI
             landOffset = Scroll(land, landOffset, landStep, TileHeight);
             if (painted.gameObject.activeSelf)
                 ScrollPainted(landStep);
-            currentOffset = Scroll(current, currentOffset, currentSpeed * (1 + 2 * rush) * deltaTime, TileHeight);
+            float flowStep = FlowSpeed * (1 + 2 * rush) * deltaTime;
+            currentOffset = Scroll(current, currentOffset, flowStep, TileHeight);
+            rippleOffset = Scroll(ripples, rippleOffset, flowStep * RippleShare, TileHeight);
         }
 
         static float Scroll(RectTransform strip, float offset, float step, float period)
@@ -234,15 +245,38 @@ namespace NuggetCreek.Game.UI
             }
         }
 
+        /// <summary>Long thin lines along the current, faster near the middle of the river.</summary>
         static void BuildCurrent(RectTransform tile, System.Random random)
         {
-            for (int i = 0; i < 26; i++)
+            for (int i = 0; i < 22; i++)
             {
-                float x = Range(random, BankShare + 0.07f, 1 - BankShare - 0.07f);
-                var size = new Vector2(Range(random, 5, 8), Range(random, 50, 150));
+                float x = Range(random, BankShare + 0.06f, 1 - BankShare - 0.06f);
+                var size = new Vector2(Range(random, 4, 7), Range(random, 90, 220));
                 Color color = Palette.Current;
-                color.a *= Range(random, 0.5f, 1);
+                color.a *= Range(random, 0.45f, 0.9f);
                 Wrapped(Range(random, 0, TileHeight), size.y / 2, y => Blob(tile, "Streak", 0, x, 0, y, size, color));
+            }
+        }
+
+        /// <summary>
+        /// Short flat wavelets across the current, the surface breaking up as it runs. Each is a
+        /// bright crest over a darker trough, so they read as ripples, not as rain.
+        /// </summary>
+        static void BuildRipples(RectTransform tile, System.Random random)
+        {
+            for (int i = 0; i < 48; i++)
+            {
+                float x = Range(random, BankShare + 0.04f, 1 - BankShare - 0.04f);
+                var size = new Vector2(Range(random, 34, 90), Range(random, 6, 10));
+                Color crest = Palette.Current;
+                crest.a *= Range(random, 0.5f, 0.95f);
+                Color trough = Palette.DeepWater;
+                trough.a *= 0.55f;
+                Wrapped(Range(random, 0, TileHeight), size.y + 8, y =>
+                {
+                    Blob(tile, "Trough", 0, x, 0, y - size.y * 0.7f, new Vector2(size.x * 0.9f, size.y), trough);
+                    Blob(tile, "Crest", 0, x, 0, y, size, crest);
+                });
             }
         }
 
