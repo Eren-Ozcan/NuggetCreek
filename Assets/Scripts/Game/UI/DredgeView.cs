@@ -2,6 +2,7 @@ using System;
 using NuggetCreek.Core;
 using UnityEngine;
 using UnityEngine.UI;
+using Random = UnityEngine.Random;
 
 namespace NuggetCreek.Game.UI
 {
@@ -60,7 +61,13 @@ namespace NuggetCreek.Game.UI
         const float PurchaseSeconds = 0.3f;
         const float ChestPeak = 1.35f;
         const float ChestSeconds = 0.3f;
-        const int WakePuffs = 7;
+        /// <summary>Foam a second: churn at the stern, streaks behind it, dashes on each V arm and hull side.</summary>
+        const float SternFoamRate = 95;
+        const float StreakRate = 14;
+        const float ArmFoamRate = 20;
+        const float SideFoamRate = 9;
+        /// <summary>The V arms open this far from straight back, in degrees.</summary>
+        const float ArmAngle = 17;
 
         // The tier-up show, in seconds from the swap.
         const float GrowSeconds = 0.7f;
@@ -87,16 +94,21 @@ namespace NuggetCreek.Game.UI
         Image ghost;
         Image wave;
         Image wash;
-        Image bowFoam;
-        Image sternFoam;
-        readonly Image[] sideFoam = new Image[2];
-        readonly Image[] wake = new Image[WakePuffs * 2];
+        WakeGraphic wakeStrip;
+        Particles foam;
+        float sternFoamDue;
+        float armFoamDue;
+        float streakDue;
+        float sideFoamDue;
         DredgeParts parts;
 
         int shownTier = -1;
         int boughtLevels = -1;
         float time;
         float wakePhase;
+        float stageTop;
+        float stageBottom;
+        float flowSpeed;
         float purchaseAge = PurchaseSeconds;
         float showAge = ShowSeconds;
         float chestAge = ChestSeconds;
@@ -124,22 +136,25 @@ namespace NuggetCreek.Game.UI
 
         public Rect ChestBounds => AreaBounds(chest);
 
-        public void Init(GameSession gameSession, RectTransform creekArea, Particles sparkles)
+        /// <param name="wakeLayer">Under the gold, so foam never hides it.</param>
+        public void Init(GameSession gameSession, RectTransform creekArea, RectTransform wakeLayer, Particles sparkles)
         {
             session = gameSession;
             area = creekArea;
             particles = sparkles;
 
+            GameObject strip = Ui.Rect("WakeStrip", wakeLayer).Fill().gameObject;
+            strip.AddComponent<CanvasRenderer>();
+            wakeStrip = strip.AddComponent<WakeGraphic>();
+            wakeStrip.rectTransform.pivot = Vector2.zero;
+            wakeStrip.color = Palette.WakeStrip;
+            wakeStrip.raycastTarget = false;
+            foam = new Particles(wakeLayer);
+
             root = Ui.Rect("Body", transform).Box(Vector2.zero, Vector2.zero);
             root.pivot = new Vector2(0.5f, 0.5f);
 
             flash = Water("Flash", Palette.Gold, Ui.Glow);
-            for (int i = 0; i < wake.Length; i++)
-                wake[i] = Water("Wake", Palette.Foam, Ui.Glow);
-            sternFoam = Water("SternFoam", Palette.Foam, Ui.Glow);
-            for (int side = 0; side < 2; side++)
-                sideFoam[side] = Water("SideFoam", Palette.Foam, Ui.Glow);
-            bowFoam = Water("BowFoam", Palette.Foam, Ui.Glow);
             halo = Silhouette("Halo", Palette.Glint);
 
             art = Ui.Image("Art", root, Color.white);
@@ -174,6 +189,13 @@ namespace NuggetCreek.Game.UI
             Tick(0, 0, true, 0);
         }
 
+        /// <summary>Keeps the dredge between the controls at the top and bottom of the screen.</summary>
+        public void SetStage(float topInset, float bottomInset)
+        {
+            stageTop = topInset;
+            stageBottom = bottomInset;
+        }
+
         Image Water(string name, Color color, Sprite sprite)
         {
             Image image = Ui.Image(name, root, color, sprite);
@@ -203,14 +225,15 @@ namespace NuggetCreek.Game.UI
 
             TierLayout layout = Tiers[shownTier];
             Rect bounds = area.rect;
-            Vector2 artSize = ArtSize(layout, AspectOf(layout, art.sprite), bounds.size);
+            var stage = new Vector2(bounds.width, Mathf.Max(200, bounds.height - stageTop - stageBottom));
+            Vector2 artSize = ArtSize(layout, AspectOf(layout, art.sprite), stage);
             hullSize = Vector2.Scale(artSize, layout.Hull.size);
             Fit(art, layout, artSize);
             Fit(ghost, layout, artSize);
             Fit(halo, layout, artSize);
 
             // Hull centre on the middle line; the drawing as a whole centred in the creek.
-            float centreY = bounds.height / 2 - (0.5f - layout.Hull.center.y) * artSize.y;
+            float centreY = stageBottom + stage.y / 2 - (0.5f - layout.Hull.center.y) * artSize.y;
             var sway = new Vector2(5 * Mathf.Sin(time * 0.55f), 6 * Mathf.Sin(time * 1.2f));
             root.anchoredPosition = new Vector2(bounds.width / 2, centreY) + sway;
             root.localRotation = Quaternion.Euler(0, 0, 1.1f * Mathf.Sin(time * 0.8f) + 0.4f * Mathf.Sin(time * 1.9f));
@@ -221,7 +244,7 @@ namespace NuggetCreek.Game.UI
             root.localScale = new Vector3(scale * (1 + 0.01f * Mathf.Sin(time * 1.6f)), scale, 1);
 
             chest.localScale = Vector3.one * Motion.Punch(chestAge, ChestSeconds, ChestPeak);
-            PlaceFoam(currentSpeed * deltaTime * (1 + 3 * travel), travel);
+            PlaceFoam(deltaTime, currentSpeed, travel);
             PlaceShow(deltaTime);
             parts.Tick(deltaTime);
         }
@@ -324,38 +347,84 @@ namespace NuggetCreek.Game.UI
             return new Vector2(width, height);
         }
 
-        /// <param name="travel">Under way the bow wave and the stern wash grow.</param>
-        void PlaceFoam(float step, float travel)
+        /// <summary>
+        /// The water the dredge holds back: a pale strip widening behind the stern, foam churned up
+        /// at the stern that the current carries off, two V arms of foam from the stern corners and
+        /// a little foam slipping past the hull sides. No glow at the bow.
+        /// </summary>
+        /// <param name="travel">Under way there is more foam and the strip brightens.</param>
+        void PlaceFoam(float deltaTime, float current, float travel)
         {
             float halfWidth = hullSize.x / 2;
             float halfHeight = hullSize.y / 2;
-            float flicker = 0.85f + 0.15f * Mathf.Sin(time * 5.3f);
+            float flow = current * (1 + 2 * travel);
+            float more = 1 + 2 * travel;
 
-            // Only the upper half of the bow wave shows; the hull covers the rest.
-            Set(bowFoam, new Vector2(0, halfHeight + 4), new Vector2(hullSize.x * (1.3f + 0.5f * travel), 90 * (1 + 1.5f * travel)), flicker);
-            Set(sternFoam, new Vector2(0, -halfHeight - 6), new Vector2(hullSize.x * 0.95f, 70 * (1 + travel)), 0.8f + 0.2f * Mathf.Sin(time * 7.1f));
-            for (int side = 0; side < 2; side++)
+            Vector2 stern = ToArea(root.TransformPoint(new Vector3(0, -halfHeight + 6)));
+            wakePhase = Mathf.Repeat(wakePhase + flow * deltaTime / 260, 1);
+            wakeStrip.color = Palette.WakeStrip * new Color(1, 1, 1, 1 + 0.6f * travel);
+            wakeStrip.Place(stern, hullSize.x * 0.8f, hullSize.x * 2.1f, stern.y + 60, wakePhase);
+
+            foam.Tick(deltaTime);
+            if (deltaTime <= 0)
+                return;
+
+            // The churn: big soft white blobs packed at the stern, so they run together into one
+            // boiling mass that thins out as the current takes it.
+            sternFoamDue += deltaTime * SternFoamRate * more;
+            for (; sternFoamDue >= 1; sternFoamDue--)
             {
-                float sign = side == 0 ? -1 : 1;
-                float pulse = 0.7f + 0.3f * Mathf.Sin(time * 4.1f + side * 1.7f);
-                Set(sideFoam[side], new Vector2(sign * (halfWidth + 2), 0), new Vector2(30, hullSize.y * 0.95f), pulse);
+                float across = Random.Range(-0.4f, 0.4f);
+                Vector2 at = ToArea(root.TransformPoint(new Vector3(across * hullSize.x, -halfHeight + Random.Range(-6f, 14f))));
+                var velocity = new Vector2(across * Random.Range(30f, 80f), -flow * Random.Range(0.45f, 0.8f));
+                bool soft = Random.value < 0.75f;
+                foam.Emit(at, velocity, soft ? Random.Range(56f, 96f) : Random.Range(16f, 28f), Random.Range(0.7f, 1.2f),
+                    Foam(0.75f, 1), soft ? Ui.Glow : Ui.Circle, 0, 0, 0.5f);
             }
 
-            // Two arms of puffs slide back from the stern corners, widening and fading.
-            float armLength = Mathf.Max(260, hullSize.y * 0.9f);
-            wakePhase = Mathf.Repeat(wakePhase + step * 0.35f / armLength, 1);
-            for (int arm = 0; arm < 2; arm++)
+            // Foam streaks drawn out along the current in the churned strip.
+            streakDue += deltaTime * StreakRate * more;
+            for (; streakDue >= 1; streakDue--)
             {
-                float sign = arm == 0 ? -1 : 1;
-                var direction = new Vector2(sign * Mathf.Sin(16 * Mathf.Deg2Rad), -Mathf.Cos(16 * Mathf.Deg2Rad));
-                var corner = new Vector2(sign * halfWidth * 0.85f, -halfHeight);
-                for (int i = 0; i < WakePuffs; i++)
+                Vector2 at = ToArea(root.TransformPoint(new Vector3(Random.Range(-0.34f, 0.34f) * hullSize.x, -halfHeight - 10)));
+                foam.Emit(at, new Vector2(0, -flow * Random.Range(0.8f, 0.95f)), Random.Range(10f, 16f), Random.Range(1.8f, 2.6f),
+                    Foam(0.35f, 0.55f), Ui.Glow, 0, 0, 1.25f, Random.Range(3f, 5f), 0);
+            }
+
+            // Two V arms of foam dashes from the stern corners, each lying along its arm.
+            armFoamDue += deltaTime * ArmFoamRate * more;
+            for (; armFoamDue >= 1; armFoamDue--)
+            {
+                for (int arm = 0; arm < 2; arm++)
                 {
-                    float k = Mathf.Repeat((i + wakePhase) / WakePuffs, 1);
-                    float size = Mathf.Lerp(34, 90, k);
-                    Set(wake[arm * WakePuffs + i], corner + direction * (k * armLength), new Vector2(size, size * 0.7f), 0.9f * (1 - k));
+                    float sign = arm == 0 ? -1 : 1;
+                    var direction = new Vector2(sign * Mathf.Sin(ArmAngle * Mathf.Deg2Rad), -Mathf.Cos(ArmAngle * Mathf.Deg2Rad));
+                    Vector2 corner = ToArea(root.TransformPoint(new Vector3(sign * halfWidth * 0.82f, -halfHeight + 12)));
+                    foam.Emit(corner + direction * Random.Range(0f, 14f), direction * flow * Random.Range(0.9f, 1.05f),
+                        Random.Range(11f, 17f), Random.Range(2f, 2.8f), Foam(0.55f, 0.85f), Ui.Glow, 0, 0, 1.6f,
+                        Random.Range(2.2f, 3.2f), sign * ArmAngle);
                 }
             }
+
+            // Water slipping past the hull sides in thin streaks.
+            sideFoamDue += deltaTime * SideFoamRate * more;
+            for (; sideFoamDue >= 1; sideFoamDue--)
+            {
+                for (int side = 0; side < 2; side++)
+                {
+                    float sign = side == 0 ? -1 : 1;
+                    Vector2 at = ToArea(root.TransformPoint(new Vector3(sign * (halfWidth + 5), Random.Range(-halfHeight, halfHeight * 0.7f))));
+                    foam.Emit(at, new Vector2(sign * 10, -flow), Random.Range(7f, 11f), Random.Range(0.8f, 1.2f),
+                        Foam(0.4f, 0.65f), Ui.Glow, 0, 0, 1.2f, Random.Range(2.5f, 3.5f), 0);
+                }
+            }
+        }
+
+        static Color Foam(float minAlpha, float maxAlpha)
+        {
+            Color color = Palette.Foam;
+            color.a = Random.Range(minAlpha, maxAlpha);
+            return color;
         }
 
         /// <summary>
