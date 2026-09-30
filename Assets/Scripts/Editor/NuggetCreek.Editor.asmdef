@@ -5,6 +5,7 @@
         "NuggetCreek.Core",
         "NuggetCreek.Game",
         "UnityEngine.UI",
+        "Unity.InputSystem",
         "Unity.Notifications"
     ],
     "includePlatforms": [

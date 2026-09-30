@@ -16,6 +16,8 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
 - `Assets/Scripts/Game/` — Unity layer (`NuggetCreek.Game`): `GameRoot` builds the whole
   greybox UI in code (uGUI, `UI/`), `SaveStore` (signed PlayerPrefs), `GameClock`
   (monotonic + trusted HTTPS time), `FakeRewardedAds` until the real ad SDK lands.
+  Input is the Input System only (`activeInputHandler: 1`); the old `UnityEngine.Input` API
+  throws. Swipes read `UI/PointerInput`, the EventSystem uses `InputSystemUIInputModule`.
 - `Assets/Scenes/Creek.unity` — only camera, EventSystem and `GameRoot`. Regenerate with
   menu *Nugget Creek > Rebuild Greybox Scene* or
   `Unity.exe -batchmode -quit -projectPath . -executeMethod NuggetCreek.Editor.GreyboxSceneBuilder.Build`.

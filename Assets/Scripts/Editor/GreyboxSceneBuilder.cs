@@ -5,6 +5,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 
 namespace NuggetCreek.Editor
 {
@@ -29,7 +30,7 @@ namespace NuggetCreek.Editor
             camera.backgroundColor = Palette.Background;
             cameraObject.transform.position = new Vector3(0, 0, -10);
 
-            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
+            new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
             new GameObject("Game", typeof(GameRoot));
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath));
