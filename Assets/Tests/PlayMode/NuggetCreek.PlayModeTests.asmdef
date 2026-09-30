@@ -6,7 +6,8 @@
         "UnityEditor.TestRunner",
         "NuggetCreek.Core",
         "NuggetCreek.Game",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

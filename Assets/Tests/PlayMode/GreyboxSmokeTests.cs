@@ -7,6 +7,8 @@ using NuggetCreek.Core;
 using NuggetCreek.Game;
 using NuggetCreek.Game.UI;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 using UnityEngine.SceneManagement;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -15,8 +17,9 @@ namespace NuggetCreek.PlayModeTests
 {
     /// <summary>
     /// Drives the greybox scene through its main loop by pressing real buttons: spawns,
-    /// hiring Amos, idle income, and the offline return with trusted time. Swipe input is
-    /// covered by the core tests (GameSession.Collect); these check the wiring.
+    /// hiring Amos, idle income, and the offline return with trusted time. Swipes call
+    /// CreekView.Sweep directly, except one test that drags an Input System pointer;
+    /// the catch rules are covered by the core tests (GameSession.Collect).
     /// Set NC_SHOT_DIR to also save screenshots of each step.
     /// </summary>
     public class GreyboxSmokeTests
@@ -726,6 +729,42 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(river.Travel, Is.GreaterThan(0.5f), "full speed in the middle of the journey");
             yield return Shot("creek_travel");
             yield return WaitFor(() => !river.Traveling, 3);
+        }
+
+        [UnityTest]
+        public IEnumerator APointerDraggedAcrossTheCreekPicksUpGold()
+        {
+            PlayerProgress progress = RobustnessTests.Session().Progress;
+            long before = progress.ManualCollected;
+            // A batch run has no focused game view; let the queued events reach the game anyway.
+            InputSettings settings = InputSystem.settings;
+            var playModeBehavior = settings.editorInputBehaviorInPlayMode;
+            var backgroundBehavior = settings.backgroundBehavior;
+            settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            Mouse mouse = InputSystem.AddDevice<Mouse>();
+            try
+            {
+                // Back and forth across the middle of the creek, a quarter of its width a frame,
+                // until gold drifting down meets the pointer.
+                float y = Screen.height * 0.5f;
+                float end = Time.time + 10;
+                for (int step = 0; progress.ManualCollected == before && Time.time < end; step++)
+                {
+                    float x = Screen.width * Mathf.PingPong(step * 0.25f, 1);
+                    InputSystem.QueueStateEvent(mouse, new MouseState { position = new Vector2(x, y) }.WithButton(MouseButton.Left));
+                    yield return null;
+                }
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = new Vector2(0, y) });
+                yield return null;
+            }
+            finally
+            {
+                InputSystem.RemoveDevice(mouse);
+                settings.editorInputBehaviorInPlayMode = playModeBehavior;
+                settings.backgroundBehavior = backgroundBehavior;
+            }
+            Assert.That(progress.ManualCollected, Is.GreaterThan(before), "a dragged pointer collects gold");
         }
 
         // --- helpers ---
