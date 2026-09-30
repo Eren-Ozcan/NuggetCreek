@@ -4,6 +4,7 @@
     "references": [
         "NuggetCreek.Core",
         "UnityEngine.UI",
+        "Unity.InputSystem",
         "Unity.Notifications.Android",
         "revenuecat.purchases-unity",
         "Google.Play.Games"

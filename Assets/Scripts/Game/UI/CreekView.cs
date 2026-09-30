@@ -414,13 +414,12 @@ namespace NuggetCreek.Game.UI
 
         void HandleSwipe()
         {
-            if (!InputEnabled || !Input.GetMouseButton(0))
+            if (!InputEnabled || !(PointerInput.Pressed() is Vector2 screen))
             {
                 lastPointer = null;
                 return;
             }
 
-            Vector2 screen = Input.mousePosition;
             if (!RectTransformUtility.RectangleContainsScreenPoint(area, screen, null))
             {
                 lastPointer = null;
