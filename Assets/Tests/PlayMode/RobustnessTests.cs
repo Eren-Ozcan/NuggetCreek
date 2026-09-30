@@ -224,6 +224,9 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(p.Gems, Is.GreaterThanOrEqualTo(0), "gems");
             Assert.That(p.RegionIndex, Is.InRange(0, p.RegionsUnlocked - 1), "region");
             Assert.That(p.ChestsWaiting, Is.GreaterThanOrEqualTo(0), "chests");
+            Assert.That(p.ChestsDue, Is.GreaterThanOrEqualTo(0), "chests due");
+            Assert.That(p.CratesWaiting, Is.GreaterThanOrEqualTo(0), "crates");
+            Assert.That(p.PouchesWaiting, Is.GreaterThanOrEqualTo(0), "pouches");
             Assert.That(p.UpgradeLevels.All(l => l >= 0), "upgrade levels");
             Assert.That(p.CrewLevels.All(l => l >= 0), "crew levels");
         }
@@ -324,6 +327,97 @@ namespace NuggetCreek.PlayModeTests
             }
             yield return Resize(Vector2Int.zero);
             Assert.That(findings, Is.Empty, string.Join("\n", findings));
+        }
+
+        [UnityTest]
+        public IEnumerator FloatersRideTheOpenWaterBesideTheDredge()
+        {
+            yield return SceneManager.LoadSceneAsync("Creek");
+            yield return null;
+            Press("Skip intro");
+            yield return null;
+            var creek = UnityEngine.Object.FindAnyObjectByType<CreekView>();
+            var river = UnityEngine.Object.FindAnyObjectByType<RiverView>();
+            var dredge = UnityEngine.Object.FindAnyObjectByType<DredgeView>();
+            GameSession session = Session();
+            // Past the tutorial chest, so crates come too (design doc 3.1.4).
+            session.Progress.ChestsOpened = 1;
+            var findings = new List<string>();
+            Vector2Int[] screens = { new Vector2Int(1080, 1920), new Vector2Int(1080, 2340), new Vector2Int(1536, 2048) };
+            FloaterKind[] kinds = { FloaterKind.Crate, FloaterKind.Chest };
+            // A full tray down the right, so the floaters have to stay clear of it.
+            session.Progress.CratesWaiting = 12;
+            Time.timeScale = 3;
+
+            foreach (Vector2Int screen in screens)
+            {
+                yield return Resize(screen);
+                foreach (FloaterKind kind in kinds)
+                {
+                    if (kind == FloaterKind.Chest)
+                        session.Progress.ChestsDue = 1;
+                    else
+                        session.Progress.CrateSecondsLeft = 0.01;
+                    float waitUntil = Time.realtimeSinceStartup + 8;
+                    while (!creek.Floaters.Position.HasValue && Time.realtimeSinceStartup < waitUntil)
+                        yield return null;
+                    string where = $"{screen.x}x{screen.y} {kind}";
+                    if (!creek.Floaters.Position.HasValue)
+                    {
+                        findings.Add($"{where}: never floated in");
+                        continue;
+                    }
+                    // Follow it down the open water; half its width must clear the hull and the banks.
+                    bool shot = false;
+                    while (creek.Floaters.Position is Vector2 at && at.y > 0)
+                    {
+                        float half = 150 / 2f;
+                        bool leftLane = at.x < creek.AreaSize.x / 2;
+                        float min = leftLane ? river.WaterLeft : dredge.HullRight;
+                        float max = leftLane ? dredge.HullLeft : river.WaterRight;
+                        if (at.x - half < min - 1 || at.x + half > max + 1)
+                            findings.Add($"{where}: x {at.x:0} leaves its lane {min:0}..{max:0} at y {at.y:0}");
+                        GameObject floater = GameObject.Find("Floater_" + kind);
+                        if (floater != null)
+                        {
+                            Rect body = ScreenRect((RectTransform)floater.transform, Camera.main);
+                            foreach (string column in new[] { "EventColumn", "CrewColumn" })
+                                foreach (RectTransform control in GameObject.Find(column).transform)
+                                    if (control.gameObject.activeSelf && ScreenRect(control, Camera.main).Overlaps(body))
+                                        findings.Add($"{where}: drifts under {column}/{control.name}");
+                        }
+                        if (!shot && at.y < creek.OpenWaterTop - 100)
+                        {
+                            shot = true;
+                            SaveTarget($"floater_{kind.ToString().ToLowerInvariant()}_{screen.x}x{screen.y}");
+                        }
+                        yield return null;
+                    }
+                    if (creek.Floaters.Position is Vector2 left)
+                        creek.Floaters.Tap(left);
+                    yield return new WaitForSeconds(0.1f);
+                }
+            }
+            Time.timeScale = 1;
+            yield return Resize(Vector2Int.zero);
+            Assert.That(findings.Distinct(), Is.Empty, string.Join(Environment.NewLine, findings.Distinct().Take(20)));
+        }
+
+        /// <summary>Writes what <see cref="Resize"/> renders to NC_SHOT_DIR, when set.</summary>
+        static void SaveTarget(string name)
+        {
+            string dir = Environment.GetEnvironmentVariable("NC_SHOT_DIR");
+            if (string.IsNullOrEmpty(dir) || target == null)
+                return;
+            Camera.main.Render();
+            RenderTexture.active = target;
+            var texture = new Texture2D(target.width, target.height, TextureFormat.RGB24, false);
+            texture.ReadPixels(new Rect(0, 0, target.width, target.height), 0, 0);
+            texture.Apply();
+            RenderTexture.active = null;
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.WriteAllBytes(System.IO.Path.Combine(dir, name + ".png"), texture.EncodeToPNG());
+            UnityEngine.Object.Destroy(texture);
         }
 
         static bool Inside(Rect inner, Rect outer) =>

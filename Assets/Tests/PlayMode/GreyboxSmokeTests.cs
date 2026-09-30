@@ -269,12 +269,12 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator FirstChestOpensAtOnceAndGivesWornGear()
         {
-            Assert.That(IsActive("ChestChip"), Is.False);
+            Assert.That(IsActive("Tray0"), Is.False);
             Click("Chest now");
-            yield return null;
-            Assert.That(IsActive("ChestChip"), Is.True);
+            yield return CatchFloater("Floater_Chest");
+            Assert.That(IsActive("Tray0"), Is.True, "a caught chest waits in the tray");
 
-            Click("ChestChip");
+            Click("Tray0");
             yield return null;
             Assert.That(IsActive("ChestModal"), Is.True);
             Assert.That(LabelIn("ChestModal", "ChestStatus").text, Is.EqualTo("Ready!"), "the first chest has no timer");
@@ -303,8 +303,8 @@ namespace NuggetCreek.PlayModeTests
         public IEnumerator GearBoxOpensOnItsOwnCard()
         {
             Click("Chest now");
-            yield return null;
-            Click("ChestChip");
+            yield return CatchFloater("Floater_Chest");
+            Click("Tray0");
             yield return null;
             Click("OpenChest");
             yield return null;
@@ -644,7 +644,8 @@ namespace NuggetCreek.PlayModeTests
             // A catch flies from the water to the chest.
             Transform water = creek.transform.Find("Gold");
             yield return WaitFor(() => water.childCount > 0, 5);
-            var gold = (RectTransform)water.GetChild(0);
+            // The newest: the oldest may be drifting out and destroyed this very frame.
+            var gold = (RectTransform)water.GetChild(water.childCount - 1);
             creek.Sweep(gold.anchoredPosition, gold.anchoredPosition);
             Assert.That(gold.parent.name, Is.EqualTo("Flights"));
             yield return new WaitForSeconds(0.15f);
@@ -656,6 +657,57 @@ namespace NuggetCreek.PlayModeTests
             yield return null;
             Assert.That(dredge.ShownTier, Is.EqualTo(0));
             Assert.That(flash.activeSelf, Is.False, "a rebirth swaps the dredge without the show");
+        }
+
+        [UnityTest]
+        public IEnumerator CratesAndPouchesWaitInTheTray()
+        {
+            PlayerProgress progress = RobustnessTests.Session().Progress;
+            // Past the tutorial chest, with a crate due now (design doc 3.1.4).
+            progress.ChestsOpened = 1;
+            progress.CrateSecondsLeft = 0.01;
+            yield return CatchFloater("Floater_Crate", true);
+            Assert.That(progress.CratesWaiting, Is.EqualTo(1));
+            Assert.That(IsActive("Tray0"), Is.True);
+            yield return new WaitForSeconds(0.7f);
+            yield return Shot("tray_crate");
+
+            Click("Tray0");
+            yield return null;
+            Assert.That(IsActive("CrateModal"), Is.True);
+            StringAssert.StartsWith("+$", LabelIn("CrateModal", "CrateAmount").text);
+            yield return Shot("crate_modal");
+            string before = Label("Dollars").text;
+            Click("CrateClaim");
+            yield return null;
+            Assert.That(IsActive("CrateModal"), Is.False);
+            Assert.That(progress.CratesWaiting, Is.EqualTo(0));
+            Assert.That(Label("Dollars").text, Is.Not.EqualTo(before));
+
+            // A pouch shows its Gem range before the ad; closing keeps it, Throw away drops it.
+            progress.PouchesWaiting = 1;
+            yield return null;
+            Click("Tray0");
+            yield return null;
+            Assert.That(IsActive("PouchModal"), Is.True);
+            StringAssert.StartsWith("Inside: 1-6 Gems", LabelIn("PouchModal", "Contents").text);
+            yield return Shot("pouch_modal");
+            ClickIn("PouchModal", "Close");
+            yield return null;
+            Assert.That(progress.PouchesWaiting, Is.EqualTo(1));
+            Click("Tray0");
+            yield return null;
+            Click("PouchThrow");
+            yield return null;
+            Assert.That(progress.PouchesWaiting, Is.EqualTo(0));
+
+            // More than fit: the rest wait out of sight, counted on the last tile.
+            progress.CratesWaiting = 15;
+            yield return null;
+            int shown = Enumerable.Range(0, TrayView.MaxTiles).Count(i => IsActive("Tray" + i));
+            Assert.That(shown, Is.InRange(1, TrayView.MaxTiles));
+            Assert.That(LabelIn("Tray" + (shown - 1), "More").text, Is.EqualTo("+" + (15 - shown)));
+            yield return Shot("tray_full");
         }
 
         [UnityTest]
@@ -677,6 +729,26 @@ namespace NuggetCreek.PlayModeTests
         }
 
         // --- helpers ---
+
+        /// <summary>Waits for a floater to come down the creek and swipes it (design doc 3.1.4).</summary>
+        static IEnumerator CatchFloater(string name, bool tap = false)
+        {
+            var creek = UnityEngine.Object.FindAnyObjectByType<CreekView>();
+            yield return WaitFor(() => creek.Floaters.Position.HasValue, 5);
+            Assert.That(IsActive(name), Is.True, $"{name} floats down the creek");
+            // Out from under the top controls, in the open water.
+            yield return WaitFor(() => creek.Floaters.Position.Value.y < creek.AreaSize.y * 0.6f, 8);
+            yield return Shot("floater_on_water");
+            Vector2 at = creek.Floaters.Position.Value;
+            if (tap)
+                Assert.That(creek.Floaters.Tap(at), Is.True, "a tap picks a floater up");
+            else
+                creek.Sweep(at + new Vector2(-60, 0), at + new Vector2(60, 0));
+            Assert.That(creek.Floaters.Position.HasValue, Is.False, "caught");
+            yield return new WaitForSeconds(0.2f);
+            yield return Shot("floater_flight");
+            yield return new WaitForSeconds(0.6f);
+        }
 
         /// <summary>
         /// Removes the running game before a test writes a save for the next load, so a late
