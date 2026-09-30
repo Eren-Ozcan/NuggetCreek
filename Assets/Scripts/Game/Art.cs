@@ -148,8 +148,9 @@ namespace NuggetCreek.Game
 
     /// <summary>
     /// A moving piece: a "flow" band whose texture slides downward at <see cref="speed"/> texture
-    /// pixels per second and shows <see cref="repeat"/> texture heights, or a "dip" part that hangs
-    /// from its pivot and dips into the water.
+    /// pixels per second and shows <see cref="repeat"/> texture heights, a "dip" part that hangs
+    /// from its pivot and dips into the water, an "arm" (a crane) that swings about its pivot, or a
+    /// "drum" whose holes turn round at <see cref="speed"/> degrees per second.
     /// </summary>
     [Serializable]
     public sealed class DredgePart
@@ -172,5 +173,21 @@ namespace NuggetCreek.Game
         public float jawOpen;
         /// <summary>The halves' angle in degrees when bitten shut; below 0 closes past the drawing.</summary>
         public float jawShut;
+        /// <summary>How far an arm swings each way, in degrees.</summary>
+        public float swing;
+        /// <summary>The arm this part hangs from, by its file name; empty when it hangs from nothing.</summary>
+        public string on;
+        /// <summary>
+        /// A line drawn from <c>file_tether</c> between the part and the drawing: x, y on the part,
+        /// x, y on the drawing (both from the bottom-left corner), then its width as a share of the
+        /// drawing's height.
+        /// </summary>
+        public float[] tether;
+        /// <summary>A drum's holes as angle from its crest (degrees) and height pairs, the height on the crest from the part's bottom.</summary>
+        public float[] holes;
+        /// <summary>A drum hole's width and height, as fractions of the part; drawn from <c>file_hole</c>.</summary>
+        public float[] holeSize;
+        /// <summary>How far a row of holes drops at the drum's sides, as a fraction of the part's height.</summary>
+        public float sag;
     }
 }

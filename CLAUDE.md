@@ -70,7 +70,10 @@ it after re-cutting a dredge); the side-view creek paintings are only used on th
 dredge also writes its silhouette, its moving parts and `Dredge/parts.json` (part rects, chimneys,
 spray points; the spec is `DREDGE_PARTS` in the cutter), which `UI/DredgeParts.cs` animates.
 A grab bucket (`jaws` in the spec) is cut into `_fixed`, `_left` and `_right` layers with its own
-hinges; check new masks with a quick offline pose render before looking in the game.
+hinges. A crane (`arm`: pivot, swing, hull, beams, ropes) is cut into its own layer and the deck under
+it is filled along the planks; it swings and carries the grab (tiers 5, 7), with a code-drawn
+`tether` rope. A trommel (`drum`) keeps its shading still: its holes turn as separate images under a
+`_cover` layer (tiers 9, 10). Check new masks with a quick offline pose render before looking in the game.
 Painted top-down rivers go in `Sprites/Rivers/river_NN.png` and replace the code river per creek. On a fresh clone run
 `scripts/fetch-art.sh`, which copies them from `C:\Projects\pictures\nugget-creek\game-art\`
 (private pictures repo). Without it the game runs with the greybox shapes. The source sheets and
