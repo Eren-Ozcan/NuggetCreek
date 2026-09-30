@@ -26,7 +26,9 @@ namespace NuggetCreek.Balance
         public double FirstSessionMinutes = 10;
         /// <summary>Share of spawns caught by hand.</summary>
         public double CatchRate = 0.9;
-        /// <summary>Watches offline x2, chest x2, ad washes and the streak rescue.</summary>
+        /// <summary>Share of river floaters (chests, pouches, crates) caught; they are big and slow.</summary>
+        public double FloaterCatchRate = 0.95;
+        /// <summary>Watches offline x2, chest and crate x2, Gem Pouches, ad washes and the streak rescue.</summary>
         public bool WatchesAds = true;
         /// <summary>Guild ads watched per day (Guild XP).</summary>
         public int GuildAdsPerDay = 2;
@@ -57,6 +59,9 @@ namespace NuggetCreek.Balance
         public int CrewHired;
         public int MotherLodes;
         public int ChestsOpened;
+        public int CratesOpened;
+        public int PouchesOpened;
+        public int FloatersMissed;
         public int Days;
         public long GemsEarned;
 
@@ -166,11 +171,13 @@ namespace NuggetCreek.Balance
                 Dollars("swipe", () => Swipe(Step));
                 Dollars("idle (open)", () => session.TickIdle(Step));
                 session.TickPlay(Step);
+                Floaters();
                 session.TickCandidates(Step);
                 session.TickShop(Step);
                 if (session.MotherLodeDue)
                     Dollars("Mother Lode", RunMotherLode);
                 Dollars("chests", Chests);
+                Dollars("crates", Crates);
                 Spend();
                 Gems("goal", () => session.ClaimGoal());
                 if (WantsRebirth())
@@ -247,11 +254,6 @@ namespace NuggetCreek.Balance
                     report.AdsWatched++;
                 Gems(ad ? "wash (ad)" : "wash (free)", () => session.Wash(ad) >= 0);
             }
-            while (profile.WatchesAds && session.GoalAdsLeftToday > 0)
-            {
-                report.AdsWatched++;
-                Gems("goal ad", () => session.ClaimGoalAd());
-            }
             for (int slot = 0; slot < session.JobCount; slot++)
             {
                 int index = slot;
@@ -326,6 +328,45 @@ namespace NuggetCreek.Balance
             }
             if (session.Progress.ChestsWaiting > 0 && !session.Progress.ChestOpening)
                 session.StartChest();
+        }
+
+        /// <summary>A floater on the water is caught or missed at once; the crossing time is not modelled.</summary>
+        void Floaters()
+        {
+            if (session.LaunchFloater() == null)
+                return;
+            if (rng.NextDouble() < profile.FloaterCatchRate)
+            {
+                session.CatchFloater();
+                return;
+            }
+            session.MissFloater();
+            report.FloatersMissed++;
+        }
+
+        void Crates()
+        {
+            while (session.Progress.CratesWaiting > 0)
+            {
+                CrateReward crate = session.ClaimCrate();
+                report.CratesOpened++;
+                if (profile.WatchesAds)
+                {
+                    session.DoubleCrate(crate);
+                    report.AdsWatched++;
+                }
+            }
+            while (session.Progress.PouchesWaiting > 0)
+            {
+                if (!profile.WatchesAds)
+                {
+                    session.DiscardPouch();
+                    continue;
+                }
+                report.AdsWatched++;
+                report.PouchesOpened++;
+                Gems("gem pouch (ad)", () => session.OpenPouch() > 0);
+            }
         }
 
         // --- Spending ---

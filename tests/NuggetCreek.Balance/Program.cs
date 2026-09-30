@@ -211,17 +211,18 @@ if (args.Contains("--offline"))
                 double perDay = reports.Average(r => r.GemsBySource.TryGetValue(source, out long v) ? v : 0) / days;
                 Console.WriteLine($"  {source,-20}{perDay,8:0.0}");
             }
-            Console.WriteLine($"  {"total",-20}{total,8:0.0}   (budget 5.0.6: 74)");
+            Console.WriteLine($"  {"total",-20}{total,8:0.0}   (budget 5.0.6: 73)");
             double adGems = reports.Average(r => (r.GemsBySource.TryGetValue("wash (ad)", out long w) ? w : 0)
-                                                 + (r.GemsBySource.TryGetValue("goal ad", out long g) ? g : 0)) / days;
+                                                 + (r.GemsBySource.TryGetValue("gem pouch (ad)", out long g) ? g : 0)) / days;
             Console.WriteLine($"  rewarded share: {(total > 0 ? adGems / total : 0):0%} (limit 35%)");
             if (profile.WatchesAds)
-                pass &= total > 0 && adGems / total <= 0.35 && Math.Abs(total - 74) / 74 <= 0.10;
+                pass &= total > 0 && adGems / total <= 0.35 && Math.Abs(total - 73) / 73 <= 0.10;
             Console.WriteLine("Gem spend over the run (mean):");
             foreach (string sink in reports.SelectMany(r => r.GemsBySpend.Keys).Distinct().OrderBy(k => k))
                 Console.WriteLine($"  {sink,-20}{reports.Average(r => r.GemsBySpend.TryGetValue(sink, out long v) ? v : 0),8:0}");
             Console.WriteLine($"crew hired: {reports.Average(r => r.CrewHired):0.0}; Mother Lodes/day: {reports.Average(r => r.MotherLodes) / days:0.0}; " +
-                              $"chests/day: {reports.Average(r => r.ChestsOpened) / days:0.0}; ads/day: {reports.Average(r => r.AdsWatched) / days:0.0}; " +
+                              $"chests/day: {reports.Average(r => r.ChestsOpened) / days:0.0}; crates/day: {reports.Average(r => r.CratesOpened) / days:0.0}; " +
+                              $"pouches/day: {reports.Average(r => r.PouchesOpened) / days:0.0}; floaters missed/day: {reports.Average(r => r.FloatersMissed) / days:0.0}; ads/day: {reports.Average(r => r.AdsWatched) / days:0.0}; " +
                               $"offline payout in hours of the offline rate/day (Daily Wash boosts counted, the x2 ad not): {reports.Average(r => r.OfflineSecondsCredited) / days / 3600:0.0}");
 
             Console.WriteLine("Dollars before the first rebirth, by source:");
