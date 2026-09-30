@@ -27,7 +27,7 @@ namespace NuggetCreek.Game.UI
         static readonly string[] MilestoneTexts =
         {
             "The vein opens (2 levels)",
-            "+2 chest capacity, chests open 25% faster",
+            "Crates pay x2, chests open 25% faster",
             "Mother Lode combo up to x15",
             "All income x1.5",
             "Prospecting XP x1.5",

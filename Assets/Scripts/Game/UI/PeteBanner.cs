@@ -78,7 +78,7 @@ namespace NuggetCreek.Game.UI
                 case PeteLine.FirstDust: return "That's gold dust. Keep at it and the creek pays.";
                 case PeteLine.UpgradesOpen: return "Got a few dollars. A better shovel wouldn't hurt.";
                 case PeteLine.AmosForHire: return "Amos is looking for work. He pans even when you don't.";
-                case PeteLine.FirstChest: return "A chest washed up. Open it.";
+                case PeteLine.FirstChest: return "A chest is floating by. Grab it!";
                 case PeteLine.MapOpen: return "Pine Hollow's upstream. Richer water, if you can pay the claim.";
                 case PeteLine.FreeHire: return "Two drifters want work. Pick one. First one's on me.";
                 case PeteLine.DailyOpen: return "Come by every day. The creek rewards regulars.";

@@ -47,14 +47,15 @@ namespace NuggetCreek.Game
         CreekView creek;
         CollectionPanel collection;
         ChestModal chestModal;
+        CrateModal crateModal;
+        PouchModal pouchModal;
+        TrayView tray;
         GuildPanel guild;
         DailyPanel daily;
         Text dailyLabel;
         long debugDayShift;
         Text guildLabel;
         Button claimChip;
-        Button chestChip;
-        Text chestChipLabel;
         Text collectionLabel;
         UpgradesPanel upgrades;
         MapPanel map;
@@ -68,8 +69,6 @@ namespace NuggetCreek.Game
         readonly Dictionary<Button, (Image icon, Sprite open)> lockIcons = new Dictionary<Button, (Image, Sprite)>();
         readonly Dictionary<Button, Image> badges = new Dictionary<Button, Image>();
         Button goalButton;
-        Button goalAd;
-        Text goalAdLabel;
         Text statusLabel;
         Text goalLabel;
         Text mapLabel;
@@ -185,7 +184,7 @@ namespace NuggetCreek.Game
             BigNumber idle = session.TickIdle(dt);
             session.TickCandidates(dt);
             bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen || shop.IsOpen
-                || gate.IsOpen || settings.IsOpen || cloudChoice.IsOpen;
+                || gate.IsOpen || settings.IsOpen || cloudChoice.IsOpen || crateModal.IsOpen || pouchModal.IsOpen;
             creek.InputEnabled = !modalOpen;
             if (motherLode.IsActive)
             {
@@ -215,6 +214,8 @@ namespace NuggetCreek.Game
             map.Refresh();
             collection.Refresh();
             chestModal.Refresh();
+            crateModal.Refresh();
+            pouchModal.Refresh();
             guild.Refresh();
             daily.Refresh();
             shop.Refresh();
@@ -517,6 +518,14 @@ namespace NuggetCreek.Game
             collection = new CollectionPanel(session, root);
             chestModal = new ChestModal(session, ads, root);
             chestModal.Claimed += Save;
+            crateModal = new CrateModal(session, ads, root);
+            crateModal.Claimed += Save;
+            pouchModal = new PouchModal(session, ads, root);
+            pouchModal.Changed += Save;
+            // A caught floater flies to its tile in the tray (design doc 3.1.4).
+            creek.Floaters.TrayPoint = kind => creek.ToCreek(tray.LandingPoint(kind));
+            creek.Floaters.SideInset = SideMargin + SideSize + SideGap;
+            creek.Floaters.Caught += _ => Save();
             guild = new GuildPanel(session, ads, root);
             guild.Reborn += Save;
             daily = new DailyPanel(session, ads, root);
@@ -676,6 +685,8 @@ namespace NuggetCreek.Game
         const float HudTop = 336;
         /// <summary>Height kept clear at the bottom for the map, the upgrade button and the shop.</summary>
         const float HudBottom = 250;
+        /// <summary>Screen kept free under the tray, for the shop button.</summary>
+        const float TrayBottom = 206;
         /// <summary>Gap between the screen edge and the button columns down each side.</summary>
         const float SideMargin = 14;
         const float SideSize = 118;
@@ -767,15 +778,22 @@ namespace NuggetCreek.Game
             // Right: things that come and go.
             RectTransform events = Column("EventColumn", root, Vector2.one, new Vector2(-SideMargin, -164), TextAnchor.UpperRight);
             dailyButton = SquareButton("DailyButton", events, Art.Icon("gift"), Palette.ButtonAlt, () => daily.Open(), out dailyLabel);
-            chestChip = SquareButton("ChestChip", events, Art.Get("Chests/creek_closed") ?? Art.Icon("timer"), Palette.Nugget, () => chestModal.Open(), out chestChipLabel);
-            chestChip.SetActive(false);
             Button collectionButton = SquareButton("CollectionButton", events, Art.NuggetIcon, Palette.ButtonAlt, () => collection.Open(), out collectionLabel);
             summonLode = SquareButton("SummonLode", events, Art.Get("MotherLode/boulder_0"), Palette.GemButton, SummonMotherLode, out Text summonLabel);
             summonLabel.SetText(Effects.Gems(session.Economy.Config.MotherLodeSummonGems));
             summonLode.SetActive(false);
-            // Goal bonus (design doc 8.4): a rewarded ad for a few Gems, a handful of times a day.
-            goalAd = SquareButton("GoalAd", events, Art.Icon("watch_ad"), Palette.Ad, WatchGoalAd, out goalAdLabel);
-            goalAd.SetActive(false);
+            // Under them, the tray: one tile per caught chest, pouch and crate (design doc 3.1.4).
+            tray = new TrayView(session, events, SideSize, SideGap, TrayBottom, OpenTrayItem);
+        }
+
+        void OpenTrayItem(FloaterKind kind)
+        {
+            switch (kind)
+            {
+                case FloaterKind.Chest: chestModal.Open(); break;
+                case FloaterKind.Pouch: pouchModal.Open(); break;
+                default: crateModal.Open(); break;
+            }
         }
 
         void BuildBottom(Transform root)
@@ -935,7 +953,6 @@ namespace NuggetCreek.Game
             RefreshCreekBadge();
             RefreshCrewColumn();
             RefreshGoal();
-            RefreshGoalAd();
 
             bool upgradeBadge = upgrades.AnythingAffordable();
             bool mapBadge = session.CanAfford(session.NextRegionCost);
@@ -945,8 +962,6 @@ namespace NuggetCreek.Game
             SetLock(shopButton, shopLabel, Feature.Shop, "Shop", "Pine Hollow", shop.HasTimedOffer());
             collectionLabel.SetText($"{session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
-            chestChip.SetActive(session.HasChest && !chestModal.IsOpen && !motherLode.IsActive);
-            chestChipLabel.SetText(ChestChipText());
             SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", "Red Gulch");
             claimChip.SetActive(session.RebirthSuggested && !guild.IsOpen && !motherLode.IsActive);
 
@@ -965,6 +980,8 @@ namespace NuggetCreek.Game
                 summonLode.interactable = canSummon;
             if (session.HasCandidates)
                 crewChipLabel.SetText(CandidateModal.Clock(progress.CandidateSecondsLeft));
+            // After the column's own buttons, so the tray knows how much room is left.
+            tray.Refresh(motherLode.IsActive);
         }
 
         /// <summary>A locked button stays visible and says what opens it (design doc 9.1, 12.2).</summary>
@@ -1061,28 +1078,6 @@ namespace NuggetCreek.Game
                 goalLabel.SetText($"Goal: {GoalText(goal)}  {session.GoalProgress(goal)}/{goal.Target}  (+{Effects.Gems(session.CurrentGoalReward)})");
         }
 
-        void RefreshGoalAd()
-        {
-            // Never an ad prompt in the first five minutes (design doc 9).
-            bool show = session.GoalAdsLeftToday > 0 && session.Progress.PlaySeconds >= 5 * 60 && !motherLode.IsActive;
-            goalAd.SetActive(show);
-            if (!show)
-                return;
-            goalAdLabel.SetText($"+{session.Economy.Config.GoalAdGems} Gems");
-            if (goalAd.interactable != ads.IsLoaded)
-                goalAd.interactable = ads.IsLoaded;
-        }
-
-        void WatchGoalAd()
-        {
-            ads.Show("goal_bar", rewarded =>
-            {
-                if (rewarded && session.ClaimGoalAd())
-                    Save();
-                ads.Load();
-            });
-        }
-
         void ClaimGoal()
         {
             if (session.ClaimGoal())
@@ -1126,16 +1121,6 @@ namespace NuggetCreek.Game
             long today = GameSession.DayNumber(session.NowUtc.Value, offset, session.Economy.Config.DailyRolloverHour);
             if (session.UpdateDay(today + debugDayShift))
                 Save();
-        }
-
-        string ChestChipText()
-        {
-            PlayerProgress progress = session.Progress;
-            if (session.ChestReady)
-                return "Chest ready!";
-            if (progress.ChestOpening)
-                return "Chest " + CandidateModal.Clock(progress.ChestSecondsLeft);
-            return progress.ChestsWaiting == 1 ? "Open chest" : $"Chests x{progress.ChestsWaiting}";
         }
 
         void WatchLateDouble()
@@ -1182,6 +1167,7 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 12, "Notif 1m", () => debugNotifSoon = true);
             AddDebugButton(column, 13, "Ask notif", () => OpenNotifAsk(false));
             AddDebugButton(column, 14, "Reset", ResetGame);
+            AddDebugButton(column, 15, "Floaters now", DebugFloaters);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
@@ -1242,11 +1228,18 @@ namespace NuggetCreek.Game
             config.VeinMaxLevelBase = 5;
         }
 
-        void AddDebugChest()
+        /// <summary>A pouch (with a trusted day) and a crate float in next, past the tutorial chest if needed.</summary>
+        void DebugFloaters()
         {
             PlayerProgress progress = session.Progress;
-            progress.ChestsWaiting = System.Math.Min(progress.ChestsWaiting + 1, session.ChestCapacity);
+            progress.ChestsOpened = System.Math.Max(1, progress.ChestsOpened);
+            progress.CrateSecondsLeft = 0.01;
+            progress.PouchSecondsLeft = 0.01;
+            progress.PouchesToday = 0;
         }
+
+        /// <summary>Earns a creek chest now; it floats down the creek like one earned by catches.</summary>
+        void AddDebugChest() => session.Progress.ChestsDue++;
 
         void ResetGame()
         {
