@@ -195,23 +195,26 @@ namespace NuggetCreek.Core
         /// <summary>The unlocking chest was finished with Gems (chest_open.method).</summary>
         bool chestBoughtOpen;
 
-        public int ChestCapacity => Config.ChestCapacity + (int)Math.Round(Stats[Stat.ChestCapacity]);
-
         /// <summary>Free unlock time of a chest after the Guild's chest milestone.</summary>
         public double ChestOpenSeconds => Config.ChestOpenSeconds * Stats.CostMultiplier(Stat.ChestTime);
 
-        /// <summary>Counts a manual catch; every ChestEveryCatches (the first after fewer) earns a chest.</summary>
+        /// <summary>
+        /// Counts a manual catch; every ChestEveryCatches (the first after fewer) earns a chest,
+        /// which then floats down the creek to be caught (design doc 3.1.4).
+        /// </summary>
         void CountTowardChest()
         {
             Progress.CatchesTowardChest++;
-            bool first = Progress.ChestsOpened == 0 && Progress.ChestsWaiting == 0 && !Progress.ChestOpening;
+            bool first = FirstChestAhead && Progress.ChestsDue == 0;
             int needed = first ? Config.FirstChestAfterCatches : Config.ChestEveryCatches;
             if (Progress.CatchesTowardChest < needed)
                 return;
             Progress.CatchesTowardChest = 0;
-            if (Progress.ChestsWaiting < ChestCapacity)
-                Progress.ChestsWaiting++;
+            Progress.ChestsDue++;
         }
+
+        /// <summary>No chest has been caught yet: the next one is the tutorial's, which opens at once.</summary>
+        bool FirstChestAhead => Progress.ChestsOpened == 0 && Progress.ChestsWaiting == 0 && !Progress.ChestOpening;
 
         public bool HasChest => Progress.ChestsWaiting > 0 || Progress.ChestOpening;
 

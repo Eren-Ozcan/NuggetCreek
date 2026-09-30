@@ -28,6 +28,14 @@ namespace NuggetCreek.Core.Tests
                 session.Collect(CollectibleKind.GoldDust, false);
         }
 
+        /// <summary>An earned chest floats down the creek and is caught into the tray (design doc 3.1.4).</summary>
+        static void CatchChestFromRiver(GameSession session)
+        {
+            session.TickPlay(10);
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Chest));
+            Assert.That(session.CatchFloater(), Is.True);
+        }
+
         // --- Catalog ---
 
         [Test]
@@ -155,6 +163,9 @@ namespace NuggetCreek.Core.Tests
             Catch(session, 149);
             Assert.That(session.HasChest, Is.False);
             Catch(session, 1);
+            Assert.That(session.Progress.ChestsDue, Is.EqualTo(1), "it floats in first");
+            Assert.That(session.HasChest, Is.False);
+            CatchChestFromRiver(session);
             Assert.That(session.Progress.ChestsWaiting, Is.EqualTo(1));
 
             Assert.That(session.StartChest(), Is.True);
@@ -173,6 +184,7 @@ namespace NuggetCreek.Core.Tests
             Catch(session, 249);
             Assert.That(session.HasChest, Is.False);
             Catch(session, 1);
+            CatchChestFromRiver(session);
             Assert.That(session.StartChest(), Is.True);
             Assert.That(session.ChestReady, Is.False);
             Assert.That(session.ChestInstantCost, Is.EqualTo(5));
@@ -197,11 +209,15 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void ChestsBeyondCapacityAreLost()
+        public void EarnedChestsAreNeverLostToAFullTray()
         {
             GameSession session = NewSession(new PlayerProgress { ChestsOpened = 1 });
             Catch(session, 250 * 5);
-            Assert.That(session.Progress.ChestsWaiting, Is.EqualTo(3));
+            Assert.That(session.Progress.ChestsDue, Is.EqualTo(5));
+            for (int i = 0; i < 5; i++)
+                CatchChestFromRiver(session);
+            Assert.That(session.Progress.ChestsWaiting, Is.EqualTo(5));
+            Assert.That(session.TrayCount, Is.EqualTo(5));
         }
 
         [Test]

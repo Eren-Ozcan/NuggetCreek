@@ -161,9 +161,6 @@ namespace NuggetCreek.Core
 
         public int ChestEveryCatches = 250;
 
-        /// <summary>Earned chests that can wait unopened; more are lost. Storehouse raises it later.</summary>
-        public int ChestCapacity = 3;
-
         /// <summary>Free unlock time of a chest, counted only while the game is open. The first chest has none.</summary>
         public double ChestOpenSeconds = 10 * 60;
 
@@ -177,6 +174,34 @@ namespace NuggetCreek.Core
 
         /// <summary>Card rarity odds in a creek chest (Common, Rare, Legendary).</summary>
         public double[] ChestCardOdds = { 0.80, 0.18, 0.02 };
+
+        // --- River floaters (3.1.4) ---
+
+        /// <summary>A Driftwood Crate floats in after a random stretch of play between these (seconds).</summary>
+        public double CrateMinSeconds = 110;
+
+        public double CrateMaxSeconds = 160;
+
+        /// <summary>A crate pays this many seconds of current income (Doc and the Guild milestone raise it).</summary>
+        public double CrateIncomeSeconds = 20;
+
+        /// <summary>A Gem Pouch floats in after a random stretch of play between these, at most GemPouchesPerDay a game day.</summary>
+        public double GemPouchMinSeconds = 360;
+
+        public double GemPouchMaxSeconds = 480;
+
+        public int GemPouchesPerDay = 4;
+
+        /// <summary>Gems in a pouch, drawn evenly from this range; it opens only with a rewarded ad.</summary>
+        public int GemPouchMinGems = 1;
+
+        public int GemPouchMaxGems = 6;
+
+        /// <summary>Wait after a floater is caught or lost before the next goes on the water.</summary>
+        public double FloaterGapSeconds = 5;
+
+        /// <summary>A floater crosses the creek this many times slower than gold.</summary>
+        public double FloaterSlowdown = 3;
 
         /// <summary>Gear boxes, indexed Green, Orange, Red: Gem price and cards inside.</summary>
         public int[] GearBoxGems = { 60, 300, 900 };
@@ -223,7 +248,8 @@ namespace NuggetCreek.Core
         public int[] GuildMilestoneLevels = { 8, 20, 40, 65, 100 };
 
         public int MilestoneVeinLevels = 2;
-        public int MilestoneChestCapacity = 2;
+        /// <summary>Crate value bonus at the chest milestone (+1 = x2).</summary>
+        public double MilestoneCrateValue = 1;
         public double MilestoneChestTime = -0.25;
         public int MilestoneMotherLodeCombo = 5;
         public double MilestoneIncomeMultiplier = 1.5;

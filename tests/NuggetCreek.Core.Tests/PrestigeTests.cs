@@ -166,9 +166,10 @@ namespace NuggetCreek.Core.Tests
             session.RebuildStats();
             Assert.That(session.VeinMaxLevel, Is.EqualTo(2));
 
+            BigNumber crate = session.CrateDollars;
             session.Progress.GuildLevel = 20;
             session.RebuildStats();
-            Assert.That(session.ChestCapacity, Is.EqualTo(5));
+            Assert.That(session.CrateDollars.ToDouble(), Is.EqualTo(crate.ToDouble() * 2).Within(crate.ToDouble() * 1e-9), "crates pay x2");
             session.StartChest();
             Assert.That(session.Progress.ChestSecondsLeft, Is.EqualTo(450).Within(1e-9));
 

@@ -50,6 +50,7 @@ namespace NuggetCreek.Core
                 ("catches_n", t.ManualCatches),
                 ("nuggets_n", t.Nuggets),
                 ("upgrades_n", t.Upgrades),
+                ("floaters_missed", t.FloatersMissed),
                 ("manual_log10", EventValues.Log10(t.ManualDollars)),
                 ("idle_log10", EventValues.Log10(t.IdleDollars)),
                 ("chest_log10", EventValues.Log10(t.ChestDollars)),

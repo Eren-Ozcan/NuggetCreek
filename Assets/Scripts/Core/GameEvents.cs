@@ -56,6 +56,8 @@ namespace NuggetCreek.Core
         public long ManualCatches;
         public long Nuggets;
         public long Upgrades;
+        /// <summary>Chests, crates and pouches that drifted out uncaught (design doc 3.1.4).</summary>
+        public long FloatersMissed;
         public BigNumber ManualDollars = BigNumber.Zero;
         public BigNumber IdleDollars = BigNumber.Zero;
         public BigNumber ChestDollars = BigNumber.Zero;

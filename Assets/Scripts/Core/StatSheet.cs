@@ -7,7 +7,7 @@ namespace NuggetCreek.Core
     /// stat add up; different stats multiply. Values are fractions (+0.2 = +20%), except
     /// the chance stats, which are absolute probability points, CollectibleLifetime,
     /// which is seconds, and the whole-number stats (vein levels and catches, offline cap
-    /// hours, chest capacity, Mother Lode max combo).
+    /// hours, Mother Lode max combo).
     /// </summary>
     public enum Stat
     {
@@ -26,7 +26,7 @@ namespace NuggetCreek.Core
         VeinMaxLevel,
         VeinCatchesPerLevel,
         OfflineCapHours,
-        ChestCapacity,
+        CrateValue,
         ChestTime,
         MotherLodeMaxCombo,
         DoubleCatch,

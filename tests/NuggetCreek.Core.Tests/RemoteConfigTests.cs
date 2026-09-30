@@ -57,7 +57,7 @@ namespace NuggetCreek.Core.Tests
             {
                 Pair("spawn_base", "0.95"),
                 Pair("tier_mult", "1.7"),
-                Pair("chest_capacity", "4"),
+                Pair("crate_income_seconds", "25"),
                 Pair("chest_card_odds", "[0.7, 0.25, 0.05]"),
                 Pair("gear_box_guarantee", "[\"Common\",\"rare\",\"Legendary\"]"),
                 Pair("rebirth_suggest_min_xp", "30"),
@@ -65,7 +65,7 @@ namespace NuggetCreek.Core.Tests
 
             Assert.That(config.SpawnBase, Is.EqualTo(0.95));
             Assert.That(config.TierMultiplier, Is.EqualTo(1.7));
-            Assert.That(config.ChestCapacity, Is.EqualTo(4));
+            Assert.That(config.CrateIncomeSeconds, Is.EqualTo(25));
             Assert.That(config.ChestCardOdds, Is.EqualTo(new[] { 0.7, 0.25, 0.05 }));
             Assert.That(config.GearBoxGuarantee, Is.EqualTo(new[] { Rarity.Common, Rarity.Rare, Rarity.Legendary }));
             Assert.That(config.RebirthSuggestMinXp, Is.EqualTo(30));
@@ -80,7 +80,7 @@ namespace NuggetCreek.Core.Tests
             {
                 Pair("spawn_base", "fast"),
                 Pair("spawn_cap", "NaN"),
-                Pair("chest_capacity", "3.5"),
+                Pair("gem_pouches_per_day", "3.5"),
                 Pair("region_unlock_costs", "[0, 1000]"),
                 Pair("chest_card_odds", "0.3,0.1,0.05"),
                 Pair("gear_box_guarantee", "[\"Common\",\"Epic\",\"Legendary\"]"),

@@ -53,6 +53,7 @@ namespace NuggetCreek.Core
         /// <summary>Set by the IAP pack (phase 3); the greybox keeps it locked.</summary>
         public bool FourthGearSlotOwned;
 
+        /// <summary>Caught creek chests in the tray, not counting the one unlocking.</summary>
         public int ChestsWaiting;
 
         public bool ChestOpening;
@@ -63,6 +64,22 @@ namespace NuggetCreek.Core
         public int CatchesTowardChest;
 
         public int ChestsOpened;
+
+        // --- River floaters (design doc 3.1.4) ---
+
+        /// <summary>Creek chests earned by catches that still have to float down and be caught.</summary>
+        public int ChestsDue;
+
+        /// <summary>Caught Driftwood Crates and Gem Pouches waiting in the tray.</summary>
+        public int CratesWaiting;
+        public int PouchesWaiting;
+
+        /// <summary>Play seconds until the next crate or pouch is due; negative until the first is drawn.</summary>
+        public double CrateSecondsLeft = -1;
+        public double PouchSecondsLeft = -1;
+
+        /// <summary>Gem Pouches put on the water this game day.</summary>
+        public int PouchesToday;
 
         /// <summary>Guild perk ranks, indexed like <see cref="GameCatalog.Perks"/>.</summary>
         public int[] PerkRanks = new int[GameCatalog.Perks.Count];
@@ -307,6 +324,14 @@ namespace NuggetCreek.Core
             ChestSecondsLeft = Math.Max(0, ChestSecondsLeft);
             CatchesTowardChest = Math.Max(0, CatchesTowardChest);
             ChestsOpened = Math.Max(0, ChestsOpened);
+            ChestsDue = Math.Max(0, ChestsDue);
+            CratesWaiting = Math.Max(0, CratesWaiting);
+            PouchesWaiting = Math.Max(0, PouchesWaiting);
+            PouchesToday = Math.Max(0, PouchesToday);
+            if (double.IsNaN(CrateSecondsLeft))
+                CrateSecondsLeft = -1;
+            if (double.IsNaN(PouchSecondsLeft))
+                PouchSecondsLeft = -1;
             CrewCandidates = Array.FindAll(CrewCandidates ?? new int[0],
                 index => index >= 0 && index < GameCatalog.Crew.Count && CrewLevels[index] == 0);
             if (CrewCandidates.Length == 0)

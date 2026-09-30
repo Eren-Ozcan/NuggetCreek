@@ -182,7 +182,7 @@ namespace NuggetCreek.Core
                 Stats.Add(Stat.VeinMaxLevel, Config.MilestoneVeinLevels);
             if (HasMilestone(1))
             {
-                Stats.Add(Stat.ChestCapacity, Config.MilestoneChestCapacity);
+                Stats.Add(Stat.CrateValue, Config.MilestoneCrateValue);
                 Stats.Add(Stat.ChestTime, Config.MilestoneChestTime);
             }
             if (HasMilestone(2))

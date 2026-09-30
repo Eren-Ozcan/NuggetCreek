@@ -116,7 +116,7 @@ namespace NuggetCreek.Core
                 case PeteLine.AmosForHire:
                     return Progress.AmosLevel == 0 && CanAfford(AmosNextCost);
                 case PeteLine.FirstChest:
-                    return HasChest && Progress.ChestsOpened == 0;
+                    return (HasChest || Progress.ChestsDue > 0) && Progress.ChestsOpened == 0;
                 case PeteLine.MapOpen:
                     return IsUnlocked(Feature.Map) && Progress.BestRegionsUnlocked == 1;
                 case PeteLine.FreeHire:

@@ -67,6 +67,8 @@ namespace NuggetCreek.Core
             p.TierIndex = Math.Min(p.TierIndex, Config.TierCount - 1);
             p.AmosLevel = Math.Min(p.AmosLevel, Config.AmosMaxLevel);
             p.GuildLevel = Math.Min(p.GuildLevel, Config.GuildMaxLevel);
+            p.CrateSecondsLeft = Math.Min(p.CrateSecondsLeft, Config.CrateMaxSeconds);
+            p.PouchSecondsLeft = Math.Min(p.PouchSecondsLeft, Config.GemPouchMaxSeconds);
         }
 
         public void RebuildStats()
@@ -505,7 +507,10 @@ namespace NuggetCreek.Core
 
         // --- Mother Lode (design doc 3.4) ---
 
-        /// <summary>Counts play time toward the Mother Lode; call every frame while the creek runs.</summary>
+        /// <summary>
+        /// Counts play time toward the Mother Lode, the chest unlock and the river floaters; call
+        /// every frame while the creek runs with no panel over it.
+        /// </summary>
         public void TickPlay(double deltaSeconds)
         {
             if (deltaSeconds <= 0)
@@ -513,6 +518,7 @@ namespace NuggetCreek.Core
             Progress.PlaySeconds += deltaSeconds;
             Progress.SecondsSinceMotherLode += deltaSeconds;
             TickChest(deltaSeconds);
+            TickRiver(deltaSeconds);
             CheckFeatureUnlocks();
         }
 
