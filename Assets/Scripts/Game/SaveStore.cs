@@ -44,6 +44,13 @@ namespace NuggetCreek.Game
             public double chestSecondsLeft;
             public int catchesTowardChest;
             public int chestsOpened;
+            public int chestsDue;
+            public int cratesWaiting;
+            public int pouchesWaiting;
+            // Older saves have no river timers; -1 draws a fresh wait.
+            public double crateSecondsLeft = -1;
+            public double pouchSecondsLeft = -1;
+            public int pouchesToday;
             public int[] perkRanks;
             public int guildLevel;
             public long guildXp;
@@ -181,6 +188,12 @@ namespace NuggetCreek.Game
                 ChestSecondsLeft = data.chestSecondsLeft,
                 CatchesTowardChest = data.catchesTowardChest,
                 ChestsOpened = data.chestsOpened,
+                ChestsDue = data.chestsDue,
+                CratesWaiting = data.cratesWaiting,
+                PouchesWaiting = data.pouchesWaiting,
+                CrateSecondsLeft = data.crateSecondsLeft,
+                PouchSecondsLeft = data.pouchSecondsLeft,
+                PouchesToday = data.pouchesToday,
                 PerkRanks = data.perkRanks,
                 GuildLevel = data.guildLevel,
                 GuildXp = data.guildXp,
@@ -281,6 +294,12 @@ namespace NuggetCreek.Game
                 chestSecondsLeft = progress.ChestSecondsLeft,
                 catchesTowardChest = progress.CatchesTowardChest,
                 chestsOpened = progress.ChestsOpened,
+                chestsDue = progress.ChestsDue,
+                cratesWaiting = progress.CratesWaiting,
+                pouchesWaiting = progress.PouchesWaiting,
+                crateSecondsLeft = progress.CrateSecondsLeft,
+                pouchSecondsLeft = progress.PouchSecondsLeft,
+                pouchesToday = progress.PouchesToday,
                 perkRanks = progress.PerkRanks,
                 guildLevel = progress.GuildLevel,
                 guildXp = progress.GuildXp,
