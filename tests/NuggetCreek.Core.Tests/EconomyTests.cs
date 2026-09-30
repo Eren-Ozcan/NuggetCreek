@@ -306,7 +306,7 @@ namespace NuggetCreek.Core.Tests
         {
             StatSheet s = Sheet((Stat.MotherLodeFrequency, -0.3), (Stat.CollectibleLifetime, 1.5));
             Assert.That(economy.MotherLodeEveryCollectibles(s), Is.EqualTo(280));
-            Assert.That(economy.CollectibleLifetimeSeconds(s), Is.EqualTo(4.5));
+            Assert.That(economy.CollectibleLifetimeSeconds(s), Is.EqualTo(6));
         }
 
         // Design doc 5.0.3 table.

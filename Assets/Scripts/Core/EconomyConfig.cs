@@ -32,7 +32,7 @@ namespace NuggetCreek.Core
         public double SpawnCap = 1.5;
 
         /// <summary>Seconds a collectible stays on screen before it is lost.</summary>
-        public double CollectibleLifetimeSeconds = 3;
+        public double CollectibleLifetimeSeconds = 4.5;
 
         public double NuggetChanceBase = 0.05;
 
