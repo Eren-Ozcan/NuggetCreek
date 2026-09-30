@@ -10,6 +10,7 @@
     "com.google.play.games": "https://github.com/playgameservices/play-games-plugin-for-unity.git?path=/Assets/Public/GooglePlayGames/com.google.play.games#v2.2.1",
     "com.revenuecat.purchases-unity": "9.11.1",
     "com.unity.2d.sprite": "1.0.0",
+    "com.unity.inputsystem": "1.20.0",
     "com.unity.render-pipelines.universal": "17.3.0",
     "com.unity.test-framework": "1.6.0",
     "com.unity.ugui": "2.0.0",
