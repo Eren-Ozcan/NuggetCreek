@@ -10,7 +10,7 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
   `Stat`/`StatSheet`, `GameCatalog` (upgrades, 16 crew, progress goals),
   `OfflineEarnings`, `RewardedDoubleButton`, `SaveEnvelope`, `PacingModel`,
   `PlayerProgress` (save data) and `GameSession` (rules: collect, idle, offline, purchases,
-  Gems, crew hires and candidates, goals).
+  Gems, crew hires and candidates, goals, river floaters and the tray).
   No `UnityEngine` here — platform code (ads, Remote Config, Keystore, clocks) lives in
   other assemblies and feeds this one plain values.
 - `Assets/Scripts/Game/` — Unity layer (`NuggetCreek.Game`): `GameRoot` builds the whole
@@ -82,6 +82,9 @@ re-cutting, copy `Assets/Resources` back there, then commit and push the picture
 The painted map (`Sprites/Map/`: four stacked panels plus `markers.json`, one marker per creek)
 comes from `tools/build_map.py`, which evens out the panel seams; without it `MapPanel` falls
 back to a plain list.
+River floaters (`UI/RiverFloaters.cs`, tray in `UI/TrayView.cs`) use `Sprites/Chests/crate.png` and
+`Sprites/Chests/gem_pouch.png` when present; until they are drawn, stand-ins are built from the chest
+drawing and the Gem icon.
 
 Audio follows the same path: `Assets/Resources/Audio/{Music,SFX}/` (gitignored), masters in
 `game-art/Resources/Audio/`, copied by `fetch-art.sh` when present, file names as in section 6 of
