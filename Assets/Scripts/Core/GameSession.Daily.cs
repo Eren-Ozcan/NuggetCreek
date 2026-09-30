@@ -88,7 +88,7 @@ namespace NuggetCreek.Core
 
             Progress.FreeWashUsed = false;
             Progress.AdWashes = 0;
-            Progress.GoalAds = 0;
+            Progress.PouchesToday = 0;
             StartDayOffers();
             return true;
         }
@@ -220,20 +220,6 @@ namespace NuggetCreek.Core
                 Progress.ChestsWaiting += Config.WashChests[outcome];
             CountJob(DailyJobKind.Washes);
             return outcome;
-        }
-
-        // --- Goal bar ad (8.4 goal bonus) ---
-
-        public int GoalAdsLeftToday => DayKnown ? Math.Max(0, Config.GoalAdsPerDay - Progress.GoalAds) : 0;
-
-        /// <summary>Pays the goal bar's Gems after a rewarded ad; false when today's ads are used up.</summary>
-        public bool ClaimGoalAd()
-        {
-            if (GoalAdsLeftToday <= 0)
-                return false;
-            Progress.GoalAds++;
-            EarnGems(Config.GoalAdGems, "goal_ad");
-            return true;
         }
 
         // --- Income boost (real time) ---

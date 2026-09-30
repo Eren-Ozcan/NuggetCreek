@@ -60,7 +60,6 @@ namespace NuggetCreek.Game
             public bool[] jobClaimed;
             public bool freeWashUsed;
             public int adWashes;
-            public int goalAds;
             public double boostMultiplier;
             public double boostEndUtc;
             public int peteSeen;
@@ -196,7 +195,6 @@ namespace NuggetCreek.Game
                 JobClaimed = data.jobClaimed,
                 FreeWashUsed = data.freeWashUsed,
                 AdWashes = data.adWashes,
-                GoalAds = data.goalAds,
                 BoostMultiplier = data.boostMultiplier,
                 BoostEndUtc = data.boostEndUtc,
                 PeteSeen = data.peteSeen,
@@ -298,7 +296,6 @@ namespace NuggetCreek.Game
                 jobClaimed = progress.JobClaimed,
                 freeWashUsed = progress.FreeWashUsed,
                 adWashes = progress.AdWashes,
-                goalAds = progress.GoalAds,
                 boostMultiplier = progress.BoostMultiplier,
                 boostEndUtc = progress.BoostEndUtc,
                 peteSeen = progress.PeteSeen,

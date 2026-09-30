@@ -274,11 +274,6 @@ namespace NuggetCreek.Core
 
         public int DailyJobGems = 10;
 
-        /// <summary>Rewarded ad on the goal bar (design doc 8.4 "goal bonus"): Gems per ad and ads per game day.</summary>
-        public int GoalAdGems = 3;
-
-        public int GoalAdsPerDay = 5;
-
         /// <summary>Washes after the free one, each after a rewarded ad.</summary>
         public int WashAdMax = 4;
 

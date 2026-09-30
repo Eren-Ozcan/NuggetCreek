@@ -244,21 +244,5 @@ namespace NuggetCreek.Core.Tests
             // 2 h away: 2 h at the base rate plus 1 h of boost on top.
             Assert.That(result.Amount.ToDouble(), Is.EqualTo(rate.ToDouble() * 3 * 3600).Within(rate.ToDouble() * 1e-6));
         }
-
-        // --- Goal bar ad ---
-
-        [Test]
-        public void GoalBarAdPaysThreeGemsFiveTimesADay()
-        {
-            GameSession session = NewSession();
-            Assert.That(session.ClaimGoalAd(), Is.False, "needs a trusted day");
-            session.UpdateDay(100);
-            for (int i = 0; i < 5; i++)
-                Assert.That(session.ClaimGoalAd(), Is.True);
-            Assert.That(session.ClaimGoalAd(), Is.False);
-            Assert.That(session.Progress.Gems, Is.EqualTo(15));
-            session.UpdateDay(101);
-            Assert.That(session.GoalAdsLeftToday, Is.EqualTo(5));
-        }
     }
 }
