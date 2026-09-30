@@ -54,6 +54,9 @@ namespace NuggetCreek.Game.UI
         public static readonly Color ButtonAlt = new Color32(0x2F, 0x6E, 0x72, 0xFF);
         public static readonly Color Ad = new Color32(0x7B, 0x4B, 0x7E, 0xFF);
         public static readonly Color Amos = new Color32(0x8D, 0x5E, 0x3A, 0xFF);
+        /// <summary>River floaters (design doc 3.1.4): weathered crate wood and pouch leather, never yellow.</summary>
+        public static readonly Color Driftwood = new Color32(0xA8, 0x6A, 0x3C, 0xFF);
+        public static readonly Color Leather = new Color32(0x7A, 0x4A, 0x2E, 0xFF);
         public static readonly Color Gem = new Color32(0x4F, 0xD1, 0x9A, 0xFF);
         /// <summary>Gem colour for numbers written on cream.</summary>
         public static readonly Color GemText = new Color32(0x1C, 0x7A, 0x66, 0xFF);

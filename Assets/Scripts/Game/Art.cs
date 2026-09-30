@@ -96,6 +96,11 @@ namespace NuggetCreek.Game
         /// <summary>HUD icon by file name, e.g. "map" or "lock".</summary>
         public static Sprite Icon(string name) => Get("Icons/" + name);
 
+        /// <summary>A river floater's picture (design doc 3.1.4); null until its art is drawn.</summary>
+        public static Sprite Floater(FloaterKind kind) =>
+            kind == FloaterKind.Chest ? Get("Chests/creek_float") ?? Get("Chests/creek_closed")
+            : Get(kind == FloaterKind.Crate ? "Chests/crate" : "Chests/gem_pouch");
+
         /// <summary>Painted map panels, bottom (0) to top.</summary>
         public const int MapPanelCount = 4;
 

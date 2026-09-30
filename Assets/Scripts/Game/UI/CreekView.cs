@@ -12,7 +12,8 @@ namespace NuggetCreek.Game.UI
     /// (plain, Rich, Giant) drift down the water on either side of the dredge, glinting under
     /// the surface, and a swipe over them collects them (design doc 3.1, 3.1.1): the money is
     /// paid at once, then the gold flies up to the dredge's chest. Rolls critical catches,
-    /// shows the vein level once it is open, and Amos panning while idle is active.
+    /// shows the vein level once it is open, and Amos panning while idle is active. Chests,
+    /// pouches and crates float on the surface among the gold (<see cref="RiverFloaters"/>).
     /// </summary>
     public sealed class CreekView : MonoBehaviour
     {
@@ -113,6 +114,9 @@ namespace NuggetCreek.Game.UI
         /// <summary>Raised when a manual catch finds a Nugget type for the first time.</summary>
         public event Action<int> NuggetDiscovered;
 
+        /// <summary>Chests, pouches and crates on the water (design doc 3.1.4).</summary>
+        public RiverFloaters Floaters { get; private set; }
+
         /// <summary>False while a modal covers the creek.</summary>
         public bool InputEnabled { get; set; } = true;
 
@@ -140,10 +144,14 @@ namespace NuggetCreek.Game.UI
             RectTransform wakeLayer = Ui.Rect("Wake", area).Fill();
             goldLayer = Ui.Rect("Gold", area).Fill();
             RectTransform dredgeLayer = Ui.Rect("Dredge", area).Fill();
+            // Floaters ride on the surface, over the gold and beside the dredge.
+            RectTransform floaterLayer = Ui.Rect("Floaters", area).Fill();
             flightLayer = Ui.Rect("Flights", area).Fill();
             particles = new Particles(Ui.Rect("Particles", area).Fill());
             dredge = dredgeLayer.gameObject.AddComponent<DredgeView>();
             dredge.Init(session, area, wakeLayer, particles);
+            Floaters = new RiverFloaters(session, area, floaterLayer, flightLayer, particles,
+                () => (river.WaterLeft, river.WaterRight), () => (dredge.HullLeft, dredge.HullRight));
             dredge.SetStage(topInset, bottomInset);
             GameObject trailObject = Ui.Rect("SwipeTrail", area).Fill().gameObject;
             trailObject.AddComponent<CanvasRenderer>();
@@ -196,6 +204,9 @@ namespace NuggetCreek.Game.UI
                 ScheduleNextSpawn();
             }
 
+            // A floater waits out a panel instead of drifting away under it.
+            if (InputEnabled)
+                Floaters.Tick(deltaTime, !ShowPlaying);
             AgeCollectibles(deltaTime);
             HandleSwipe();
             AgePopups(deltaTime);
@@ -213,6 +224,7 @@ namespace NuggetCreek.Game.UI
             dredge.Tick(deltaTime, RiverView.FlowSpeed, InputEnabled, river.Travel);
             trail.Tick(deltaTime);
             AgeFlights(deltaTime);
+            Floaters.TickFlight(deltaTime);
             particles.Tick(deltaTime);
             AgeCaption(deltaTime);
         }
@@ -419,6 +431,9 @@ namespace NuggetCreek.Game.UI
             // Local space is centred on the pivot; collectibles are placed from the bottom-left corner.
             Vector2 point = local - area.rect.min;
             trail.Add(point, lastPointer == null);
+            // Floaters can be picked up with a tap as well as a swipe.
+            if (lastPointer == null)
+                Floaters.Tap(point);
             // A swipe, not a tap: only a moving finger collects.
             if (lastPointer is Vector2 from)
             {
@@ -444,6 +459,7 @@ namespace NuggetCreek.Game.UI
         public void Sweep(Vector2 from, Vector2 point)
         {
             float radius = (float)session.CollectRadiusPixels;
+            Floaters.Sweep(from, point, radius);
             for (int i = live.Count - 1; i >= 0; i--)
             {
                 Collectible c = live[i];
@@ -639,6 +655,9 @@ namespace NuggetCreek.Game.UI
                     p.Stars.Fade(color.a);
             }
         }
+
+        /// <summary>A screen-space point in creek pixels from the bottom-left, the space floaters fly in.</summary>
+        public Vector2 ToCreek(Vector3 world) => (Vector2)area.InverseTransformPoint(world) - area.rect.min;
 
         /// <summary>A dark edge keeps light text readable on the river and the dredge.</summary>
         static Text Legible(Text label)
