@@ -8,9 +8,10 @@ namespace NuggetCreek.Game.UI
 {
     /// <summary>
     /// The tray down the right side (design doc 3.1.4): one tile per caught chest, pouch and
-    /// crate, chests first (the unlocking one on top), then pouches, then crates. As many tiles
-    /// show as fit above the shop button, at most <see cref="MaxTiles"/>; the rest wait out of
-    /// sight and a "+N" on the last tile says how many.
+    /// crate, chests first (the unlocking one on top), then pouches, then crates. Tiles are
+    /// pictures only: the unlocking chest shows its time left and a red "!" once it can open.
+    /// As many tiles show as fit above the shop button, at most <see cref="MaxTiles"/>; the rest
+    /// wait out of sight and a "+N" on the last tile says how many.
     /// </summary>
     public sealed class TrayView
     {
@@ -21,6 +22,7 @@ namespace NuggetCreek.Game.UI
             public Button Button;
             public Text Caption;
             public Text More;
+            public Image Ready;
             public RectTransform Picture;
             public FloaterKind? Kind;
         }
@@ -60,6 +62,7 @@ namespace NuggetCreek.Game.UI
             int slot = index;
             tile.Button = Ui.Button("Tray" + index, column, "", Palette.ButtonAlt, () => Press(slot), out tile.Caption, 24);
             tile.Button.AsRect().sizeDelta = new Vector2(tileSize, tileSize);
+            // Only the unlocking chest's clock, over the bottom of its picture.
             float captionHeight = tileSize * 0.3f;
             tile.Caption.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(4, 12), new Vector2(-4, captionHeight + 10));
             tile.Caption.resizeTextForBestFit = true;
@@ -79,6 +82,7 @@ namespace NuggetCreek.Game.UI
             more.GetComponent<Image>().raycastTarget = false;
             tile.More.transform.SetParent(more, false);
             tile.More.rectTransform.Fill();
+            tile.Ready = Ui.Badge(tile.Button);
             tile.Button.gameObject.SetActive(false);
             return tile;
         }
@@ -107,8 +111,11 @@ namespace NuggetCreek.Game.UI
                 if (tile.Kind != kind)
                     Dress(tile, kind);
                 bool firstChest = kind == FloaterKind.Chest && i == 0;
-                tile.Caption.SetText(Caption(kind, firstChest));
-                float bob = firstChest && session.ChestReady ? Motion.Bob(Time.unscaledTime) : 1;
+                bool ready = firstChest && session.ChestReady;
+                tile.Caption.SetText(firstChest && !ready && session.Progress.ChestOpening
+                    ? CandidateModal.Clock(session.Progress.ChestSecondsLeft) : "");
+                tile.Ready.SetActive(ready);
+                float bob = ready ? Motion.Bob(Time.unscaledTime) : 1;
                 tile.Picture.localScale = Vector3.one * bob;
                 bool last = i == VisibleCount - 1 && HiddenCount > 0;
                 tile.More.transform.parent.gameObject.SetActive(last);
@@ -145,29 +152,12 @@ namespace NuggetCreek.Game.UI
                 : kind == FloaterKind.Pouch ? Palette.Ad : Palette.ButtonAlt;
             if (tile.Picture != null)
                 UnityEngine.Object.Destroy(tile.Picture.gameObject);
-            float captionHeight = tileSize * 0.3f;
             tile.Picture = FloaterPicture.Build("Picture", tile.Button.transform, kind, tileSize);
-            tile.Picture.Place(Vector2.zero, Vector2.one, new Vector2(14, captionHeight + 4), new Vector2(-14, -10));
-            // The caption and the badge stay on top of the picture.
+            tile.Picture.Place(Vector2.zero, Vector2.one, new Vector2(14, 14 + Ui.Lip), new Vector2(-14, -14));
+            // The clock and the badges stay on top of the picture.
             tile.Caption.transform.SetAsLastSibling();
             tile.More.transform.parent.SetAsLastSibling();
-        }
-
-        string Caption(FloaterKind kind, bool firstChest)
-        {
-            switch (kind)
-            {
-                case FloaterKind.Chest:
-                    if (firstChest && session.ChestReady)
-                        return "Ready!";
-                    if (firstChest && session.Progress.ChestOpening)
-                        return CandidateModal.Clock(session.Progress.ChestSecondsLeft);
-                    return "Chest";
-                case FloaterKind.Pouch:
-                    return "Gems";
-                default:
-                    return "Crate";
-            }
+            tile.Ready.transform.SetAsLastSibling();
         }
 
         void Press(int slot)
