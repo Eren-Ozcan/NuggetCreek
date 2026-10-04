@@ -105,6 +105,8 @@ namespace NuggetCreek.Game
             public int purchases;
             public int collectedSinceMotherLode;
             public double secondsSinceMotherLode;
+            public int bossesMet;
+            public int catchesTowardBoss;
             public double lastSeenUtc;
             public double lastDeviceUtc;
             public double lastMonotonicSeconds;
@@ -246,6 +248,8 @@ namespace NuggetCreek.Game
                 Purchases = data.purchases,
                 CollectedSinceMotherLode = data.collectedSinceMotherLode,
                 SecondsSinceMotherLode = data.secondsSinceMotherLode,
+                BossesMet = data.bossesMet,
+                CatchesTowardBoss = data.catchesTowardBoss,
                 LastSeenUtc = data.lastSeenUtc,
                 LastDeviceUtc = data.lastDeviceUtc,
                 LastMonotonicSeconds = data.lastMonotonicSeconds,
@@ -353,6 +357,8 @@ namespace NuggetCreek.Game
                 purchases = progress.Purchases,
                 collectedSinceMotherLode = progress.CollectedSinceMotherLode,
                 secondsSinceMotherLode = progress.SecondsSinceMotherLode,
+                bossesMet = progress.BossesMet,
+                catchesTowardBoss = progress.CatchesTowardBoss,
                 lastSeenUtc = progress.LastSeenUtc,
                 lastDeviceUtc = progress.LastDeviceUtc,
                 lastMonotonicSeconds = progress.LastMonotonicSeconds,
