@@ -25,6 +25,9 @@ namespace NuggetCreek.Game.UI
         const float AmosPopupEvery = 2f;
         const int HintUntilCollected = 3;
         const float BannerSeconds = 2.5f;
+        const float RewardPopSeconds = 0.2f;
+        const float RewardHoldSeconds = 0.7f;
+        const float RewardFlySeconds = 0.6f;
         /// <summary>Gap the gold keeps from the bank and from the hull.</summary>
         const float LaneMargin = 14;
         /// <summary>Side-to-side wander of gold in the current.</summary>
@@ -83,6 +86,16 @@ namespace NuggetCreek.Game.UI
             public float Age;
         }
 
+        /// <summary>A Mother Lode's haul: it pops up mid-creek, then flies to its counter.</summary>
+        sealed class RewardFlight
+        {
+            public Text Label;
+            public Vector2 From;
+            public Vector2 To;
+            public float Wait;
+            public float Age;
+        }
+
         GameSession session;
         RectTransform area;
         RiverView river;
@@ -106,6 +119,7 @@ namespace NuggetCreek.Game.UI
         readonly List<Collectible> live = new List<Collectible>();
         readonly List<Flight> flights = new List<Flight>();
         readonly List<Popup> popups = new List<Popup>();
+        readonly List<RewardFlight> rewards = new List<RewardFlight>();
         float spawnIn;
         Vector2? lastPointer;
         float amosTimer;
@@ -210,6 +224,7 @@ namespace NuggetCreek.Game.UI
             AgeCollectibles(deltaTime);
             HandleSwipe();
             AgePopups(deltaTime);
+            AgeRewards(deltaTime);
             AgeBanner(deltaTime);
         }
 
@@ -550,9 +565,7 @@ namespace NuggetCreek.Game.UI
             string name = GameCatalog.Nuggets[index].Name;
             if (result.Discovered)
             {
-                banner.SetText($"NEW NUGGET!  {name}");
-                banner.SetActive(true);
-                bannerLeft = BannerSeconds;
+                ShowBanner($"NEW NUGGET!  {name}");
                 Haptics.Important();
                 NuggetDiscovered?.Invoke(index);
             }
@@ -562,6 +575,57 @@ namespace NuggetCreek.Game.UI
                 popup.Stars = StarRow.Create("Stars", popup.Label.transform, session.Economy.MaxStarsPerNugget, 40);
                 ((RectTransform)popup.Stars.transform).Box(new Vector2(0.5f, 0), new Vector2(popup.Stars.Width, 40), new Vector2(0, -36));
                 popup.Stars.Set(session.NuggetStars(index));
+            }
+        }
+
+        /// <summary>A short line over the upper creek, e.g. a new Nugget type; it never stops the swipe.</summary>
+        public void ShowBanner(string text)
+        {
+            banner.SetText(text);
+            banner.SetActive(true);
+            bannerLeft = BannerSeconds;
+        }
+
+        /// <summary>
+        /// A reward that pops up in the middle of the creek and flies to its counter.
+        /// <paramref name="to"/> is in creek pixels from the bottom-left (<see cref="ToCreek"/>).
+        /// </summary>
+        public void FlyReward(string text, Color color, Vector2 to, float wait = 0)
+        {
+            Vector2 from = area.rect.size * 0.5f;
+            Text label = Legible(Ui.Label("Reward", area, text, 64, TextAnchor.MiddleCenter, color, FontStyle.Bold));
+            label.raycastTarget = false;
+            label.rectTransform.Box(Vector2.zero, new Vector2(700, 100), from);
+            label.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            label.rectTransform.anchoredPosition = from;
+            label.SetActive(wait <= 0);
+            rewards.Add(new RewardFlight { Label = label, From = from, To = to, Wait = wait });
+        }
+
+        void AgeRewards(float deltaTime)
+        {
+            for (int i = rewards.Count - 1; i >= 0; i--)
+            {
+                RewardFlight r = rewards[i];
+                if (r.Wait > 0)
+                {
+                    r.Wait -= deltaTime;
+                    if (r.Wait > 0)
+                        continue;
+                    r.Label.SetActive(true);
+                }
+                r.Age += deltaTime;
+                float pop = Mathf.Clamp01(r.Age / RewardPopSeconds);
+                float k = Mathf.Clamp01((r.Age - RewardHoldSeconds) / RewardFlySeconds);
+                if (k >= 1)
+                {
+                    Destroy(r.Label.gameObject);
+                    rewards.RemoveAt(i);
+                    continue;
+                }
+                Vector2 held = r.From + new Vector2(0, 80 * pop);
+                r.Label.rectTransform.anchoredPosition = Vector2.Lerp(held, r.To, Mathf.SmoothStep(0, 1, k));
+                r.Label.rectTransform.localScale = Vector3.one * (Mathf.Lerp(0.5f, 1, pop) * Mathf.Lerp(1, 0.4f, k));
             }
         }
 

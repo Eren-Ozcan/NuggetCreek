@@ -9,7 +9,7 @@ namespace NuggetCreek.Game.UI
     /// Mother Lode event over the creek (design doc 3.4): the screen darkens, a boulder rolls in
     /// from the top-left corner and across the creek to the bottom-right one, the longest way
     /// over the screen, and every swipe across it is a hit. The boulder cracks and then shatters as the damage
-    /// grows. Pays when the timer runs out, then shows the haul.
+    /// grows. Pays when the timer runs out and closes at once; the creek shows the haul, no dialog.
     /// </summary>
     public sealed class MotherLodeView
     {
@@ -32,8 +32,6 @@ namespace NuggetCreek.Game.UI
         readonly Text title;
         readonly Image bossBar;
         readonly RectTransform bossBarBack;
-        readonly RectTransform result;
-        readonly Text resultAmount;
 
         MotherLodeRun run;
         Vector2? lastPointer;
@@ -45,7 +43,8 @@ namespace NuggetCreek.Game.UI
 
         public bool IsActive => root.gameObject.activeSelf;
 
-        public event Action Finished;
+        /// <summary>Raised once a run is paid and the view has closed, with the run and the Dollars it paid.</summary>
+        public event Action<MotherLodeRun, BigNumber> Finished;
 
         /// <param name="topInset">Screen kept by the controls at the top; the labels start under it.</param>
         /// <param name="sideInset">Width kept by the button columns down both sides; the labels stay between them.</param>
@@ -88,18 +87,6 @@ namespace NuggetCreek.Game.UI
             prompt = Ui.Label("Prompt", root, "Swipe back and forth across the boulder!", 40, TextAnchor.MiddleCenter, Palette.TextLight);
             prompt.rectTransform.Place(new Vector2(0, 0.5f), new Vector2(1, 0.5f), new Vector2(40, -380), new Vector2(-40, -300));
 
-            result = Ui.Panel("Result", root, Palette.Panel).rectTransform
-                .Box(new Vector2(0.5f, 0.5f), new Vector2(860, 560));
-            Text resultTitle = Ui.Title("Title", result, "THE BOULDER CRACKED OPEN", 48);
-            resultTitle.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(30, -120), new Vector2(-30, -30));
-            // The heading font is wide and a boss adds lines to the haul; shrink both rather than spill.
-            FitInto(resultTitle, 28);
-            resultAmount = Ui.Label("Amount", result, "", 44, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
-            resultAmount.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(30, 200), new Vector2(-30, -130));
-            FitInto(resultAmount, 24);
-            Ui.Button("LodeCollect", result, "Collect", Palette.Button, Close, out _, 44).AsRect()
-                .Box(new Vector2(0.5f, 0), new Vector2(420, 140), new Vector2(0, 40));
-
             root.SetActive(false);
         }
 
@@ -120,7 +107,6 @@ namespace NuggetCreek.Game.UI
             lastPointer = null;
             pointerInside = false;
             root.SetActive(true);
-            result.SetActive(false);
             boulder.SetActive(true);
             SetRunLabelsActive(true);
             stage = 0;
@@ -169,28 +155,12 @@ namespace NuggetCreek.Game.UI
 
         void Finish()
         {
-            int peak = run.PeakCombo;
-            int hitCount = run.Hits;
-            BigNumber reward = session.FinishMotherLode(run);
+            MotherLodeRun paid = run;
+            BigNumber reward = session.FinishMotherLode(paid);
             Sound.Play(Sfx.VeinEnd);
-            int gems = session.Economy.Config.MotherLodeGemReward;
-            boulder.SetActive(false);
-            SetRunLabelsActive(false);
-            bossBarBack.SetActive(false);
-            result.SetActive(true);
-            string haul = $"+{NumberFormat.Dollars(reward)}\n+{Effects.Gems(gems)}\n\n{hitCount} hits, best combo x{peak}";
-            if (run.DroppedNugget >= 0)
-                haul = $"NEW BOSS NUGGET: {GameCatalog.Nuggets[run.DroppedNugget].Name}\n" + haul;
-            else if (run.IsBossFight)
-                haul = "The boss got away. Grow stronger and try again.\n" + haul;
-            resultAmount.SetText(haul);
-            Finished?.Invoke();
-        }
-
-        void Close()
-        {
             root.SetActive(false);
             run = null;
+            Finished?.Invoke(paid, reward);
         }
 
         /// <summary>

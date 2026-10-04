@@ -488,7 +488,7 @@ namespace NuggetCreek.Game
             creek.Init(session, HudTop, HudBottom);
             // Above the creek, below the controls, so the Dollar counter stays in view during the event.
             motherLode = new MotherLodeView(session, root, creekRect, HudTop, SideMargin + SideSize + SideGap);
-            motherLode.Finished += Save;
+            motherLode.Finished += ShowLodeHaul;
 
             BuildTop(root);
             BuildSideColumns(root);
@@ -1055,6 +1055,21 @@ namespace NuggetCreek.Game
             Sound.Play(Sfx.VeinStart);
             motherLode.Begin(run);
         }
+
+        /// <summary>No dialog after the event: the haul flies to its counters and a boss gets a banner.</summary>
+        void ShowLodeHaul(MotherLodeRun run, BigNumber reward)
+        {
+            creek.FlyReward("+" + NumberFormat.Dollars(reward), Palette.Gold, creek.ToCreek(Center(dollarsLabel)));
+            string gems = "+" + Effects.Gems(session.Economy.Config.MotherLodeGemReward);
+            creek.FlyReward(gems, Palette.Gem, creek.ToCreek(Center(gemsLabel)), 0.25f);
+            if (run.DroppedNugget >= 0)
+                creek.ShowBanner($"NEW BOSS NUGGET!  {GameCatalog.Nuggets[run.DroppedNugget].Name}");
+            else if (run.IsBossFight)
+                creek.ShowBanner("The boss got away!");
+            Save();
+        }
+
+        static Vector3 Center(Graphic graphic) => graphic.rectTransform.TransformPoint(graphic.rectTransform.rect.center);
 
         void SummonMotherLode()
         {
