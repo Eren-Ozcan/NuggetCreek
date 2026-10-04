@@ -1199,8 +1199,8 @@ namespace NuggetCreek.Game
             }
             ShowDebug(false);
             Button toggle = Ui.Button("DebugToggle", root, "DEV", new Color(0, 0, 0, 0.35f), () => ShowDebug(fold.alpha < 0.5f), out _, 26);
-            // Bottom left, between the map and the creek: clear of the side columns.
-            toggle.AsRect().Box(Vector2.zero, new Vector2(96, 64), new Vector2(20, 200));
+            // Bottom left, between the map and the upgrade button: clear of the menu over the map.
+            toggle.AsRect().Box(Vector2.zero, new Vector2(96, 64), new Vector2(20 + 150 + SideGap, 40));
             AddDebugButton(column, 0, "+$1K", () => session.Earn(1e3));
             AddDebugButton(column, 1, "+$1M", () => session.Earn(1e6));
             AddDebugButton(column, 2, "+$1T", () => session.Earn(1e12));
