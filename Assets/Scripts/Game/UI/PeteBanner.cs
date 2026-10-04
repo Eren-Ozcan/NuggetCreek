@@ -83,6 +83,7 @@ namespace NuggetCreek.Game.UI
                 case PeteLine.FreeHire: return "Two drifters want work. Pick one. First one's on me.";
                 case PeteLine.DailyOpen: return "Come by every day. The creek rewards regulars.";
                 case PeteLine.GuildOpen: return "The Prospectors' Guild has noticed you. Take a look.";
+                case PeteLine.FirstBoulder: return "That boulder's got gold in it. Grab it and crack it open!";
                 default: return "";
             }
         }

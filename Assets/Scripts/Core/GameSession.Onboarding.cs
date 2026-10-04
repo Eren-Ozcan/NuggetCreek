@@ -28,6 +28,7 @@ namespace NuggetCreek.Core
         FreeHire,
         DailyOpen,
         GuildOpen,
+        FirstBoulder,
     }
 
     /// <summary>Onboarding (design doc 9, 9.1, 10): feature locks, Old Pete, the free first hire and the return gift.</summary>
@@ -125,6 +126,8 @@ namespace NuggetCreek.Core
                     return IsUnlocked(Feature.Daily) && Progress.LastStreakClaimDay < 0;
                 case PeteLine.GuildOpen:
                     return IsUnlocked(Feature.Guild) && Progress.GuildLevel == 0 && Progress.Rebirths == 0;
+                case PeteLine.FirstBoulder:
+                    return FloaterOnWater == FloaterKind.Boulder;
                 case PeteLine.WelcomeBack:
                     return Progress.ReturnGiftGiven;
                 default:
