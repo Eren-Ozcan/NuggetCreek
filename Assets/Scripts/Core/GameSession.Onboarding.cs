@@ -127,7 +127,7 @@ namespace NuggetCreek.Core
                 case PeteLine.GuildOpen:
                     return IsUnlocked(Feature.Guild) && Progress.GuildLevel == 0 && Progress.Rebirths == 0;
                 case PeteLine.FirstBoulder:
-                    return FloaterOnWater == FloaterKind.Boulder;
+                    return FloaterOnWater == FloaterKind.Boulder || FloaterOnWater == FloaterKind.Boss;
                 case PeteLine.WelcomeBack:
                     return Progress.ReturnGiftGiven;
                 default:

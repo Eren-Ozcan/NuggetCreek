@@ -272,6 +272,9 @@ namespace NuggetCreek.Core
                 CountJob(DailyJobKind.Nuggets);
             Progress.ManualCollected++;
             Progress.CollectedSinceMotherLode++;
+            // In the first creek, counted from the tutorial's first chest on.
+            if (FloatersOpen && Progress.CatchesTowardBoss < Config.BossAfterCatches)
+                Progress.CatchesTowardBoss++;
             Earn(value, IncomeSource.Manual);
             return value;
         }
@@ -452,6 +455,7 @@ namespace NuggetCreek.Core
                 return false;
             Progress.RegionIndex = Progress.RegionsUnlocked;
             Progress.RegionsUnlocked++;
+            Progress.CatchesTowardBoss = 0;
             if (Progress.RegionsUnlocked > Progress.BestRegionsUnlocked)
             {
                 OfferWelcome(Progress.RegionIndex);
@@ -475,6 +479,8 @@ namespace NuggetCreek.Core
         {
             if (regionIndex < 0 || regionIndex >= Progress.RegionsUnlocked)
                 return false;
+            if (regionIndex != Progress.RegionIndex)
+                Progress.CatchesTowardBoss = 0;
             Progress.RegionIndex = regionIndex;
             return true;
         }
@@ -533,19 +539,31 @@ namespace NuggetCreek.Core
                 || Progress.SecondsSinceMotherLode >= Config.MotherLodeEverySeconds);
 
         /// <summary>
-        /// Starts the event and restarts both counters; the income it pays is fixed now. While
-        /// an open creek's boss is still unbeaten, the run fights the lowest one (design doc 3.4.1).
-        /// A boulder still on the water is taken off it, so one event never starts twice.
+        /// Starts a plain Mother Lode and restarts both counters; the income it pays is fixed now.
+        /// A plain boulder still on the water is taken off it, so one event never starts twice.
         /// </summary>
         public MotherLodeRun StartMotherLode()
         {
             RestartMotherLodeCount();
             if (FloaterOnWater == FloaterKind.Boulder)
                 EndFloater();
-            var run = new MotherLodeRun(Config, IncomePerSecond, Economy.MotherLodeMaxCombo(Stats));
-            int boss = NextBossRegion;
-            if (boss >= 0)
-                run.SetBoss(boss, Economy.BossHealth(boss), BossHitDamage);
+            return new MotherLodeRun(Config, IncomePerSecond, Economy.MotherLodeMaxCombo(Stats));
+        }
+
+        /// <summary>
+        /// Starts the fight with a creek's boss (design doc 3.4.1): a Mother Lode with the boss's
+        /// health; the hit damage decides whether it is beaten. The boss counts as met for this
+        /// claim either way. Null for a creek without a boss to fight.
+        /// </summary>
+        public MotherLodeRun StartBossFight(int regionIndex)
+        {
+            if (!HasBoss(regionIndex) || IsBossBeaten(regionIndex))
+                return null;
+            MeetBoss(regionIndex);
+            if (CaughtBoss == regionIndex)
+                CaughtBoss = -1;
+            MotherLodeRun run = StartMotherLode();
+            run.SetBoss(regionIndex, Economy.BossHealth(regionIndex), BossHitDamage);
             return run;
         }
 
@@ -555,17 +573,38 @@ namespace NuggetCreek.Core
             Progress.SecondsSinceMotherLode = 0;
         }
 
-        /// <summary>Lowest open creek whose boss is not beaten yet; -1 when every open boss is.</summary>
+        static bool HasBoss(int regionIndex) =>
+            regionIndex >= 0 && GameCatalog.BossNugget(regionIndex) < GameCatalog.FirstRareNugget;
+
+        /// <summary>A boss floats in once per claim; caught, escaped or missed, it waits for the next claim.</summary>
+        void MeetBoss(int regionIndex)
+        {
+            Progress.BossesMet |= 1 << regionIndex;
+            Progress.CatchesTowardBoss = 0;
+        }
+
+        public bool HasMetBoss(int regionIndex) => (Progress.BossesMet & (1 << regionIndex)) != 0;
+
+        /// <summary>
+        /// Lowest open creek whose boss is unbeaten and has not floated in during this claim; -1
+        /// when none. Bosses come in creek order, so one skipped by a quick player comes next.
+        /// </summary>
         public int NextBossRegion
         {
             get
             {
-                for (int r = 0; r < Progress.RegionsUnlocked && GameCatalog.BossNugget(r) < GameCatalog.FirstRareNugget; r++)
-                    if (Progress.NuggetCatches[GameCatalog.BossNugget(r)] == 0)
+                for (int r = 0; r < Progress.RegionsUnlocked && HasBoss(r); r++)
+                    if (!IsBossBeaten(r) && !HasMetBoss(r))
                         return r;
                 return -1;
             }
         }
+
+        /// <summary>
+        /// A boss floats in BossAfterCatches manual catches after the player enters a creek or
+        /// the last boss came, counted from the tutorial's first chest on (design doc 3.4.1).
+        /// </summary>
+        public bool BossDue => FloatersOpen && Progress.CatchesTowardBoss >= Config.BossAfterCatches && NextBossRegion >= 0;
 
         /// <summary>Damage of one Mother Lode hit at combo x1 right now.</summary>
         public double BossHitDamage => Economy.BossHitDamage(PrestigeMultiplier, Progress.GuildLevel, Stats);

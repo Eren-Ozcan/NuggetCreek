@@ -13,6 +13,11 @@ namespace NuggetCreek.Core
         Crate,
         /// <summary>The Mother Lode's boulder: caught, the event starts; missed, it is lost (design doc 3.4).</summary>
         Boulder,
+        /// <summary>
+        /// A creek's boss boulder, once a claim: caught, the boss fight starts; missed, the boss
+        /// waits for the next claim (design doc 3.4.1).
+        /// </summary>
+        Boss,
     }
 
     /// <summary>A claimed Driftwood Crate; the Dollars are already paid, a rewarded ad can pay them once more.</summary>
@@ -34,10 +39,13 @@ namespace NuggetCreek.Core
     public sealed partial class GameSession
     {
         double floaterGap;
+        int bossOnWater = -1;
 
         /// <summary>The floater on the water right now; the next one waits until it is caught or lost.</summary>
         public FloaterKind? FloaterOnWater { get; private set; }
 
+        /// <summary>The creek whose boss was caught last, for <see cref="StartBossFight"/>; -1 when none.</summary>
+        public int CaughtBoss { get; private set; } = -1;
 
         /// <summary>Crates and pouches start once the tutorial's first chest has been opened.</summary>
         bool FloatersOpen => Progress.ChestsOpened > 0;
@@ -70,7 +78,7 @@ namespace NuggetCreek.Core
         /// <summary>
         /// Puts the next due floater on the water and returns it, or null when none is due, one
         /// is already out, or the gap after the last has not passed. Earned chests go first,
-        /// then a due Mother Lode's boulder.
+        /// then a creek's boss, then a due Mother Lode's boulder.
         /// </summary>
         public FloaterKind? LaunchFloater()
         {
@@ -79,6 +87,11 @@ namespace NuggetCreek.Core
             if (Progress.ChestsDue > 0)
             {
                 FloaterOnWater = FloaterKind.Chest;
+            }
+            else if (BossDue)
+            {
+                bossOnWater = NextBossRegion;
+                FloaterOnWater = FloaterKind.Boss;
             }
             else if (MotherLodeDue)
             {
@@ -100,7 +113,8 @@ namespace NuggetCreek.Core
 
         /// <summary>
         /// The floater on the water was caught: it goes into the tray. A boulder does not; it
-        /// restarts the Mother Lode count and the caller starts the event with <see cref="StartMotherLode"/>.
+        /// restarts the Mother Lode count and the caller starts the event with <see cref="StartMotherLode"/>,
+        /// or for a boss with <see cref="StartBossFight"/> and <see cref="CaughtBoss"/>.
         /// </summary>
         public bool CatchFloater()
         {
@@ -122,13 +136,20 @@ namespace NuggetCreek.Core
                 case FloaterKind.Boulder:
                     RestartMotherLodeCount();
                     break;
+                case FloaterKind.Boss:
+                    if (bossOnWater >= 0)
+                        MeetBoss(bossOnWater);
+                    CaughtBoss = bossOnWater;
+                    bossOnWater = -1;
+                    break;
             }
             return true;
         }
 
         /// <summary>
         /// The floater drifted out uncaught and is lost; only the tutorial's first chest comes
-        /// back until it is caught. A missed boulder restarts the Mother Lode count.
+        /// back until it is caught. A missed boulder restarts the Mother Lode count; a missed boss
+        /// is gone until the next claim.
         /// </summary>
         public bool MissFloater()
         {
@@ -140,6 +161,12 @@ namespace NuggetCreek.Core
                 Progress.ChestsDue = Math.Max(0, Progress.ChestsDue - 1);
             if (kind == FloaterKind.Boulder)
                 RestartMotherLodeCount();
+            if (kind == FloaterKind.Boss)
+            {
+                if (bossOnWater >= 0)
+                    MeetBoss(bossOnWater);
+                bossOnWater = -1;
+            }
             return true;
         }
 

@@ -234,6 +234,12 @@ namespace NuggetCreek.Core
         /// <summary>Play seconds since the last Mother Lode.</summary>
         public double SecondsSinceMotherLode;
 
+        /// <summary>Creeks whose boss has floated in during this claim (bit r = creek r); a rebirth clears it.</summary>
+        public int BossesMet;
+
+        /// <summary>Manual catches since the player entered the creek or the last boss floated in.</summary>
+        public int CatchesTowardBoss;
+
         // --- Clock readings from the last time the game went to background (OfflineEarnings) ---
 
         public double LastSeenUtc;
@@ -358,6 +364,7 @@ namespace NuggetCreek.Core
             }
             NotifIgnored = Math.Max(0, NotifIgnored);
             CollectedSinceMotherLode = Math.Max(0, CollectedSinceMotherLode);
+            CatchesTowardBoss = Math.Max(0, CatchesTowardBoss);
             SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, Math.Min(RegionsUnlocked, GameCatalog.RegionNames.Count));

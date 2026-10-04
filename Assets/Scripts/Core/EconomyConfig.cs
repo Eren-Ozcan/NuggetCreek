@@ -128,6 +128,12 @@ namespace NuggetCreek.Core
 
         // --- Mother Lode boss fight (3.4.1) ---
 
+        /// <summary>
+        /// Manual catches in a creek before its boss floats in (about a minute of swiping); in
+        /// the first creek counted from the tutorial's first chest. Each boss comes once a claim.
+        /// </summary>
+        public int BossAfterCatches = 50;
+
         /// <summary>Health of the first creek's boss: about 12 seconds of swiping for a fresh player.</summary>
         public double BossHealthBase = 500;
 

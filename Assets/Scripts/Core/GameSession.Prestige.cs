@@ -47,6 +47,9 @@ namespace NuggetCreek.Core
             Progress.RegionIndex = 0;
             Progress.RegionsUnlocked = 1;
             Progress.TierIndex = 0;
+            // Every unbeaten boss comes once more in the new claim (design doc 3.4.1).
+            Progress.BossesMet = 0;
+            Progress.CatchesTowardBoss = 0;
             Array.Clear(Progress.UpgradeLevels, 0, Progress.UpgradeLevels.Length);
             RebuildStats();
             MarkNaturalBreak("prestige");
