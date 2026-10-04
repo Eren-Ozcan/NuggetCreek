@@ -95,6 +95,84 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.CatchFloater(), Is.False, "no second event from the same boulder");
         }
 
+        // --- Bosses (design doc 3.4.1) ---
+
+        [Test]
+        public void TheFirstBossFloatsFiftyCatchesAfterTheFirstChest()
+        {
+            GameSession session = NewSession();
+            Catch(session, 100);
+            Assert.That(session.BossDue, Is.False, "nothing counts before the tutorial chest is opened");
+
+            session.Progress.ChestsOpened = 1;
+            Catch(session, config.BossAfterCatches - 1);
+            Assert.That(session.BossDue, Is.False);
+            Catch(session, 1);
+            Assert.That(session.BossDue, Is.True);
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boss));
+            Assert.That(session.CatchFloater(), Is.True);
+            Assert.That(session.TrayCount, Is.Zero);
+            Assert.That(session.CaughtBoss, Is.EqualTo(0));
+
+            MotherLodeRun run = session.StartBossFight(session.CaughtBoss);
+            Assert.That(run.IsBossFight, Is.True);
+            Assert.That(run.BossRegion, Is.EqualTo(0));
+            Assert.That(session.CaughtBoss, Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void EachBossFloatsInOnceAClaimEvenWhenMissed()
+        {
+            GameSession session = NewSession(new PlayerProgress { ChestsOpened = 1, RegionsUnlocked = 3, RegionIndex = 2 });
+            Catch(session, config.BossAfterCatches);
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boss));
+            Assert.That(session.MissFloater(), Is.True);
+            Assert.That(session.HasMetBoss(0), Is.True, "missed, creek 1's boss waits for the next claim");
+            Assert.That(session.BossDue, Is.False);
+
+            session.TickPlay(5);
+            Catch(session, config.BossAfterCatches);
+            Assert.That(session.NextBossRegion, Is.EqualTo(1), "in creek order: a skipped boss comes in a later creek");
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boss));
+            session.CatchFloater();
+            session.FinishMotherLode(session.StartBossFight(session.CaughtBoss));
+
+            session.TickPlay(5);
+            Catch(session, config.BossAfterCatches);
+            Assert.That(session.NextBossRegion, Is.EqualTo(2));
+            session.LaunchFloater();
+            session.MissFloater();
+            Assert.That(session.NextBossRegion, Is.EqualTo(-1), "every open creek's boss has come this claim");
+            Catch(session, config.BossAfterCatches);
+            Assert.That(session.BossDue, Is.False);
+        }
+
+        [Test]
+        public void EnteringACreekRestartsTheBossCount()
+        {
+            GameSession session = NewSession(new PlayerProgress { ChestsOpened = 1, Dollars = 1e6 });
+            Catch(session, config.BossAfterCatches - 10);
+            Assert.That(session.UnlockNextRegion(), Is.True);
+            Catch(session, 10);
+            Assert.That(session.BossDue, Is.False);
+            Catch(session, config.BossAfterCatches - 10);
+            Assert.That(session.BossDue, Is.True);
+        }
+
+        [Test]
+        public void ARebirthBringsEveryUnbeatenBossBack()
+        {
+            var progress = new PlayerProgress { ChestsOpened = 1, RegionsUnlocked = 4, BossesMet = 0b1111, TotalEarned = 1e15 };
+            progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
+            GameSession session = NewSession(progress);
+            Assert.That(session.NextBossRegion, Is.EqualTo(-1));
+            Assert.That(session.Rebirth(), Is.True);
+            Assert.That(session.Progress.BossesMet, Is.Zero);
+            Assert.That(session.NextBossRegion, Is.EqualTo(-1), "creek 1's boss is beaten for good; creek 2 is not open yet");
+            session.Progress.RegionsUnlocked = 2;
+            Assert.That(session.NextBossRegion, Is.EqualTo(1));
+        }
+
         [Test]
         public void PeteCallsOutTheFirstBoulderWhileItFloats()
         {

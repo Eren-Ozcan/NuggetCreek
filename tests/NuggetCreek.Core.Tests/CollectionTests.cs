@@ -149,22 +149,35 @@ namespace NuggetCreek.Core.Tests
         // --- Boss fight (3.4.1) ---
 
         [Test]
-        public void MotherLodeFightsTheLowestUnbeatenBoss()
+        public void NextBossIsTheLowestOpenOneNeitherBeatenNorMetThisClaim()
         {
-            var progress = new PlayerProgress { RegionsUnlocked = 5, RegionIndex = 4, PlaySeconds = 3600 };
+            var progress = new PlayerProgress { RegionsUnlocked = 5, RegionIndex = 4, PlaySeconds = 3600, BossesMet = 1 << 1 };
             progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
             GameSession session = NewSession(progress);
-            MotherLodeRun run = session.StartMotherLode();
+            Assert.That(session.NextBossRegion, Is.EqualTo(2));
+            MotherLodeRun run = session.StartBossFight(2);
             Assert.That(run.IsBossFight, Is.True);
-            Assert.That(run.BossRegion, Is.EqualTo(1));
-            Assert.That(run.BossHealth, Is.EqualTo(500 * 2.2).Within(1e-9));
+            Assert.That(run.BossRegion, Is.EqualTo(2));
+            Assert.That(run.BossHealth, Is.EqualTo(500 * 2.2 * 2.2).Within(1e-9));
+            Assert.That(session.NextBossRegion, Is.EqualTo(3));
+            Assert.That(session.StartBossFight(0), Is.Null, "a beaten boss is not fought again");
+        }
+
+        [Test]
+        public void APlainMotherLodeNeverFightsABoss()
+        {
+            GameSession session = NewSession(new PlayerProgress { PlaySeconds = 3600 });
+            Assert.That(session.StartMotherLode().IsBossFight, Is.False);
+            session.Progress.Gems = 10;
+            Assert.That(session.SummonMotherLode().IsBossFight, Is.False, "the Gem call is a plain Mother Lode");
+            Assert.That(session.NextBossRegion, Is.EqualTo(0));
         }
 
         [Test]
         public void BeatenBossDropsItsNuggetAndEndsTheRun()
         {
             GameSession session = NewSession(new PlayerProgress { PlaySeconds = 3600 });
-            MotherLodeRun run = session.StartMotherLode();
+            MotherLodeRun run = session.StartBossFight(0);
             Assert.That(run.BossRegion, Is.EqualTo(0));
             int hits = 0;
             while (!run.IsOver && hits < 1000)
@@ -186,13 +199,14 @@ namespace NuggetCreek.Core.Tests
         public void EscapedBossPaysButDropsNothing()
         {
             GameSession session = NewSession(new PlayerProgress { PlaySeconds = 3600 });
-            MotherLodeRun run = session.StartMotherLode();
+            MotherLodeRun run = session.StartBossFight(0);
             run.Hit();
             run.Tick(30);
             Assert.That(run.BossBeaten, Is.False);
             Assert.That(session.FinishMotherLode(run).IsZero, Is.False);
             Assert.That(run.DroppedNugget, Is.EqualTo(-1));
-            Assert.That(session.NextBossRegion, Is.EqualTo(0));
+            Assert.That(session.IsBossBeaten(0), Is.False);
+            Assert.That(session.NextBossRegion, Is.EqualTo(-1), "an escaped boss waits for the next claim");
         }
 
         [Test]
