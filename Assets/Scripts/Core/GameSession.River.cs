@@ -11,6 +11,8 @@ namespace NuggetCreek.Core
         Pouch,
         /// <summary>A Driftwood Crate; pays Dollars at once, a rewarded ad doubles them.</summary>
         Crate,
+        /// <summary>The Mother Lode's boulder: caught, the event starts; missed, it is lost (design doc 3.4).</summary>
+        Boulder,
     }
 
     /// <summary>A claimed Driftwood Crate; the Dollars are already paid, a rewarded ad can pay them once more.</summary>
@@ -24,9 +26,10 @@ namespace NuggetCreek.Core
     }
 
     /// <summary>
-    /// River floaters and the tray (design doc 3.1.4): creek chests, Gem Pouches and Driftwood
-    /// Crates float down one at a time; a caught one waits in the tray until it is opened, a
-    /// missed one is gone. Timers count only while the creek runs (<see cref="TickPlay"/>).
+    /// River floaters and the tray (design doc 3.1.4): creek chests, Gem Pouches, Driftwood
+    /// Crates and the Mother Lode's boulder float down one at a time; a caught one waits in the
+    /// tray until it is opened, a missed one is gone. Timers count only while the creek runs
+    /// (<see cref="TickPlay"/>).
     /// </summary>
     public sealed partial class GameSession
     {
@@ -34,6 +37,7 @@ namespace NuggetCreek.Core
 
         /// <summary>The floater on the water right now; the next one waits until it is caught or lost.</summary>
         public FloaterKind? FloaterOnWater { get; private set; }
+
 
         /// <summary>Crates and pouches start once the tutorial's first chest has been opened.</summary>
         bool FloatersOpen => Progress.ChestsOpened > 0;
@@ -65,7 +69,8 @@ namespace NuggetCreek.Core
 
         /// <summary>
         /// Puts the next due floater on the water and returns it, or null when none is due, one
-        /// is already out, or the gap after the last has not passed. Earned chests go first.
+        /// is already out, or the gap after the last has not passed. Earned chests go first,
+        /// then a due Mother Lode's boulder.
         /// </summary>
         public FloaterKind? LaunchFloater()
         {
@@ -74,6 +79,10 @@ namespace NuggetCreek.Core
             if (Progress.ChestsDue > 0)
             {
                 FloaterOnWater = FloaterKind.Chest;
+            }
+            else if (MotherLodeDue)
+            {
+                FloaterOnWater = FloaterKind.Boulder;
             }
             else if (PouchDue)
             {
@@ -89,7 +98,10 @@ namespace NuggetCreek.Core
             return FloaterOnWater;
         }
 
-        /// <summary>The floater on the water was caught: it goes into the tray.</summary>
+        /// <summary>
+        /// The floater on the water was caught: it goes into the tray. A boulder does not; it
+        /// restarts the Mother Lode count and the caller starts the event with <see cref="StartMotherLode"/>.
+        /// </summary>
         public bool CatchFloater()
         {
             if (!(FloaterOnWater is FloaterKind kind))
@@ -104,8 +116,11 @@ namespace NuggetCreek.Core
                 case FloaterKind.Pouch:
                     Progress.PouchesWaiting++;
                     break;
-                default:
+                case FloaterKind.Crate:
                     Progress.CratesWaiting++;
+                    break;
+                case FloaterKind.Boulder:
+                    RestartMotherLodeCount();
                     break;
             }
             return true;
@@ -113,7 +128,7 @@ namespace NuggetCreek.Core
 
         /// <summary>
         /// The floater drifted out uncaught and is lost; only the tutorial's first chest comes
-        /// back until it is caught.
+        /// back until it is caught. A missed boulder restarts the Mother Lode count.
         /// </summary>
         public bool MissFloater()
         {
@@ -123,6 +138,8 @@ namespace NuggetCreek.Core
             Tally.FloatersMissed++;
             if (kind == FloaterKind.Chest && !FirstChestAhead)
                 Progress.ChestsDue = Math.Max(0, Progress.ChestsDue - 1);
+            if (kind == FloaterKind.Boulder)
+                RestartMotherLodeCount();
             return true;
         }
 

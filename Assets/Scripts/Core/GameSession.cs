@@ -535,16 +535,24 @@ namespace NuggetCreek.Core
         /// <summary>
         /// Starts the event and restarts both counters; the income it pays is fixed now. While
         /// an open creek's boss is still unbeaten, the run fights the lowest one (design doc 3.4.1).
+        /// A boulder still on the water is taken off it, so one event never starts twice.
         /// </summary>
         public MotherLodeRun StartMotherLode()
         {
-            Progress.CollectedSinceMotherLode = 0;
-            Progress.SecondsSinceMotherLode = 0;
+            RestartMotherLodeCount();
+            if (FloaterOnWater == FloaterKind.Boulder)
+                EndFloater();
             var run = new MotherLodeRun(Config, IncomePerSecond, Economy.MotherLodeMaxCombo(Stats));
             int boss = NextBossRegion;
             if (boss >= 0)
                 run.SetBoss(boss, Economy.BossHealth(boss), BossHitDamage);
             return run;
+        }
+
+        void RestartMotherLodeCount()
+        {
+            Progress.CollectedSinceMotherLode = 0;
+            Progress.SecondsSinceMotherLode = 0;
         }
 
         /// <summary>Lowest open creek whose boss is not beaten yet; -1 when every open boss is.</summary>
