@@ -14,8 +14,19 @@ namespace NuggetCreek.Game.UI
     /// </summary>
     public sealed class RiverView : MonoBehaviour
     {
-        /// <summary>Each bank's width as a share of the creek width; painted rivers keep the same banks.</summary>
+        /// <summary>Each bank's width as a share of the creek width, in the river drawn in code.</summary>
         const float BankShare = 0.07f;
+        /// <summary>
+        /// Each painted river's bank width as a share of its width (river_01 first), measured to the
+        /// water's edge on the paintings; overhanging crowns and ruins may reach past it. Re-measure
+        /// after replacing a painting. A painting past the table uses <see cref="PaintedBankDefault"/>.
+        /// </summary>
+        static readonly float[] PaintedBankShares =
+        {
+            0.145f, 0.15f, 0.18f, 0.14f, 0.11f, 0.155f, 0.12f, 0.12f, 0.105f, 0.11f,
+            0.14f, 0.15f, 0.11f, 0.18f, 0.17f, 0.16f, 0.125f, 0.11f, 0.14f, 0.16f,
+        };
+        const float PaintedBankDefault = 0.18f;
         /// <summary>How far the sand lobes reach past the bank line, wet rim included.</summary>
         const float LobeReach = 28;
         /// <summary>Taller than any creek area, so two stacked tiles always cover it.</summary>
@@ -43,9 +54,11 @@ namespace NuggetCreek.Game.UI
         float currentOffset;
         float travelAge = TravelSeconds;
         int pendingRegion = -1;
+        /// <summary>The shown painting's bank share; 0 while the river is drawn in code.</summary>
+        float paintedBank;
 
         /// <summary>Where open water starts and ends, in creek-area pixels from the left.</summary>
-        public float WaterLeft => area.rect.width * BankShare + LobeReach;
+        public float WaterLeft => paintedBank > 0 ? area.rect.width * paintedBank : area.rect.width * BankShare + LobeReach;
 
         public float WaterRight => area.rect.width - WaterLeft;
 
@@ -91,7 +104,7 @@ namespace NuggetCreek.Game.UI
                 BuildRipples(Tile(ripples, tile), new System.Random(31));
                 BuildCurrent(Tile(current, tile), new System.Random(23));
             }
-            Paint(null);
+            Paint(-1);
         }
 
         /// <summary>Shows a creek's river; with <paramref name="travel"/> the dredge sails there first.</summary>
@@ -104,7 +117,7 @@ namespace NuggetCreek.Game.UI
             }
             else
             {
-                Paint(Art.River(region));
+                Paint(region);
             }
         }
 
@@ -115,7 +128,7 @@ namespace NuggetCreek.Game.UI
             // The new river slides in at full speed, where the swap is lost in the motion.
             if (pendingRegion >= 0 && travelAge >= TravelSeconds / 2)
             {
-                Paint(Art.River(pendingRegion));
+                Paint(pendingRegion);
                 pendingRegion = -1;
             }
             float landStep = LandSpeed * (1 + TravelRush * rush) * deltaTime;
@@ -134,12 +147,24 @@ namespace NuggetCreek.Game.UI
             return offset;
         }
 
-        void Paint(Sprite river)
+        /// <summary>Shows a creek's painting, or the code river for none (-1) or one not painted yet.</summary>
+        void Paint(int region)
         {
+            Sprite river = region >= 0 ? Art.River(region) : null;
             painted.gameObject.SetActive(river != null);
             land.gameObject.SetActive(river == null);
             foreach (Image painting in paintings)
                 painting.sprite = river;
+            paintedBank = river == null ? 0
+                : region < PaintedBankShares.Length ? PaintedBankShares[region] : PaintedBankDefault;
+            // The streaks and ripples are laid out for the code river's banks; squeeze them so that
+            // its water band lands on the painting's.
+            float inset = river == null ? 0 : Mathf.Max(0, (paintedBank - BankShare) / (1 - 2 * BankShare));
+            foreach (RectTransform strip in new[] { ripples, current })
+            {
+                strip.anchorMin = new Vector2(inset, 0);
+                strip.anchorMax = new Vector2(1 - inset, 0);
+            }
         }
 
         /// <summary>Tiles follow the creek width; the pattern repeats every two tiles (one flipped).</summary>
