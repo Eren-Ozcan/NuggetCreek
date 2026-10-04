@@ -76,7 +76,10 @@ hinges. A crane (`arm`: pivot, swing, hull, beams, ropes) is cut into its own la
 it is filled along the planks; it swings and carries the grab (tiers 5, 7), with a code-drawn
 `tether` rope. A trommel (`drum`) keeps its shading still: its holes turn as separate images under a
 `_cover` layer (tiers 9, 10). Check new masks with a quick offline pose render before looking in the game.
-Painted top-down rivers go in `Sprites/Rivers/river_NN.png` and replace the code river per creek. On a fresh clone run
+Painted top-down rivers go in `Sprites/Rivers/river_NN.png` and replace the code river per creek; each painting's
+bank width sits in `RiverView.PaintedBankShares` (gold stays inside it; re-measure after replacing a painting).
+Amos on deck (`Sprites/Dredge/amos.png`, cut by `game-art/source/cut_amos.py`) stands on each tier's `Amos` point
+in the `DredgeView` table once he is hired; pick a clear spot the crane does not swing over. On a fresh clone run
 `scripts/fetch-art.sh`, which copies them from `C:\Projects\pictures\nugget-creek\game-art\`
 (private pictures repo). Without it the game runs with the greybox shapes. The source sheets and
 the cutter (`tools/cut_sprites.py`, git-excluded) are backed up in `game-art/source/`; after
