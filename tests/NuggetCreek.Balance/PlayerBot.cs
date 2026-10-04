@@ -171,10 +171,10 @@ namespace NuggetCreek.Balance
                 Dollars("swipe", () => Swipe(Step));
                 Dollars("idle (open)", () => session.TickIdle(Step));
                 session.TickPlay(Step);
-                Floaters();
+                FloaterKind? caught = Floaters();
                 session.TickCandidates(Step);
                 session.TickShop(Step);
-                if (session.MotherLodeDue)
+                if (caught == FloaterKind.Boulder)
                     Dollars("Mother Lode", RunMotherLode);
                 Dollars("chests", Chests);
                 Dollars("crates", Crates);
@@ -330,18 +330,23 @@ namespace NuggetCreek.Balance
                 session.StartChest();
         }
 
-        /// <summary>A floater on the water is caught or missed at once; the crossing time is not modelled.</summary>
-        void Floaters()
+        /// <summary>
+        /// A floater on the water is caught or missed at once; the crossing time is not modelled.
+        /// Returns the caught one, so a caught boulder starts the Mother Lode.
+        /// </summary>
+        FloaterKind? Floaters()
         {
-            if (session.LaunchFloater() == null)
-                return;
+            FloaterKind? kind = session.LaunchFloater();
+            if (kind == null)
+                return null;
             if (rng.NextDouble() < profile.FloaterCatchRate)
             {
                 session.CatchFloater();
-                return;
+                return kind;
             }
             session.MissFloater();
             report.FloatersMissed++;
+            return null;
         }
 
         void Crates()
