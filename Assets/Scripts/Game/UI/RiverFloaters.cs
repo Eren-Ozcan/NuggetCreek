@@ -6,19 +6,19 @@ using UnityEngine.UI;
 namespace NuggetCreek.Game.UI
 {
     /// <summary>
-    /// Creek chests, Gem Pouches and Driftwood Crates floating down the creek (design doc 3.1.4):
-    /// one at a time, on the surface, slower than gold. A swipe or a tap catches one and it flies
-    /// to its tile in the tray; one that drifts out at the bottom is lost. The rules live in
-    /// <see cref="GameSession"/>; this is the water and the flight.
+    /// Creek chests, Gem Pouches, Driftwood Crates and the Mother Lode's boulder floating down the
+    /// creek (design doc 3.1.4): one at a time, on the surface, slower than gold. A swipe or a tap
+    /// catches one and it flies to its tile in the tray (a boulder cracks open on the spot); one
+    /// that drifts out at the bottom is lost. The rules live in <see cref="GameSession"/>; this is
+    /// the water and the flight.
     /// </summary>
     public sealed class RiverFloaters
     {
         const float Size = 150;
+        const float BoulderSize = 200;
         const float LaneMargin = 14;
         const float FlightSeconds = 0.6f;
         const float RippleEvery = 0.8f;
-        /// <summary>A tap this close to a floater's centre catches it (well over the 48 dp minimum).</summary>
-        const float TapReach = Size * 0.7f;
 
         readonly GameSession session;
         readonly RectTransform area;
@@ -29,6 +29,7 @@ namespace NuggetCreek.Game.UI
         readonly Func<(float Left, float Right)> hull;
 
         FloaterKind kind;
+        float size;
         RectTransform floater;
         Image shadow;
         Vector2 start;
@@ -72,6 +73,9 @@ namespace NuggetCreek.Game.UI
         /// <param name="canLaunch">False while a show or a journey plays: a new floater waits.</param>
         public void Tick(float deltaTime, bool canLaunch)
         {
+            // A Gem Mother Lode takes its boulder off the water.
+            if (floater != null && session.FloaterOnWater == null)
+                Clear();
             if (floater == null && canLaunch && session.LaunchFloater() is FloaterKind next)
                 Launch(next);
             if (floater == null)
@@ -96,7 +100,7 @@ namespace NuggetCreek.Game.UI
             if (rippleIn <= 0)
             {
                 rippleIn = RippleEvery;
-                particles.Emit(position, Vector2.zero, Size * 0.9f, 1.1f, Palette.Foam, Ui.Ring, 0, 0, 1.8f);
+                particles.Emit(position, Vector2.zero, size * 0.9f, 1.1f, Palette.Foam, Ui.Ring, 0, 0, 1.8f);
             }
         }
 
@@ -126,17 +130,20 @@ namespace NuggetCreek.Game.UI
         {
             if (floater == null)
                 return false;
-            float reach = Mathf.Max(radius, Size * 0.5f);
+            float reach = Mathf.Max(radius, size * 0.5f);
             if (DistanceToSegment(floater.anchoredPosition, from, to) > reach)
                 return false;
             Catch();
             return true;
         }
 
-        /// <summary>A tap on the water: floaters, unlike gold, can be picked up without a swipe.</summary>
+        /// <summary>
+        /// A tap on the water: floaters, unlike gold, can be picked up without a swipe. A tap this
+        /// close to a floater's centre catches it (well over the 48 dp minimum).
+        /// </summary>
         public bool Tap(Vector2 point)
         {
-            if (floater == null || Vector2.Distance(point, floater.anchoredPosition) > TapReach)
+            if (floater == null || Vector2.Distance(point, floater.anchoredPosition) > size * 0.7f)
                 return false;
             Catch();
             return true;
@@ -151,20 +158,23 @@ namespace NuggetCreek.Game.UI
             (float hullLeft, float hullRight) = hull();
             bool left = hullLeft - waterLeft > waterRight - hullRight
                 || (Mathf.Approximately(hullLeft - waterLeft, waterRight - hullRight) && UnityEngine.Random.value < 0.5f);
-            float laneMin = left ? waterLeft + LaneMargin + Size / 2 : hullRight + LaneMargin + Size / 2;
-            float laneMax = left ? hullLeft - LaneMargin - Size / 2 : waterRight - LaneMargin - Size / 2;
+            // The boulder is bigger than the rest, as far as its lane allows.
+            float laneWidth = left ? hullLeft - waterLeft : waterRight - hullRight;
+            size = next == FloaterKind.Boulder ? Mathf.Clamp(laneWidth - 2 * LaneMargin, Size, BoulderSize) : Size;
+            float laneMin = left ? waterLeft + LaneMargin + size / 2 : hullRight + LaneMargin + size / 2;
+            float laneMax = left ? hullLeft - LaneMargin - size / 2 : waterRight - LaneMargin - size / 2;
             // Out from under the button columns when the lane leaves room for it.
-            float clearMin = Mathf.Max(laneMin, SideInset + Size / 2);
-            float clearMax = Mathf.Min(laneMax, bounds.width - SideInset - Size / 2);
+            float clearMin = Mathf.Max(laneMin, SideInset + size / 2);
+            float clearMax = Mathf.Min(laneMax, bounds.width - SideInset - size / 2);
             if (clearMax >= clearMin)
             {
                 laneMin = clearMin;
                 laneMax = clearMax;
             }
             float LaneX() => laneMax > laneMin ? UnityEngine.Random.Range(laneMin, laneMax) : (laneMin + laneMax) / 2;
-            start = new Vector2(LaneX(), bounds.height + Size / 2);
+            start = new Vector2(LaneX(), bounds.height + size / 2);
             bend = new Vector2(LaneX(), bounds.height * UnityEngine.Random.Range(0.4f, 0.6f));
-            end = new Vector2(LaneX(), -Size / 2);
+            end = new Vector2(LaneX(), -size / 2);
             age = 0;
             rippleIn = 0;
             phase = UnityEngine.Random.Range(0, Mathf.PI * 2);
@@ -172,9 +182,9 @@ namespace NuggetCreek.Game.UI
 
             shadow = Ui.Image("FloaterShadow", waterLayer, Palette.Shadow, Ui.Circle);
             shadow.raycastTarget = false;
-            shadow.rectTransform.Box(Vector2.zero, new Vector2(Size * 0.9f, Size * 0.5f), start);
+            shadow.rectTransform.Box(Vector2.zero, new Vector2(size * 0.9f, size * 0.5f), start);
             shadow.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            floater = FloaterPicture.Build("Floater_" + kind, waterLayer, kind, Size);
+            floater = FloaterPicture.Build("Floater_" + kind, waterLayer, kind, size);
             floater.anchorMin = floater.anchorMax = Vector2.zero;
             floater.pivot = new Vector2(0.5f, 0.5f);
             floater.anchoredPosition = start;
@@ -189,14 +199,25 @@ namespace NuggetCreek.Game.UI
         void Catch()
         {
             Vector2 from = floater.anchoredPosition;
-            session.CatchFloater();
+            if (!session.CatchFloater())
+            {
+                Clear();
+                return;
+            }
             Haptics.Important();
-            Sound.Play(Sfx.Chest);
             for (int i = 0; i < 10; i++)
             {
                 Vector2 velocity = UnityEngine.Random.insideUnitCircle * 200 + new Vector2(0, 260);
                 particles.Emit(from, velocity, UnityEngine.Random.Range(14, 24), 0.5f, Palette.Droplet, Ui.Circle, -900);
             }
+            // The boulder has no tile: the Mother Lode starts where it was caught.
+            if (kind == FloaterKind.Boulder)
+            {
+                Clear();
+                Caught?.Invoke(kind);
+                return;
+            }
+            Sound.Play(Sfx.Chest);
 
             // A floater still flying when the next is caught simply lands at once.
             if (flying != null)
@@ -269,6 +290,9 @@ namespace NuggetCreek.Game.UI
                 case FloaterKind.Pouch:
                     Picture(root, Ui.Circle, Palette.Leather, size * 0.08f);
                     Picture(root, Art.Gem ?? Ui.Circle, Art.Gem != null ? Color.white : Palette.Gem, size * 0.28f);
+                    break;
+                case FloaterKind.Boulder:
+                    Picture(root, Ui.Circle, Palette.Rock, size * 0.06f);
                     break;
                 default:
                     Picture(root, Ui.Rounded, Palette.Nugget, size * 0.12f);

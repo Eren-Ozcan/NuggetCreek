@@ -195,11 +195,7 @@ namespace NuggetCreek.Game
             {
                 creek.Tick(dt, idle);
                 if (!modalOpen)
-                {
                     session.TickPlay(dt);
-                    if (session.MotherLodeDue)
-                        StartMotherLode(session.StartMotherLode());
-                }
             }
             offlineModal.Tick(Time.unscaledDeltaTime);
             notifications.Tick();
@@ -522,10 +518,16 @@ namespace NuggetCreek.Game
             crateModal.Claimed += Save;
             pouchModal = new PouchModal(session, ads, root);
             pouchModal.Changed += Save;
-            // A caught floater flies to its tile in the tray (design doc 3.1.4).
+            // A caught floater flies to its tile in the tray (design doc 3.1.4); a caught boulder
+            // starts the Mother Lode (3.4), which never starts by itself.
             creek.Floaters.TrayPoint = kind => creek.ToCreek(tray.LandingPoint(kind));
             creek.Floaters.SideInset = SideMargin + SideSize + SideGap;
-            creek.Floaters.Caught += _ => Save();
+            creek.Floaters.Caught += kind =>
+            {
+                if (kind == FloaterKind.Boulder)
+                    StartMotherLode(session.StartMotherLode());
+                Save();
+            };
             guild = new GuildPanel(session, ads, root);
             guild.Reborn += Save;
             daily = new DailyPanel(session, ads, root);
