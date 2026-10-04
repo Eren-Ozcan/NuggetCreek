@@ -693,6 +693,8 @@ namespace NuggetCreek.Game
         const float SideMargin = 14;
         const float SideSize = 118;
         const float SideGap = 12;
+        /// <summary>Tap area of the settings gear in the top-right corner; the gear itself is drawn smaller.</summary>
+        const float SettingsSize = 120;
         /// <summary>Crew faces shown down the left; the rest are in the Upgrades panel.</summary>
         const int CrewFaces = 6;
 
@@ -761,13 +763,24 @@ namespace NuggetCreek.Game
                 goalLabel.rectTransform.offsetMin = new Vector2(72, 8);
             }
 
-            // The corners: the guild badge on the left, settings on the right.
+            // The corners: the guild badge on the left; on the right a faint gear, not a tile, so
+            // the column under it holds only what comes and goes.
             guildButton = SquareButton("GuildButton", root, Art.GuildEmblem, Palette.ButtonAlt, () => guild.Open(), out guildLabel);
             guildButton.AsRect().Box(new Vector2(0, 1), new Vector2(136, 150), new Vector2(14, -26));
 
-            Button settingsButton = SquareButton("SettingsButton", root, Art.Icon("settings"), Palette.ButtonAlt, OpenSettings, out Text settingsLabel);
-            settingsButton.AsRect().Box(Vector2.one, new Vector2(SideSize, SideSize), new Vector2(-14, -26));
-            settingsLabel.SetText(Art.Icon("settings") != null ? "" : "Settings");
+            Button settingsButton = Ui.Button("SettingsButton", root, "", Color.clear, OpenSettings, out Text settingsLabel, 22);
+            settingsButton.AsRect().Box(Vector2.one, new Vector2(SettingsSize, SettingsSize), new Vector2(-SideMargin, -26));
+            Image gear = Ui.Icon("Icon", settingsButton.transform, Art.Icon("settings"));
+            if (gear != null)
+            {
+                gear.color = Palette.Faint;
+                gear.rectTransform.Fill(24);
+            }
+            else
+            {
+                settingsLabel.SetText("Settings");
+                settingsLabel.color = Palette.Faint;
+            }
         }
 
         void BuildSideColumns(Transform root)

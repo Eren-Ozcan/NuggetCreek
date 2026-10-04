@@ -66,6 +66,8 @@ namespace NuggetCreek.Game.UI
         public static readonly Color Fog = new Color(0.95f, 0.92f, 0.85f, 0.82f);
         /// <summary>Tint for a star not earned yet or a milestone not reached: a faint shape on cream.</summary>
         public static readonly Color IconOff = new Color(0.53f, 0.40f, 0.29f, 0.3f);
+        /// <summary>A control that stays out of the way over the water, like the settings gear.</summary>
+        public static readonly Color Faint = new Color(1, 1, 1, 0.6f);
     }
 
     /// <summary>Code-built uGUI helpers for the greybox. Sizes are in 1080x1920 reference pixels.</summary>
