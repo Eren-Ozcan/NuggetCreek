@@ -344,7 +344,8 @@ namespace NuggetCreek.PlayModeTests
             session.Progress.ChestsOpened = 1;
             var findings = new List<string>();
             Vector2Int[] screens = { new Vector2Int(1080, 1920), new Vector2Int(1080, 2340), new Vector2Int(1536, 2048) };
-            FloaterKind[] kinds = { FloaterKind.Crate, FloaterKind.Chest };
+            // The boulder last: it is left to drift out, since catching it starts the Mother Lode.
+            FloaterKind[] kinds = { FloaterKind.Crate, FloaterKind.Chest, FloaterKind.Boulder };
             // A full tray down the right, so the floaters have to stay clear of it.
             session.Progress.CratesWaiting = 12;
             Time.timeScale = 3;
@@ -355,9 +356,19 @@ namespace NuggetCreek.PlayModeTests
                 foreach (FloaterKind kind in kinds)
                 {
                     if (kind == FloaterKind.Chest)
+                    {
                         session.Progress.ChestsDue = 1;
+                    }
+                    else if (kind == FloaterKind.Boulder)
+                    {
+                        EconomyConfig config = session.Economy.Config;
+                        session.Progress.PlaySeconds = Math.Max(session.Progress.PlaySeconds, config.MotherLodeFirstAfterSeconds);
+                        session.Progress.SecondsSinceMotherLode = config.MotherLodeEverySeconds;
+                    }
                     else
+                    {
                         session.Progress.CrateSecondsLeft = 0.01;
+                    }
                     float waitUntil = Time.realtimeSinceStartup + 8;
                     while (!creek.Floaters.Position.HasValue && Time.realtimeSinceStartup < waitUntil)
                         yield return null;
@@ -371,13 +382,13 @@ namespace NuggetCreek.PlayModeTests
                     bool shot = false;
                     while (creek.Floaters.Position is Vector2 at && at.y > 0)
                     {
-                        float half = 150 / 2f;
+                        GameObject floater = GameObject.Find("Floater_" + kind);
+                        float half = floater != null ? ((RectTransform)floater.transform).rect.width / 2 : 150 / 2f;
                         bool leftLane = at.x < creek.AreaSize.x / 2;
                         float min = leftLane ? river.WaterLeft : dredge.HullRight;
                         float max = leftLane ? dredge.HullLeft : river.WaterRight;
                         if (at.x - half < min - 1 || at.x + half > max + 1)
                             findings.Add($"{where}: x {at.x:0} leaves its lane {min:0}..{max:0} at y {at.y:0}");
-                        GameObject floater = GameObject.Find("Floater_" + kind);
                         if (floater != null)
                         {
                             Rect body = ScreenRect((RectTransform)floater.transform, Camera.main);
@@ -393,8 +404,16 @@ namespace NuggetCreek.PlayModeTests
                         }
                         yield return null;
                     }
-                    if (creek.Floaters.Position is Vector2 left)
+                    if (kind == FloaterKind.Boulder)
+                    {
+                        while (creek.Floaters.Position.HasValue)
+                            yield return null;
+                        Assert.That(session.MotherLodeDue, Is.False, "a missed boulder is lost");
+                    }
+                    else if (creek.Floaters.Position is Vector2 left)
+                    {
                         creek.Floaters.Tap(left);
+                    }
                     yield return new WaitForSeconds(0.1f);
                 }
             }

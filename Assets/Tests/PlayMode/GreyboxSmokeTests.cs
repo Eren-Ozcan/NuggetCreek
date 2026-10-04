@@ -196,11 +196,12 @@ namespace NuggetCreek.PlayModeTests
         [UnityTest]
         public IEnumerator MotherLodeRunsAndPays()
         {
-            Assert.That(IsActive("SummonLode"), Is.False, "the Gem call waits for the first natural event");
             Click("Lode now");
             yield return null;
             yield return null;
-            Assert.That(IsActive("MotherLode"), Is.True);
+            Assert.That(IsActive("MotherLode"), Is.False, "the event never starts by itself");
+            yield return CatchFloater("Floater_Boulder", tap: true);
+            Assert.That(IsActive("MotherLode"), Is.True, "a caught boulder starts it");
             StringAssert.StartsWith("x1", LabelIn("MotherLode", "Combo").text);
             yield return Shot("8_mother_lode");
 
@@ -208,21 +209,16 @@ namespace NuggetCreek.PlayModeTests
             Time.timeScale = 20;
             try
             {
-                yield return WaitFor(() => IsActive("LodeCollect"), 5);
+                yield return WaitFor(() => !IsActive("MotherLode"), 5);
             }
             finally
             {
                 Time.timeScale = scale;
             }
-            yield return Shot("9_mother_lode_result");
-            StringAssert.Contains("+1 Gem", LabelIn("Result", "Amount").text);
+            Assert.That(IsActive("Reward"), Is.True, "no dialog: the haul flies to its counters");
+            yield return Shot("9_mother_lode_haul");
             Assert.That(Label("Gems").text, Is.EqualTo("1"));
             Assert.That(Label("Dollars").text, Is.Not.EqualTo("$0"));
-
-            Click("LodeCollect");
-            yield return null;
-            Assert.That(IsActive("MotherLode"), Is.False);
-            Assert.That(IsActive("SummonLode"), Is.True);
         }
 
         [UnityTest]
