@@ -77,7 +77,8 @@ namespace NuggetCreek.Game
         Button lateDoubleChip;
         Button crewChip;
         Text crewChipLabel;
-        Button summonLode;
+        RectTransform eventColumn;
+        RectTransform menuColumn;
         Image creekBadge;
         int shownBadgeRegion = -1;
         Image quickBuyIcon;
@@ -790,15 +791,22 @@ namespace NuggetCreek.Game
             crewChip = SquareButton("CrewChip", crewColumn, Art.Icon("plus"), Palette.GemButton, () => candidateModal.Open(), out crewChipLabel);
             crewChip.SetActive(false);
 
-            // Right: things that come and go.
-            RectTransform events = Column("EventColumn", root, Vector2.one, new Vector2(-SideMargin, -164), TextAnchor.UpperRight);
-            dailyButton = SquareButton("DailyButton", events, Art.Icon("gift"), Palette.ButtonAlt, () => daily.Open(), out dailyLabel);
-            Button collectionButton = SquareButton("CollectionButton", events, Art.NuggetIcon, Palette.ButtonAlt, () => collection.Open(), out collectionLabel);
-            summonLode = SquareButton("SummonLode", events, Art.Get("MotherLode/boulder_0"), Palette.GemButton, SummonMotherLode, out Text summonLabel);
-            summonLabel.SetText(Effects.Gems(session.Economy.Config.MotherLodeSummonGems));
-            summonLode.SetActive(false);
-            // Under them, the tray: one tile per caught chest, pouch and crate (design doc 3.1.4).
-            tray = new TrayView(session, events, SideSize, SideGap, TrayBottom, OpenTrayItem);
+            // Right, under the settings gear: things that come and go, as icons only. A Daily with
+            // something to collect waits on top; once collected it moves down beside the map.
+            eventColumn = Column("EventColumn", root, Vector2.one, new Vector2(-SideMargin, -26 - SettingsSize - SideGap), TextAnchor.UpperRight);
+            // Under it, the tray: one tile per caught chest, pouch and crate (design doc 3.1.4).
+            tray = new TrayView(session, eventColumn, SideSize, SideGap, TrayBottom, OpenTrayItem);
+        }
+
+        /// <summary>The Daily sits in the right column while it has something to collect, else in the menu by the map.</summary>
+        void PlaceDaily(bool waiting)
+        {
+            Transform parent = waiting ? eventColumn : menuColumn;
+            if (dailyButton.transform.parent == parent)
+                return;
+            dailyButton.transform.SetParent(parent, false);
+            dailyButton.transform.SetAsFirstSibling();
+            IconOnly(dailyButton, waiting);
         }
 
         void OpenTrayItem(FloaterKind kind)
@@ -815,6 +823,10 @@ namespace NuggetCreek.Game
         {
             mapButton = SquareButton("MapButton", root, Art.Icon("map"), Palette.ButtonAlt, OpenMap, out mapLabel, 150);
             mapButton.AsRect().Box(Vector2.zero, new Vector2(150, 150), new Vector2(20, 40));
+            // Over the map: the collection and, once collected, the Daily.
+            menuColumn = Column("MenuColumn", root, Vector2.zero, new Vector2(20 + (150 - SideSize) / 2, 40 + 150 + SideGap), TextAnchor.LowerLeft);
+            dailyButton = SquareButton("DailyButton", menuColumn, Art.Icon("gift"), Palette.ButtonAlt, () => daily.Open(), out dailyLabel);
+            SquareButton("CollectionButton", menuColumn, Art.NuggetIcon, Palette.ButtonAlt, () => collection.Open(), out collectionLabel);
             shopButton = SquareButton("ShopButton", root, Art.Icon("shop"), Palette.GemButton, OpenShop, out shopLabel, 150);
             shopButton.AsRect().Box(new Vector2(1, 0), new Vector2(150, 150), new Vector2(-20, 40));
 
@@ -891,6 +903,18 @@ namespace NuggetCreek.Game
             return button;
         }
 
+        /// <summary>Lets a <see cref="SquareButton"/>'s icon fill the face without a caption, or makes room for one.</summary>
+        void IconOnly(Button button, bool iconOnly)
+        {
+            if (!lockIcons.TryGetValue(button, out (Image icon, Sprite open) entry))
+                return;
+            float captionHeight = button.AsRect().sizeDelta.y * 0.3f;
+            if (iconOnly)
+                entry.icon.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(14, 14 + Ui.Lip), new Vector2(-14, -14));
+            else
+                entry.icon.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(14, captionHeight + 4), new Vector2(-14, -10));
+        }
+
         /// <summary>A soft drop shadow, so a control reads as lying on the water.</summary>
         static void Float(Component control)
         {
@@ -963,7 +987,9 @@ namespace NuggetCreek.Game
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");
-            SetLock(dailyButton, dailyLabel, Feature.Daily, "Daily", "Tomorrow", daily.AnythingToCollect());
+            bool dailyWaiting = session.IsUnlocked(Feature.Daily) && daily.AnythingToCollect();
+            PlaceDaily(dailyWaiting);
+            SetLock(dailyButton, dailyLabel, Feature.Daily, dailyWaiting ? "" : "Daily", "Tomorrow", dailyWaiting);
             gemsLabel.SetText(progress.Gems.ToString());
             RefreshCreekBadge();
             RefreshCrewColumn();
@@ -986,13 +1012,6 @@ namespace NuggetCreek.Game
             lateDoubleChip.SetActive(lateDouble.IsVisible(now) && ads.IsLoaded && !offlineModal.IsOpen);
 
             crewChip.SetActive(session.HasCandidates && !candidateModal.IsOpen && !motherLode.IsActive);
-
-            // The Gem call appears once the player has met a natural Mother Lode (design doc 8.2c).
-            bool lodeKnown = progress.PlaySeconds >= session.Economy.Config.MotherLodeFirstAfterSeconds;
-            summonLode.SetActive(lodeKnown && !motherLode.IsActive);
-            bool canSummon = session.CanAffordGems(session.Economy.Config.MotherLodeSummonGems);
-            if (summonLode.interactable != canSummon)
-                summonLode.interactable = canSummon;
             if (session.HasCandidates)
                 crewChipLabel.SetText(CandidateModal.Clock(progress.CandidateSecondsLeft));
             // After the column's own buttons, so the tray knows how much room is left.
