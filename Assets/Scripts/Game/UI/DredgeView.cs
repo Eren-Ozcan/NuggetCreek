@@ -13,7 +13,7 @@ namespace NuggetCreek.Game.UI
     /// covers the creek, then lands with a show: its silhouette drops in at twice the size, a wave
     /// runs over the water and the new drawing grows in with a golden glow. A rebirth back to a
     /// lower tier swaps it quietly. Caught gold flies to its chest (<see cref="ChestPoint"/>),
-    /// which hops when the gold lands.
+    /// which hops when the gold lands. Once Amos is hired he stands on the deck swirling his pan.
     /// </summary>
     public sealed class DredgeView : MonoBehaviour
     {
@@ -28,14 +28,17 @@ namespace NuggetCreek.Game.UI
             public readonly Rect Hull;
             /// <summary>The gold in the chest, as fractions of the drawing.</summary>
             public readonly Rect Chest;
+            /// <summary>Where Amos stands, a clear spot of deck, as a fraction of the drawing.</summary>
+            public readonly Vector2 Amos;
 
             public TierLayout(float hullShare, float aspect, float hullLeft, float hullRight, float hullBottom, float hullTop,
-                float chestLeft, float chestRight, float chestBottom, float chestTop)
+                float chestLeft, float chestRight, float chestBottom, float chestTop, float amosX, float amosY)
             {
                 HullShare = hullShare;
                 Aspect = aspect;
                 Hull = Rect.MinMaxRect(hullLeft, hullBottom, hullRight, hullTop);
                 Chest = Rect.MinMaxRect(chestLeft, chestBottom, chestRight, chestTop);
+                Amos = new Vector2(amosX, amosY);
             }
         }
 
@@ -43,16 +46,16 @@ namespace NuggetCreek.Game.UI
         // it gets a smaller share than tier 5; the big step comes at tier 7.
         static readonly TierLayout[] Tiers =
         {
-            new TierLayout(0.20f, 1.215f, 0.052f, 0.944f, 0.054f, 0.957f, 0.657f, 0.786f, 0.303f, 0.377f),
-            new TierLayout(0.22f, 1.234f, 0.019f, 0.981f, 0.021f, 0.981f, 0.672f, 0.813f, 0.284f, 0.367f),
-            new TierLayout(0.25f, 1.221f, 0.017f, 0.985f, 0.018f, 0.951f, 0.219f, 0.386f, 0.810f, 0.880f),
-            new TierLayout(0.24f, 3.030f, 0.012f, 0.947f, 0.035f, 0.700f, 0.740f, 0.876f, 0.427f, 0.502f),
-            new TierLayout(0.27f, 1.588f, 0.008f, 0.668f, 0.059f, 0.965f, 0.089f, 0.229f, 0.546f, 0.587f),
-            new TierLayout(0.24f, 3.151f, 0.028f, 0.972f, 0.040f, 0.970f, 0.372f, 0.566f, 0.336f, 0.385f),
-            new TierLayout(0.34f, 1.080f, 0.274f, 0.992f, 0.018f, 0.650f, 0.835f, 0.915f, 0.116f, 0.150f),
-            new TierLayout(0.36f, 1.719f, 0.066f, 0.932f, 0.053f, 0.890f, 0.617f, 0.731f, 0.217f, 0.250f),
-            new TierLayout(0.38f, 1.756f, 0.057f, 0.947f, 0.050f, 0.895f, 0.621f, 0.740f, 0.215f, 0.250f),
-            new TierLayout(0.38f, 2.702f, 0.011f, 0.989f, 0.184f, 0.795f, 0.625f, 0.765f, 0.302f, 0.328f),
+            new TierLayout(0.20f, 1.215f, 0.052f, 0.944f, 0.054f, 0.957f, 0.657f, 0.786f, 0.303f, 0.377f, 0.50f, 0.64f),
+            new TierLayout(0.22f, 1.234f, 0.019f, 0.981f, 0.021f, 0.981f, 0.672f, 0.813f, 0.284f, 0.367f, 0.58f, 0.20f),
+            new TierLayout(0.25f, 1.221f, 0.017f, 0.985f, 0.018f, 0.951f, 0.219f, 0.386f, 0.810f, 0.880f, 0.62f, 0.17f),
+            new TierLayout(0.24f, 3.030f, 0.012f, 0.947f, 0.035f, 0.700f, 0.740f, 0.876f, 0.427f, 0.502f, 0.19f, 0.46f),
+            new TierLayout(0.27f, 1.588f, 0.008f, 0.668f, 0.059f, 0.965f, 0.089f, 0.229f, 0.546f, 0.587f, 0.34f, 0.58f),
+            new TierLayout(0.24f, 3.151f, 0.028f, 0.972f, 0.040f, 0.970f, 0.372f, 0.566f, 0.336f, 0.385f, 0.33f, 0.50f),
+            new TierLayout(0.34f, 1.080f, 0.274f, 0.992f, 0.018f, 0.650f, 0.835f, 0.915f, 0.116f, 0.150f, 0.69f, 0.44f),
+            new TierLayout(0.36f, 1.719f, 0.066f, 0.932f, 0.053f, 0.890f, 0.617f, 0.731f, 0.217f, 0.250f, 0.82f, 0.20f),
+            new TierLayout(0.38f, 1.756f, 0.057f, 0.947f, 0.050f, 0.895f, 0.621f, 0.740f, 0.215f, 0.250f, 0.84f, 0.20f),
+            new TierLayout(0.38f, 2.702f, 0.011f, 0.989f, 0.184f, 0.795f, 0.625f, 0.765f, 0.302f, 0.328f, 0.85f, 0.27f),
         };
 
         /// <summary>The drawing never takes more than this share of the creek height.</summary>
@@ -79,6 +82,11 @@ namespace NuggetCreek.Game.UI
         const float WaveSeconds = 0.8f;
         const float WashSeconds = 0.35f;
         const float ShowSeconds = 1.6f;
+        /// <summary>Amos's width as a share of the creek width, before the drawing is fitted, so he keeps his size on every hull.</summary>
+        const float AmosShare = 0.05f;
+        /// <summary>He swirls his pan this far each way, in degrees, once every this many seconds.</summary>
+        const float AmosSwirl = 7;
+        const float AmosSwirlSeconds = 1.4f;
 
         GameSession session;
         Particles particles;
@@ -87,6 +95,7 @@ namespace NuggetCreek.Game.UI
         Image art;
         Image greyHull;
         RectTransform chest;
+        Image amos;
         Image chestPatch;
         Sprite chestSprite;
         Image flash;
@@ -125,6 +134,9 @@ namespace NuggetCreek.Game.UI
 
         /// <summary>The chest's centre in creek-area pixels from the bottom-left corner, where caught gold lands.</summary>
         public Vector2 ChestPoint => ToArea(chest.TransformPoint(Vector3.zero));
+
+        /// <summary>Amos's pan in creek-area pixels, or the chest while he is not on deck.</summary>
+        public Vector2 AmosPoint => amos.gameObject.activeSelf ? ToArea(amos.rectTransform.TransformPoint(Vector3.zero)) : ChestPoint;
 
         /// <summary>The hull's sides in creek-area pixels from the left; gold drifts past outside them.</summary>
         public float HullLeft => area.rect.width / 2 - hullSize.x / 2;
@@ -174,6 +186,12 @@ namespace NuggetCreek.Game.UI
             chestPatch = Ui.Image("Gold", chest, Color.white);
             chestPatch.raycastTarget = false;
             chestPatch.rectTransform.Fill();
+
+            // Before the moving parts, so a crane swings over him.
+            amos = Ui.Image("Amos", art.transform, Color.white, Art.AmosOnDeck);
+            amos.raycastTarget = false;
+            amos.preserveAspect = true;
+            amos.rectTransform.pivot = new Vector2(0.5f, 0.5f);
 
             parts = new DredgeParts(art.rectTransform, particles, ToArea);
 
@@ -244,9 +262,26 @@ namespace NuggetCreek.Game.UI
             root.localScale = new Vector3(scale * (1 + 0.01f * Mathf.Sin(time * 1.6f)), scale, 1);
 
             chest.localScale = Vector3.one * Motion.Punch(chestAge, ChestSeconds, ChestPeak);
+            PlaceAmos(layout, artSize);
             PlaceFoam(deltaTime, currentSpeed, travel);
             PlaceShow(deltaTime);
             parts.Tick(deltaTime);
+        }
+
+        /// <summary>Amos works the deck while idle income runs, on a drawn dredge only.</summary>
+        void PlaceAmos(TierLayout layout, Vector2 artSize)
+        {
+            bool show = session.IdleActive && amos.sprite != null && art.sprite != null;
+            if (amos.gameObject.activeSelf != show)
+                amos.gameObject.SetActive(show);
+            if (!show)
+                return;
+            RectTransform rt = amos.rectTransform;
+            rt.anchorMin = rt.anchorMax = layout.Amos;
+            float width = artSize.x * layout.Hull.width * AmosShare / layout.HullShare;
+            rt.sizeDelta = new Vector2(width, width * amos.sprite.rect.height / amos.sprite.rect.width);
+            rt.anchoredPosition = Vector2.zero;
+            rt.localRotation = Quaternion.Euler(0, 0, AmosSwirl * Mathf.Sin(time * 2 * Mathf.PI / AmosSwirlSeconds));
         }
 
         /// <summary>Caught gold reached the chest: it hops and throws sparkles.</summary>

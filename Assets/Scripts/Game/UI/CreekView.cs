@@ -607,7 +607,7 @@ namespace NuggetCreek.Game.UI
             }
         }
 
-        /// <summary>Amos works on the dredge: what he pans rises from its chest now and then.</summary>
+        /// <summary>Amos works on the dredge: what he pans rises from his pan now and then.</summary>
         void UpdateAmos(float deltaTime, BigNumber idleEarned)
         {
             if (!session.IdleActive)
@@ -619,7 +619,7 @@ namespace NuggetCreek.Game.UI
                 return;
             amosTimer = 0;
             if (!amosPending.IsZero)
-                ShowPopup(dredge.ChestPoint + new Vector2(0, 90), "+" + NumberFormat.Dollars(amosPending), 34, Palette.TextLight);
+                ShowPopup(dredge.AmosPoint + new Vector2(0, 70), "+" + NumberFormat.Dollars(amosPending), 34, Palette.TextLight);
             amosPending = BigNumber.Zero;
         }
 

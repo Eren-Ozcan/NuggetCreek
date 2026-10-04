@@ -43,6 +43,9 @@ namespace NuggetCreek.Game
         /// <summary>A moving piece cut from a dredge drawing, by its file name in parts.json.</summary>
         public static Sprite DredgePart(string file) => Get("Dredge/" + file);
 
+        /// <summary>Amos seen from above with his gold pan, working on the dredge's deck.</summary>
+        public static Sprite AmosOnDeck => Get("Dredge/amos");
+
         /// <summary>The creek's river seen from above; null until it is painted.</summary>
         public static Sprite River(int regionIndex) => Get($"Rivers/river_{regionIndex + 1:00}");
 
