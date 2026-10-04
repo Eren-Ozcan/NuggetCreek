@@ -51,7 +51,60 @@ namespace NuggetCreek.Core.Tests
         {
             GameSession session = NewSession();
             session.UpdateDay(100);
-            Assert.That(PlayUntilFloater(session, 30 * 60).Kind, Is.Null);
+            // Up to the first Mother Lode, whose boulder does not wait for the chest.
+            Assert.That(PlayUntilFloater(session, config.MotherLodeFirstAfterSeconds - 1).Kind, Is.Null);
+        }
+
+        [Test]
+        public void ADueMotherLodeFloatsItsBoulderAfterEarnedChests()
+        {
+            GameSession session = NewSession(new PlayerProgress { PlaySeconds = 3600, SecondsSinceMotherLode = 600, ChestsDue = 1 });
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Chest));
+            session.CatchFloater();
+            session.TickPlay(5);
+
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boulder));
+            Assert.That(session.CatchFloater(), Is.True);
+            Assert.That(session.TrayCount, Is.EqualTo(1), "only the chest; the boulder starts the event instead");
+            Assert.That(session.MotherLodeDue, Is.False, "caught, the next one waits for the normal count");
+            session.TickPlay(5);
+            Assert.That(session.LaunchFloater(), Is.Not.EqualTo(FloaterKind.Boulder));
+        }
+
+        [Test]
+        public void AMissedBoulderLosesTheMotherLode()
+        {
+            GameSession session = NewSession(new PlayerProgress { PlaySeconds = 3600, CollectedSinceMotherLode = 400 });
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boulder));
+            Assert.That(session.MissFloater(), Is.True);
+            Assert.That(session.MotherLodeDue, Is.False);
+            Assert.That(session.Progress.CollectedSinceMotherLode, Is.Zero);
+            Assert.That(session.Progress.SecondsSinceMotherLode, Is.Zero);
+
+            session.TickPlay(config.MotherLodeEverySeconds);
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boulder), "the next one comes on the normal count");
+        }
+
+        [Test]
+        public void AGemMotherLodeTakesTheBoulderOffTheWater()
+        {
+            GameSession session = NewSession(new PlayerProgress { PlaySeconds = 3600, SecondsSinceMotherLode = 600 });
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Boulder));
+            session.StartMotherLode();
+            Assert.That(session.FloaterOnWater, Is.Null);
+            Assert.That(session.CatchFloater(), Is.False, "no second event from the same boulder");
+        }
+
+        [Test]
+        public void PeteCallsOutTheFirstBoulderWhileItFloats()
+        {
+            GameSession session = NewSession(new PlayerProgress
+            {
+                PlaySeconds = 3600, SecondsSinceMotherLode = 600, PeteSeen = ~(1 << (int)PeteLine.FirstBoulder),
+            });
+            Assert.That(session.NextPeteLine(), Is.Null);
+            session.LaunchFloater();
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstBoulder));
         }
 
         [Test]
