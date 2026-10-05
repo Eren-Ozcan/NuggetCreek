@@ -99,6 +99,15 @@ namespace NuggetCreek.Game
         /// <summary>HUD icon by file name, e.g. "map" or "lock".</summary>
         public static Sprite Icon(string name) => Get("Icons/" + name);
 
+        /// <summary>Old Pete from the waist up for the tutorial, one drawing per pose.</summary>
+        public static Sprite Pete(PetePose pose) => Get("Pete/pete_" + pose.ToString().ToLowerInvariant());
+
+        /// <summary>The tutorial's pointing glove, finger up; its fingertip is at <see cref="HandTip"/>.</summary>
+        public static Sprite Hand => Icon("hand");
+
+        /// <summary>The fingertip on <see cref="Hand"/>, as a fraction of the picture from its bottom-left.</summary>
+        public static readonly Vector2 HandTip = new Vector2(116f / 240, 1 - 22f / 300);
+
         /// <summary>A river floater's picture (design doc 3.1.4); null until its art is drawn.</summary>
         public static Sprite Floater(FloaterKind kind)
         {
