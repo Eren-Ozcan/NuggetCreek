@@ -40,6 +40,8 @@ namespace NuggetCreek.Game.UI
         /// <summary>A row the panel points the player to.</summary>
         public static readonly Color Highlight = new Color32(0xF5, 0xC8, 0x62, 0xFF);
         public static readonly Color Dim = new Color(0.12f, 0.07f, 0.04f, 0.72f);
+        /// <summary>The tutorial's shade around what Pete points at; lighter than a modal's dim.</summary>
+        public static readonly Color Veil = new Color(0.12f, 0.07f, 0.04f, 0.6f);
         public static readonly Color Text = new Color32(0x4A, 0x2E, 0x1F, 0xFF);
         public static readonly Color TextMuted = new Color32(0x86, 0x66, 0x4B, 0xFF);
         public static readonly Color TextLight = new Color32(0xFF, 0xF8, 0xE8, 0xFF);
@@ -74,7 +76,7 @@ namespace NuggetCreek.Game.UI
     public static class Ui
     {
         static Font font, boldFont, headingFont;
-        static Sprite circle, rounded, raised, glow, sparkle, ring;
+        static Sprite circle, rounded, raised, glow, sparkle, ring, frame;
 
         /// <summary>Body font; the built-in one until Fonts/Resources is imported.</summary>
         public static Font Font => font ??= Resources.Load<Font>("Fonts/Body")
@@ -122,6 +124,9 @@ namespace NuggetCreek.Game.UI
 
         /// <summary>Rounded rectangle with a darker bottom lip, for buttons.</summary>
         public static Sprite Raised => raised ??= CreateRounded(Lip);
+
+        /// <summary>Nine-sliced rounded outline, for a ring drawn around a control.</summary>
+        public static Sprite Frame => frame ??= CreateFrame(10);
 
         /// <summary>
         /// System font scale the labels follow, 1 to 1.3 (design doc 14.3). Set before the UI
@@ -370,6 +375,28 @@ namespace NuggetCreek.Game.UI
             element.minHeight = height;
         }
 
+        /// <summary>
+        /// Scrolls the list holding <paramref name="item"/> so the item sits at <paramref name="height"/>
+        /// of the visible list, counted from its bottom. Does nothing outside a scroll view.
+        /// </summary>
+        public static void ScrollIntoView(RectTransform item, float height = 0.62f)
+        {
+            ScrollRect scroll = item.GetComponentInParent<ScrollRect>();
+            if (scroll == null || scroll.content == null)
+                return;
+            Canvas.ForceUpdateCanvases();
+            RectTransform content = scroll.content;
+            RectTransform view = scroll.viewport != null ? scroll.viewport : (RectTransform)scroll.transform;
+            float contentHeight = content.rect.height;
+            float viewHeight = view.rect.height;
+            if (contentHeight <= viewHeight)
+                return;
+            float centre = content.InverseTransformPoint(item.TransformPoint(item.rect.center)).y;
+            float fromTop = content.rect.yMax - centre - (1 - height) * viewHeight;
+            scroll.velocity = Vector2.zero;
+            scroll.verticalNormalizedPosition = 1 - Mathf.Clamp01(fromTop / (contentHeight - viewHeight));
+        }
+
         /// <summary>Scroll view filling its parent; returns the content rect to add rows to.</summary>
         public static RectTransform ScrollList(Transform parent, float spacing, int padding)
         {
@@ -487,6 +514,26 @@ namespace NuggetCreek.Game.UI
             texture.Apply();
             // pixelsPerUnit 100 matches the canvas, so one texel is one reference unit.
             var border = new Vector4(Radius + 1, Radius + 1 + lip, Radius + 1, Radius + 1);
+            return Sprite.Create(texture, new UnityEngine.Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100,
+                0, SpriteMeshType.FullRect, border);
+        }
+
+        /// <summary>White rounded outline <paramref name="stroke"/> pixels wide, sliced like <see cref="Rounded"/>.</summary>
+        static Sprite CreateFrame(int stroke)
+        {
+            int size = Radius * 2 + 4;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp };
+            var pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float outer = Coverage(x + 0.5f, y + 0.5f, 0, size, 0, size);
+                float inner = Coverage(x + 0.5f, y + 0.5f, stroke, size - stroke, stroke, size - stroke);
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)(outer * (1 - inner) * 255));
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            var border = new Vector4(Radius + 1, Radius + 1, Radius + 1, Radius + 1);
             return Sprite.Create(texture, new UnityEngine.Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100,
                 0, SpriteMeshType.FullRect, border);
         }
