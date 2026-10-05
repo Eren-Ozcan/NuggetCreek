@@ -57,6 +57,21 @@ namespace NuggetCreek.Game.UI
         /// <summary>The floater's centre on the water, for the PlayMode tests' swipes; null when none floats.</summary>
         public Vector2? Position => floater != null ? floater.anchoredPosition : (Vector2?)null;
 
+        /// <summary>The floater's centre in world space, for the tutorial's pointing hand; null when none floats.</summary>
+        public Vector3? WorldPosition => floater != null ? floater.TransformPoint(floater.rect.center) : (Vector3?)null;
+
+        /// <summary>The floater's side on the water, in creek pixels.</summary>
+        public float FloaterSize => size;
+
+        /// <summary>
+        /// While Pete is teaching: no new floater sets off, and the one on the water bobs in
+        /// place once it is clear of the top controls, instead of drifting out.
+        /// </summary>
+        public bool Hold { get; set; }
+
+        /// <summary>The top of the open water, in creek pixels; a held floater stops below it.</summary>
+        public float HoldLine { get; set; } = float.MaxValue;
+
         public RiverFloaters(GameSession session, RectTransform area, RectTransform waterLayer, RectTransform flightLayer,
             Particles particles, Func<(float Left, float Right)> water, Func<(float Left, float Right)> hull)
         {
@@ -76,12 +91,15 @@ namespace NuggetCreek.Game.UI
             // A Gem Mother Lode takes its boulder off the water.
             if (floater != null && session.FloaterOnWater == null)
                 Clear();
-            if (floater == null && canLaunch && session.LaunchFloater() is FloaterKind next)
+            if (floater == null && canLaunch && !Hold && session.LaunchFloater() is FloaterKind next)
                 Launch(next);
             if (floater == null)
                 return;
 
-            age += deltaTime;
+            if (Hold && floater.anchoredPosition.y <= HoldLine - size * 0.6f)
+                phase += deltaTime;
+            else
+                age += deltaTime;
             if (age >= lifetime)
             {
                 // Drifted out at the bottom: lost (the tutorial chest comes back).
