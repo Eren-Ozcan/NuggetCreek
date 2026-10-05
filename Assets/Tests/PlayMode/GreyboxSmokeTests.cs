@@ -222,6 +222,31 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator ABossFloatsInOnceAndEscapesUnhit()
+        {
+            Click("Boss now");
+            yield return null;
+            yield return CatchFloater("Floater_Boss", tap: true);
+            Assert.That(IsActive("MotherLode"), Is.True, "a caught boss boulder starts the fight");
+            Assert.That(IsActive("BossBar"), Is.True, "the boss's health shows");
+            yield return Shot("8b_boss_fight");
+
+            float scale = Time.timeScale;
+            Time.timeScale = 20;
+            try
+            {
+                yield return WaitFor(() => !IsActive("MotherLode"), 5);
+            }
+            finally
+            {
+                Time.timeScale = scale;
+            }
+            StringAssert.Contains("got away", Label("NewNugget").text);
+            GameSession session = RobustnessTests.Session();
+            Assert.That(session.NextBossRegion, Is.EqualTo(-1), "an escaped boss waits for the next claim");
+        }
+
+        [UnityTest]
         public IEnumerator CollectionLayersStayClosedUntilOpened()
         {
             yield return null;
