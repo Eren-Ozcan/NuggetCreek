@@ -520,13 +520,15 @@ namespace NuggetCreek.Game
             pouchModal = new PouchModal(session, ads, root);
             pouchModal.Changed += Save;
             // A caught floater flies to its tile in the tray (design doc 3.1.4); a caught boulder
-            // starts the Mother Lode (3.4), which never starts by itself.
+            // starts the Mother Lode (3.4) or a boss fight (3.4.1); neither starts by itself.
             creek.Floaters.TrayPoint = kind => creek.ToCreek(tray.LandingPoint(kind));
             creek.Floaters.SideInset = SideMargin + SideSize + SideGap;
             creek.Floaters.Caught += kind =>
             {
                 if (kind == FloaterKind.Boulder)
                     StartMotherLode(session.StartMotherLode());
+                else if (kind == FloaterKind.Boss)
+                    StartMotherLode(session.StartBossFight(session.CaughtBoss));
                 Save();
             };
             guild = new GuildPanel(session, ads, root);
@@ -1217,12 +1219,15 @@ namespace NuggetCreek.Game
             AddDebugButton(column, 13, "Ask notif", () => OpenNotifAsk(false));
             AddDebugButton(column, 14, "Reset", ResetGame);
             AddDebugButton(column, 15, "Floaters now", DebugFloaters);
+            AddDebugButton(column, 16, "Boss now", MakeBossDue);
         }
 
         static void AddDebugButton(RectTransform column, int index, string text, System.Action onClick)
         {
             Button button = Ui.Button(text, column, text, new Color(0, 0, 0, 0.45f), onClick, out _, 30);
-            button.AsRect().Box(new Vector2(1, 1), new Vector2(200, 84), new Vector2(0, -index * 96));
+            // Sixteen to a column; more start a second column to the left.
+            const int perColumn = 16;
+            button.AsRect().Box(new Vector2(1, 1), new Vector2(200, 84), new Vector2(-(index / perColumn) * 210, -(index % perColumn) * 96));
         }
 
         /// <summary>Skips the locks and the first-launch screen for this session; nothing is accepted.</summary>
@@ -1259,6 +1264,13 @@ namespace NuggetCreek.Game
             session.Progress.LastSeenUtc -= 2 * 3600;
             ads.Load();
             BeginReturn();
+        }
+
+        /// <summary>Floats the next boss in now, as if the creek's catches were done.</summary>
+        void MakeBossDue()
+        {
+            session.Progress.ChestsOpened = System.Math.Max(1, session.Progress.ChestsOpened);
+            session.Progress.CatchesTowardBoss = session.Economy.Config.BossAfterCatches;
         }
 
         void MakeMotherLodeDue()

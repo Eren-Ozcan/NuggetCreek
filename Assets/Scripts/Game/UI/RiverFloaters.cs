@@ -160,7 +160,7 @@ namespace NuggetCreek.Game.UI
                 || (Mathf.Approximately(hullLeft - waterLeft, waterRight - hullRight) && UnityEngine.Random.value < 0.5f);
             // The boulder is bigger than the rest, as far as its lane allows.
             float laneWidth = left ? hullLeft - waterLeft : waterRight - hullRight;
-            size = next == FloaterKind.Boulder ? Mathf.Clamp(laneWidth - 2 * LaneMargin, Size, BoulderSize) : Size;
+            size = IsBoulder(next) ? Mathf.Clamp(laneWidth - 2 * LaneMargin, Size, BoulderSize) : Size;
             float laneMin = left ? waterLeft + LaneMargin + size / 2 : hullRight + LaneMargin + size / 2;
             float laneMax = left ? hullLeft - LaneMargin - size / 2 : waterRight - LaneMargin - size / 2;
             // Out from under the button columns when the lane leaves room for it.
@@ -210,8 +210,8 @@ namespace NuggetCreek.Game.UI
                 Vector2 velocity = UnityEngine.Random.insideUnitCircle * 200 + new Vector2(0, 260);
                 particles.Emit(from, velocity, UnityEngine.Random.Range(14, 24), 0.5f, Palette.Droplet, Ui.Circle, -900);
             }
-            // The boulder has no tile: the Mother Lode starts where it was caught.
-            if (kind == FloaterKind.Boulder)
+            // A boulder has no tile: the Mother Lode or the boss fight starts where it was caught.
+            if (IsBoulder(kind))
             {
                 Clear();
                 Caught?.Invoke(kind);
@@ -234,6 +234,8 @@ namespace NuggetCreek.Game.UI
             shadow = null;
             Caught?.Invoke(kind);
         }
+
+        static bool IsBoulder(FloaterKind kind) => kind == FloaterKind.Boulder || kind == FloaterKind.Boss;
 
         void Clear()
         {
@@ -272,6 +274,8 @@ namespace NuggetCreek.Game.UI
         {
             RectTransform root = Ui.Rect(name, parent);
             root.sizeDelta = new Vector2(size, size);
+            if (kind == FloaterKind.Boss)
+                Picture(root, Ui.Ring, Palette.GiantNugget, -size * 0.08f);
             Sprite drawn = Art.Floater(kind);
             if (drawn != null)
             {
@@ -292,6 +296,7 @@ namespace NuggetCreek.Game.UI
                     Picture(root, Art.Gem ?? Ui.Circle, Art.Gem != null ? Color.white : Palette.Gem, size * 0.28f);
                     break;
                 case FloaterKind.Boulder:
+                case FloaterKind.Boss:
                     Picture(root, Ui.Circle, Palette.Rock, size * 0.06f);
                     break;
                 default:
