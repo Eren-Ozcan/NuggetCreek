@@ -34,6 +34,12 @@ slides and the clamshell bucket dips; a catch flies to the chest and is gone onc
 a new creek starts the journey with the creek's name. Screenshots switch the resolution
 right before they render, so short-lived effects (smoke, sparkles) can sit off place in them.
 
+`TutorialTests` start from a fresh save and play each of Old Pete's lessons: the first
+lesson talks and then waits for gold, the shovel lesson leads through the Upgrades panel, the
+Amos lesson hires him, and the chest stays on the water until it is caught. The free hire
+points at the offer, the first boss opens the Collection, and the claim lesson stakes a new
+claim. Each step is pressed through the veil, and only the cued control may take the tap.
+
 `RobustnessTests` look for what a feature test does not:
 
 - **Save round trip.** Every public field of `PlayerProgress` is moved off its default,
@@ -90,6 +96,10 @@ a development build adds about 50 MB of code.
   Nuggets (42), shop tabs (46), daily job Claim and Reset perks (46), and the 100-unit chips
   and modal buttons. The top bar now has three rows (buttons and Dollars, Gems and status,
   the goal bar) and is 30 units taller.
+- The tutorial veil drew nothing and took no taps: a `Graphic` added in code got no
+  `CanvasRenderer`. The overlay now creates its objects with one.
+- The claim bar was under 48 dp. It is now a gauge only, and taps on it reach the Guild
+  badge above it.
 - The balance bot failed its gate because one run of five ends a day before Echo Gorge
   (target day 28.3 of 30). A creek due in the run's last tenth may now miss in one run.
 
