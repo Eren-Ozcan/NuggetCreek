@@ -50,6 +50,9 @@ namespace NuggetCreek.Game.UI
 
         public bool IsOpen => root.gameObject.activeSelf;
 
+        /// <summary>"Stake a new claim", for Pete to point at.</summary>
+        public Button ClaimButton => rebirth;
+
         /// <summary>Raised after a new claim was staked.</summary>
         public event Action Reborn;
 

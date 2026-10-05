@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using NuggetCreek.Core;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,6 +31,20 @@ namespace NuggetCreek.Game.UI
 
         public bool IsOpen => root.gameObject.activeSelf;
 
+        /// <summary>The card holding both candidates.</summary>
+        public RectTransform Card { get; }
+
+        /// <summary>The hire buttons of the candidates on offer.</summary>
+        public IEnumerable<Button> HireButtons
+        {
+            get
+            {
+                foreach (Slot slot in slots)
+                    if (slot.Root.gameObject.activeInHierarchy)
+                        yield return slot.Hire;
+            }
+        }
+
         public event Action Hired;
 
         public CandidateModal(GameSession session, Transform canvas)
@@ -38,6 +53,7 @@ namespace NuggetCreek.Game.UI
             root = Ui.Image("CandidateModal", canvas, Palette.Dim).rectTransform.Fill();
             RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
                 .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1080));
+            Card = card;
 
             Text title = Ui.Title("Title", card, "NEW CREW", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));

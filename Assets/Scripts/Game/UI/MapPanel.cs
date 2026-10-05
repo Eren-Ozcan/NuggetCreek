@@ -49,6 +49,9 @@ namespace NuggetCreek.Game.UI
 
         public bool IsOpen => root.gameObject.activeSelf;
 
+        /// <summary>A creek's unlock / travel button.</summary>
+        public Button ActionOf(int index) => creeks[index].Action;
+
         /// <summary>Raised after an unlock or travel changes the active creek.</summary>
         public event Action RegionChanged;
 

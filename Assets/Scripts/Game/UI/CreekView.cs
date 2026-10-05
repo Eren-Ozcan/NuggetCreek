@@ -719,6 +719,19 @@ namespace NuggetCreek.Game.UI
             }
         }
 
+        /// <summary>The oldest Gold Dust still on the water, in world space; null when there is none.</summary>
+        public Vector3? GoldWorldPoint()
+        {
+            foreach (Collectible c in live)
+                if (c.Kind == CollectibleKind.GoldDust)
+                    return c.Root.TransformPoint(c.Root.rect.center);
+            return null;
+        }
+
+        /// <summary>The middle of the open water between the dredge's band edges, in world space.</summary>
+        public Vector3 OpenWaterCentre =>
+            area.TransformPoint(area.rect.min + new Vector2(AreaSize.x / 2, (OpenWaterBottom + OpenWaterTop) / 2));
+
         /// <summary>A screen-space point in creek pixels from the bottom-left, the space floaters fly in.</summary>
         public Vector2 ToCreek(Vector3 world) => (Vector2)area.InverseTransformPoint(world) - area.rect.min;
 

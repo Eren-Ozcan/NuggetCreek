@@ -25,11 +25,21 @@ namespace NuggetCreek.Game.UI
         readonly RectTransform root;
         readonly RectTransform list;
         readonly List<Row> rows = new List<Row>();
+        readonly Row[] upgradeRows = new Row[GameCatalog.Upgrades.Count];
         Row amosRow;
         Text crewHint;
         readonly GearSection gear;
 
         public bool IsOpen => root.gameObject.activeSelf;
+
+        /// <summary>The panel's close button, for Pete to point at.</summary>
+        public Button CloseButton { get; }
+
+        /// <summary>Amos's hire / level-up button.</summary>
+        public Button AmosButton => amosRow.Buy;
+
+        /// <summary>A sluice upgrade's buy button.</summary>
+        public Button UpgradeButton(int index) => upgradeRows[index].Buy;
 
         public event Action Purchased;
 
@@ -43,7 +53,7 @@ namespace NuggetCreek.Game.UI
             Text title = Ui.Title("Title", root, "UPGRADES", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -150), Vector2.zero);
 
-            Ui.CloseButton(root, Close);
+            CloseButton = Ui.CloseButton(root, Close);
 
             RectTransform body = Ui.Rect("Body", root).Place(Vector2.zero, Vector2.one, new Vector2(0, 0), new Vector2(0, -160));
             list = Ui.ScrollList(body, 16, 24);
@@ -168,6 +178,7 @@ namespace NuggetCreek.Game.UI
                 if (session.BuyUpgrade(index))
                     Purchased?.Invoke();
             });
+            upgradeRows[index] = row;
             row.Refresh = () =>
             {
                 bool unlocked = session.IsUpgradeUnlocked(index);

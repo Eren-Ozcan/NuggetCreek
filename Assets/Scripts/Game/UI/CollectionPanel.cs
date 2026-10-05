@@ -19,6 +19,7 @@ namespace NuggetCreek.Game.UI
         sealed class Card
         {
             public int Index;
+            public RectTransform Root;
             public Image Swatch;
             public bool HasArt;
             public Text Title;
@@ -34,6 +35,18 @@ namespace NuggetCreek.Game.UI
 
         public bool IsOpen => root.gameObject.activeSelf;
 
+        /// <summary>The panel's close button, for Pete to point at.</summary>
+        public Button CloseButton { get; }
+
+        /// <summary>A nugget's card in the list; null when the catalog has no such nugget.</summary>
+        public RectTransform CardOf(int nuggetIndex)
+        {
+            foreach (Card card in cards)
+                if (card.Index == nuggetIndex)
+                    return card.Root;
+            return null;
+        }
+
         public CollectionPanel(GameSession session, Transform canvas)
         {
             this.session = session;
@@ -41,7 +54,7 @@ namespace NuggetCreek.Game.UI
 
             Text title = Ui.Title("Title", root, "NUGGETS", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -150), Vector2.zero);
-            Ui.CloseButton(root, Close);
+            CloseButton = Ui.CloseButton(root, Close);
 
             total = Ui.Label("TotalStars", root, "", 34, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
             total.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -230), new Vector2(0, -150));
@@ -116,7 +129,7 @@ namespace NuggetCreek.Game.UI
             Image background = Ui.Panel(GameCatalog.Nuggets[index].Id, list, Palette.Row);
             Ui.PreferredHeight(background, 190);
             RectTransform rt = background.rectTransform;
-            var card = new Card { Index = index };
+            var card = new Card { Index = index, Root = rt };
 
             Sprite art = Art.Nugget(index);
             card.HasArt = art != null;

@@ -166,6 +166,15 @@ namespace NuggetCreek.Game.UI
                 open(items[slot]);
         }
 
+        /// <summary>The first shown tile holding this kind, or null.</summary>
+        public Button TileOf(FloaterKind kind)
+        {
+            for (int i = 0; i < VisibleCount; i++)
+                if (items[i] == kind)
+                    return tiles[i].Button;
+            return null;
+        }
+
         /// <summary>World position a caught floater of this kind flies to: its last tile, else the last tile shown.</summary>
         public Vector3 LandingPoint(FloaterKind kind)
         {
