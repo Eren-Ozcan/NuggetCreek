@@ -224,6 +224,44 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.NextPeteLine(), Is.Null);
         }
 
+        // --- Lesson scripts ---
+
+        [Test]
+        public void EveryLessonHasAScriptPeteCanSay()
+        {
+            foreach (PeteLine line in System.Enum.GetValues(typeof(PeteLine)))
+            {
+                var steps = Lessons.Of(line);
+                Assert.That(steps, Is.Not.Empty, line.ToString());
+                foreach (LessonStep step in steps)
+                {
+                    string where = $"{line}: {step.Line}";
+                    Assert.That(step.Line.Length, Is.InRange(1, Lessons.MaxLineLength), where);
+                    // Numbers come from the config and may change; Pete never quotes one.
+                    Assert.That(step.Line, Does.Not.Match("[0-9]"), where);
+                    if (step.Until == Until.Press)
+                        Assert.That(step.Cue, Is.Not.EqualTo(Cue.None).And.Not.EqualTo(Cue.Gold).And.Not.EqualTo(Cue.Floater), where);
+                    if (step.Until == Until.Catch)
+                        Assert.That(step.Cue == Cue.Gold && step.Count > 0, where);
+                    if (step.Until == Until.Floater)
+                        Assert.That(step.Cue, Is.EqualTo(Cue.Floater), where);
+                }
+            }
+        }
+
+        [Test]
+        public void TheWelcomeLessonEndsWhereTheDustLessonBegins()
+        {
+            LessonStep swipe = Lessons.Of(PeteLine.Welcome)[1];
+            Assert.That(swipe.Until, Is.EqualTo(Until.Catch));
+            // The dust lesson starts the moment the swipe step is done.
+            GameSession session = NewSession();
+            session.MarkSeen(PeteLine.Welcome);
+            for (int i = 0; i < swipe.Count; i++)
+                session.Collect(CollectibleKind.GoldDust, false);
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstDust));
+        }
+
         // --- Second session ---
 
         [Test]
