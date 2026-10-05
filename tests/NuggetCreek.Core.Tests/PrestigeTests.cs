@@ -97,6 +97,17 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
+        public void ClaimBarFillsTowardTheSuggestedClaim()
+        {
+            Assert.That(NewSession(new PlayerProgress()).ClaimProgress, Is.EqualTo(0));
+            // $10B lifetime: 25 XP is the whole XP share, x1.5 is half the way to doubling.
+            Assert.That(NewSession(new PlayerProgress { TotalEarned = 1e10 }).ClaimProgress, Is.EqualTo(0.5).Within(1e-9));
+            // 114 XP on top of 100: x3 -> x5.28 is 76% of the way.
+            Assert.That(NewSession(new PlayerProgress { TotalEarned = 2e13, ProspectingXp = 100 }).ClaimProgress, Is.EqualTo(0.76).Within(1e-9));
+            Assert.That(NewSession(new PlayerProgress { TotalEarned = 2e13 }).ClaimProgress, Is.EqualTo(1));
+        }
+
+        [Test]
         public void SuggestionNeedsTheClaimToDoubleIncome()
         {
             var progress = new PlayerProgress { TotalEarned = 2e13, AmosLevel = 1, ProspectingXp = 100 };

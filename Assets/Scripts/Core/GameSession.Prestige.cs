@@ -90,6 +90,23 @@ namespace NuggetCreek.Core
             && PrestigeMultiplierAfterRebirth >= PrestigeMultiplier * Config.RebirthSuggestGain
             && HoursToNextTarget > Config.RebirthWallHours;
 
+        /// <summary>
+        /// The claim bar (0..1): how close a new claim is to the suggested one, the lower of its
+        /// XP share of RebirthSuggestMinXp and its income gain share of RebirthSuggestGain.
+        /// Full means a new claim is worth taking once the wall is hit.
+        /// </summary>
+        public double ClaimProgress
+        {
+            get
+            {
+                double xp = (double)ClaimXp / Math.Max(1, Config.RebirthSuggestMinXp);
+                double gain = Config.RebirthSuggestGain > 1
+                    ? (PrestigeMultiplierAfterRebirth / PrestigeMultiplier - 1) / (Config.RebirthSuggestGain - 1)
+                    : 1;
+                return Math.Max(0, Math.Min(1, Math.Min(xp, gain)));
+            }
+        }
+
         // --- Guild ---
 
         public int GuildLevel => Progress.GuildLevel;
