@@ -89,7 +89,9 @@ comes from `tools/build_map.py`, which evens out the panel seams; without it `Ma
 back to a plain list.
 River floaters (`UI/RiverFloaters.cs`, tray in `UI/TrayView.cs`) use `Sprites/Chests/crate.png` and
 `Sprites/Chests/gem_pouch.png` when present; until they are drawn, stand-ins are built from the chest
-drawing and the Gem icon.
+drawing and the Gem icon. The Mother Lode's boulder (`MotherLode/boulder_0`) floats down the same way:
+the event never starts by itself, only when the boulder is caught; a missed one is lost. Each creek's boss
+comes once a claim as its own ringed boulder (`FloaterKind.Boss`, `BossAfterCatches` catches into the creek).
 
 Audio follows the same path: `Assets/Resources/Audio/{Music,SFX}/` (gitignored), masters in
 `game-art/Resources/Audio/`, copied by `fetch-art.sh` when present, file names as in section 6 of
