@@ -43,7 +43,7 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
-        public IEnumerator FreshGameLocksFeaturesAndPeteTalks()
+        public IEnumerator FreshGameLocksFeaturesAndPeteTakesOver()
         {
             // A reload drops the setup's skip (it is not saved).
             yield return SceneManager.LoadSceneAsync("Creek");
@@ -66,17 +66,9 @@ namespace NuggetCreek.PlayModeTests
             Assert.That(LabelIn("MapButton", "Label").text, Is.EqualTo("Hire Amos"));
             Assert.That(LabelIn("ShopButton", "Label").text, Is.EqualTo("Pine Hollow"));
             Assert.That(Find("GuildButton").GetComponent<Button>().interactable, Is.False);
-            StringAssert.StartsWith("Old Pete: Something's glinting", LabelIn("Pete", "Label").text);
+            // Old Pete takes over at once; his lessons have their own tests.
+            yield return WaitFor(() => IsActive("Tutorial"), 3);
             yield return Shot("0_onboarding");
-
-            Click("Pete");
-            yield return null;
-            Assert.That(IsActive("Pete"), Is.False, "each line shows once");
-
-            Click("+$1K");
-            yield return null;
-            yield return null;
-            StringAssert.StartsWith("Old Pete: Amos is looking for work", LabelIn("Pete", "Label").text);
         }
 
         [UnityTest]
@@ -825,7 +817,7 @@ namespace NuggetCreek.PlayModeTests
         static void SendSave() =>
             UnityEngine.Object.FindAnyObjectByType<GameRoot>().SendMessage("Save");
 
-        static GameObject Find(string name)
+        internal static GameObject Find(string name)
         {
             GameObject go = GameObject.Find(name);
             Assert.That(go, Is.Not.Null, $"'{name}' not found");
@@ -835,28 +827,28 @@ namespace NuggetCreek.PlayModeTests
         /// <summary>The active star row of a card, or null while it is hidden.</summary>
         static StarRow StarsIn(string parent) => Find(parent).GetComponentInChildren<StarRow>();
 
-        static bool IsActive(string name) => GameObject.Find(name) != null;
+        internal static bool IsActive(string name) => GameObject.Find(name) != null;
 
-        static Text Label(string name) => Find(name).GetComponent<Text>();
+        internal static Text Label(string name) => Find(name).GetComponent<Text>();
 
-        static Text LabelIn(string parent, string child) =>
+        internal static Text LabelIn(string parent, string child) =>
             Find(parent).GetComponentsInChildren<Text>(true).First(t => t.name == child);
 
-        static void Click(string name)
+        internal static void Click(string name)
         {
             var button = Find(name).GetComponent<Button>();
             Assert.That(button.interactable, Is.True, $"'{name}' is not interactable");
             button.onClick.Invoke();
         }
 
-        static void ClickIn(string parent, string child)
+        internal static void ClickIn(string parent, string child)
         {
             Button button = Find(parent).GetComponentsInChildren<Button>(true).First(b => b.name == child);
             Assert.That(button.interactable, Is.True, $"'{parent}/{child}' is not interactable");
             button.onClick.Invoke();
         }
 
-        static IEnumerator WaitFor(Func<bool> condition, float seconds)
+        internal static IEnumerator WaitFor(Func<bool> condition, float seconds)
         {
             float end = Time.realtimeSinceStartup + seconds;
             while (!condition())
@@ -868,7 +860,7 @@ namespace NuggetCreek.PlayModeTests
         }
 
         /// <summary>Renders the overlay UI through the camera into a 1080x1920 PNG.</summary>
-        static IEnumerator Shot(string name)
+        internal static IEnumerator Shot(string name)
         {
             string dir = Environment.GetEnvironmentVariable("NC_SHOT_DIR");
             if (string.IsNullOrEmpty(dir))
