@@ -35,7 +35,7 @@ namespace NuggetCreek.Game
         IStore store;
         ShopPanel shop;
         Text shopLabel;
-        PeteBanner pete;
+        PeteTutorial tutorial;
         Button upgradesButton;
         Button quickBuyButton;
         Button mapButton;
@@ -57,8 +57,10 @@ namespace NuggetCreek.Game
         Text guildLabel;
         Image claimBar;
         Image claimHit;
+        RectTransform guildCorner;
         RectTransform claimFill;
         Text claimLabel;
+        Button collectionButton;
         Text collectionLabel;
         UpgradesPanel upgrades;
         MapPanel map;
@@ -189,7 +191,10 @@ namespace NuggetCreek.Game
             session.TickCandidates(dt);
             bool modalOpen = upgrades.IsOpen || map.IsOpen || offlineModal.IsOpen || candidateModal.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen || shop.IsOpen
                 || gate.IsOpen || settings.IsOpen || cloudChoice.IsOpen || crateModal.IsOpen || pouchModal.IsOpen;
-            creek.InputEnabled = !modalOpen;
+            // Pete's lessons take the screen: the creek only listens on a river step.
+            creek.InputEnabled = !modalOpen && (!tutorial.IsActive || tutorial.RiverOpen);
+            creek.Floaters.Hold = tutorial.IsActive;
+            creek.Floaters.HoldLine = creek.OpenWaterTop;
             if (motherLode.IsActive)
             {
                 motherLode.Tick(dt);
@@ -222,7 +227,13 @@ namespace NuggetCreek.Game
             settings.Refresh();
             candidateModal.Refresh();
 
-            pete.Refresh(modalOpen || motherLode.IsActive || offlineModal.IsOpen);
+            // A lesson waits for a calm screen and pauses under anything that takes it over; it
+            // may start over the crew offer, which opens by itself when a creek brings one.
+            bool screenTaken = motherLode.IsActive || offlineModal.IsOpen || gate.IsOpen || cloudChoice.IsOpen || notifAsk.IsOpen
+                || returnPending || store.IsBusy;
+            bool panelOpen = upgrades.IsOpen || map.IsOpen || collection.IsOpen || chestModal.IsOpen || guild.IsOpen || daily.IsOpen
+                || shop.IsOpen || settings.IsOpen || crateModal.IsOpen || pouchModal.IsOpen;
+            tutorial.Tick(Time.unscaledDeltaTime, screenTaken, !panelOpen && !creek.ShowPlaying);
 
             autosaveIn -= Time.unscaledDeltaTime;
             if (autosaveIn <= 0)
@@ -313,7 +324,7 @@ namespace NuggetCreek.Game
 
         /// <summary>
         /// Plays the interstitial a creek unlock, tier or rebirth earned once the screen is calm:
-        /// no panel, modal, Pete line, Mother Lode, return, tier show or journey to a creek in
+        /// no panel, modal, Pete lesson, Mother Lode, return, tier show or journey to a creek in
         /// progress (studio ad policy 2-4).
         /// </summary>
         void UpdateInterstitial(bool modalOpen)
@@ -325,7 +336,7 @@ namespace NuggetCreek.Game
                 interstitials.Load();
 
             bool settled = !modalOpen && !motherLode.IsActive && !returnPending && !offlineModal.HasUnclaimed
-                && !pete.IsShowing && !ads.IsShowing && !interstitials.IsShowing && !creek.ShowPlaying;
+                && !tutorial.IsActive && !ads.IsShowing && !interstitials.IsShowing && !creek.ShowPlaying;
             settledFor = settled ? settledFor + Time.unscaledDeltaTime : 0;
             if (session.PendingInterstitial == null || settledFor < BreakSettleSeconds)
                 return;
@@ -393,7 +404,7 @@ namespace NuggetCreek.Game
             if (notifAsk.IsOpen || permissionPending || session.IntroSkipped)
                 return;
             bool busy = modalOpen || motherLode.IsActive || returnPending || offlineModal.HasUnclaimed
-                || pete.IsShowing || ads.IsShowing || interstitials.IsShowing;
+                || tutorial.IsActive || ads.IsShowing || interstitials.IsShowing;
             askSettledFor = busy ? 0 : askSettledFor + Time.unscaledDeltaTime;
             if (askSettledFor < BreakSettleSeconds)
                 return;
@@ -503,8 +514,6 @@ namespace NuggetCreek.Game
             Float(lateDoubleChip);
             lateDoubleChip.SetActive(false);
 
-            pete = new PeteBanner(session, root, HudBottom);
-
             // Before the panels so full-screen modals cover them.
             if (Debug.isDebugBuild)
                 BuildDebugButtons(root, HudTop);
@@ -584,6 +593,9 @@ namespace NuggetCreek.Game
             settings.Changed += Save;
             settings.PrivacyChoicesRequested += () => admob?.ShowPrivacyOptions();
             settings.DeleteConfirmed += DeleteMyData;
+            // Over every panel a lesson opens; the gate and the choices below still cover it.
+            tutorial = new PeteTutorial(session, root, FindCue);
+            tutorial.Finished += _ => Save();
             // Last, so it covers everything on a first launch.
             gate = new PrivacyGate(root);
             gate.Accepted += AcceptGate;
@@ -811,6 +823,8 @@ namespace NuggetCreek.Game
             claimBar.SetActive(false);
             claimHit = Ui.Image("ClaimHit", guildButton.transform, Color.clear);
             claimHit.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(0, -SideGap - ClaimBarHeight), Vector2.zero);
+            // The badge and the bar together, for Pete to point at.
+            guildCorner = Ui.Rect("GuildCorner", root).Box(new Vector2(0, 1), new Vector2(ClaimBarWidth, 150 + SideGap + ClaimBarHeight), new Vector2(14, -26));
         }
 
         void RefreshClaimBar()
@@ -872,7 +886,7 @@ namespace NuggetCreek.Game
             // Over the map: the collection and, once collected, the Daily.
             menuColumn = Column("MenuColumn", root, Vector2.zero, new Vector2(20 + (150 - SideSize) / 2, 40 + 150 + SideGap), TextAnchor.LowerLeft);
             dailyButton = SquareButton("DailyButton", menuColumn, Art.Icon("gift"), Palette.ButtonAlt, () => daily.Open(), out dailyLabel);
-            SquareButton("CollectionButton", menuColumn, Art.NuggetIcon, Palette.ButtonAlt, () => collection.Open(), out collectionLabel);
+            collectionButton = SquareButton("CollectionButton", menuColumn, Art.NuggetIcon, Palette.ButtonAlt, () => collection.Open(), out collectionLabel);
             shopButton = SquareButton("ShopButton", root, Art.Icon("shop"), Palette.GemButton, OpenShop, out shopLabel, 150);
             shopButton.AsRect().Box(new Vector2(1, 0), new Vector2(150, 150), new Vector2(-20, 40));
 
@@ -1119,6 +1133,84 @@ namespace NuggetCreek.Game
             }
         }
 
+        // --- Old Pete's lessons ---
+
+        /// <summary>Where a lesson step's cue is on screen now; null when it is not there to press.</summary>
+        CueTarget FindCue(LessonStep step)
+        {
+            CueTarget target = Locate(step);
+            // A step that waits for a press needs a control that takes one.
+            if (target != null && step.Until == Until.Press && !target.Buttons.Exists(b => b.interactable))
+                return null;
+            return target;
+        }
+
+        CueTarget Locate(LessonStep step)
+        {
+            switch (step.Cue)
+            {
+                case Cue.Gold:
+                    return CueTarget.At(() => creek.GoldWorldPoint() ?? creek.OpenWaterCentre, 80);
+                case Cue.Floater:
+                    return creek.Floaters.WorldPosition.HasValue && !motherLode.IsActive
+                        ? CueTarget.At(() => creek.Floaters.WorldPosition, creek.Floaters.FloaterSize) : null;
+                case Cue.GoalButton:
+                    // Pressing waits for a finished goal; pointing it out does not.
+                    return step.Until == Until.Press && !session.IsCurrentGoalComplete ? null : Shown(goalButton);
+                case Cue.UpgradesButton:
+                    return upgrades.IsOpen ? null : Shown(upgradesButton);
+                case Cue.FirstUpgrade:
+                    return upgrades.IsOpen ? InRow(upgrades.UpgradeButton(0)) : null;
+                case Cue.AmosHire:
+                    return upgrades.IsOpen ? InRow(upgrades.AmosButton) : null;
+                case Cue.CloseUpgrades:
+                    return upgrades.IsOpen ? Shown(upgrades.CloseButton) : null;
+                case Cue.MapButton:
+                    return map.IsOpen ? null : Shown(mapButton);
+                case Cue.NextCreek:
+                    return map.IsOpen && session.HasNextRegion ? Shown(map.ActionOf(session.Progress.RegionsUnlocked)) : null;
+                case Cue.TrayChest:
+                    return chestModal.IsOpen ? null : Shown(tray.TileOf(FloaterKind.Chest));
+                case Cue.CrewChip:
+                    return candidateModal.IsOpen ? null : Shown(crewChip);
+                case Cue.CandidateHire:
+                    return candidateModal.IsOpen ? CueTarget.Of(candidateModal.HireButtons, candidateModal.Card) : null;
+                case Cue.CollectionButton:
+                    return collection.IsOpen ? null : Shown(collectionButton);
+                case Cue.BossNugget:
+                    int boss = session.FirstBeatenBoss;
+                    return collection.IsOpen && boss >= 0 ? CueTarget.Highlight(collection.CardOf(GameCatalog.BossNugget(boss))) : null;
+                case Cue.CloseCollection:
+                    return collection.IsOpen ? Shown(collection.CloseButton) : null;
+                case Cue.DailyButton:
+                    return daily.IsOpen ? null : Shown(dailyButton);
+                case Cue.GuildButton:
+                    return guild.IsOpen ? null : Shown(guildButton);
+                case Cue.ClaimBar:
+                    // Pointing at the bar; pressing goes through the badge above it.
+                    if (guild.IsOpen || !claimBar.gameObject.activeInHierarchy)
+                        return null;
+                    if (step.Until != Until.Press)
+                        return CueTarget.Highlight(claimBar.rectTransform);
+                    CueTarget badge = CueTarget.Of(new[] { guildButton }, guildCorner);
+                    badge.FramePasses = true;
+                    badge.Pointer = claimBar.rectTransform;
+                    return badge;
+                case Cue.StakeClaim:
+                    return guild.IsOpen ? Shown(guild.ClaimButton) : null;
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>A control Pete can point at only while it is on screen.</summary>
+        static CueTarget Shown(Button button) =>
+            button != null && button.gameObject.activeInHierarchy ? CueTarget.Of(button) : null;
+
+        /// <summary>A list row's button, with the whole row left clear so its name and price show.</summary>
+        static CueTarget InRow(Button button) =>
+            Shown(button) != null ? CueTarget.Of(button, (RectTransform)button.transform.parent) : null;
+
         // --- Mother Lode ---
 
         void StartMotherLode(MotherLodeRun run)
@@ -1278,6 +1370,7 @@ namespace NuggetCreek.Game
         void SkipIntro()
         {
             session.IntroSkipped = true;
+            tutorial.Stop();
             gate.Dismiss();
         }
 
