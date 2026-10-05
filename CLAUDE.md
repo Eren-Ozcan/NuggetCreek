@@ -9,8 +9,9 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
   `noEngineReferences: true`): `BigNumber`, `NumberFormat`, `EconomyConfig`, `Economy`,
   `Stat`/`StatSheet`, `GameCatalog` (upgrades, 16 crew, progress goals),
   `OfflineEarnings`, `RewardedDoubleButton`, `SaveEnvelope`, `PacingModel`,
-  `PlayerProgress` (save data) and `GameSession` (rules: collect, idle, offline, purchases,
-  Gems, crew hires and candidates, goals, river floaters and the tray).
+  `Lessons` (Old Pete's tutorial scripts), `PlayerProgress` (save data) and `GameSession`
+  (rules: collect, idle, offline, purchases, Gems, crew hires and candidates, goals, river
+  floaters and the tray).
   No `UnityEngine` here — platform code (ads, Remote Config, Keystore, clocks) lives in
   other assemblies and feeds this one plain values.
 - `Assets/Scripts/Game/` — Unity layer (`NuggetCreek.Game`): `GameRoot` builds the whole
@@ -27,7 +28,10 @@ Android first (`com.yilkgames.nuggetcreek`), iOS second. The game itself is Engl
 - `Assets/Tests/PlayMode/` — greybox smoke tests that press real buttons. Run with
   `Unity.exe -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults <file>`
   (the editor must be closed); set `NC_SHOT_DIR` to also save 1080x1920 screenshots.
+  They delete the editor's save (PlayerPrefs `nc_save`); export
+  `HKCU\Software\Unity\UnityEditor\Yilk Games\Nugget Creek` first and import it after.
   `RobustnessTests` add the save round trip, damaged saves, a seeded monkey and a layout check.
+  `TutorialTests` press each of Old Pete's lessons through with real buttons.
 - `scripts/android-device-tests.sh` — device pass on a connected phone (starts, background kill,
   no network, font scale, monkey, memory); backs up and restores the phone's save.
   What each layer covers and what it does not: `docs/TESTING.md`.
@@ -92,6 +96,18 @@ River floaters (`UI/RiverFloaters.cs`, tray in `UI/TrayView.cs`) use `Sprites/Ch
 drawing and the Gem icon. The Mother Lode's boulder (`MotherLode/boulder_0`) floats down the same way:
 the event never starts by itself, only when the boulder is caught; a missed one is lost. Each creek's boss
 comes once a claim as its own ringed boulder (`FloaterKind.Boss`, `BossAfterCatches` catches into the creek).
+
+Old Pete's tutorial is forced and interactive. Each `PeteLine` is a moment in
+`GameSession.Onboarding.cs` and a script of steps in `Core/Lessons.cs`. A step holds a line, a pose, a `Cue`
+to point at and an `Until` that ends it. `UI/PeteTutorial.cs` plays a lesson: the screen shades over
+(`UI/TutorialDim.cs`) except for a hole over the cue, Pete stands large beside the speech panel, and a glove
+points. Only the cued control takes a tap, and the floater bobs in place until the lesson ends.
+`GameRoot.FindCue` maps each `Cue` to a control on screen. A new cue needs a case there, and the panel has
+to expose its button. New `PeteLine` members go at the end, because seen lessons are saved as bits.
+Pete's lines name no tuning number. The art is `Sprites/Pete/pete_{talk,point,laugh,wow}.png`, cut by
+`game-art/source/cut_pete.py`, plus `Sprites/Icons/hand.png`, drawn by `draw_hand.py`. Without them, a
+portrait face and a white dot stand in. The claim bar under the Guild badge shows `ClaimProgress`, and the
+ClaimReady lesson fires when it is full. Taps on the bar reach the badge, so the badge keeps its 48 dp target.
 
 Audio follows the same path: `Assets/Resources/Audio/{Music,SFX}/` (gitignored), masters in
 `game-art/Resources/Audio/`, copied by `fetch-art.sh` when present, file names as in section 6 of
