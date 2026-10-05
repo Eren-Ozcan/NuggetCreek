@@ -55,7 +55,10 @@ namespace NuggetCreek.Game
         Text dailyLabel;
         long debugDayShift;
         Text guildLabel;
-        Button claimChip;
+        Image claimBar;
+        Image claimHit;
+        RectTransform claimFill;
+        Text claimLabel;
         Text collectionLabel;
         UpgradesPanel upgrades;
         MapPanel map;
@@ -500,11 +503,6 @@ namespace NuggetCreek.Game
             Float(lateDoubleChip);
             lateDoubleChip.SetActive(false);
 
-            claimChip = Ui.Button("ClaimChip", root, "New claim?", Palette.Button, () => guild.Open(), out _, 32);
-            claimChip.AsRect().Box(new Vector2(0.5f, 1), new Vector2(360, Ui.TapHeight), new Vector2(0, -HudTop - 130));
-            Float(claimChip);
-            claimChip.SetActive(false);
-
             pete = new PeteBanner(session, root, HudBottom);
 
             // Before the panels so full-screen modals cover them.
@@ -700,6 +698,8 @@ namespace NuggetCreek.Game
         const float SettingsSize = 120;
         /// <summary>Crew faces shown down the left; the rest are in the Upgrades panel.</summary>
         const int CrewFaces = 6;
+        const float ClaimBarWidth = 136;
+        const float ClaimBarHeight = 54;
 
         void BuildTop(Transform root)
         {
@@ -770,6 +770,7 @@ namespace NuggetCreek.Game
             // the column under it holds only what comes and goes.
             guildButton = SquareButton("GuildButton", root, Art.GuildEmblem, Palette.ButtonAlt, () => guild.Open(), out guildLabel);
             guildButton.AsRect().Box(new Vector2(0, 1), new Vector2(136, 150), new Vector2(14, -26));
+            BuildClaimBar(root);
 
             Button settingsButton = Ui.Button("SettingsButton", root, "", Color.clear, OpenSettings, out Text settingsLabel, 22);
             settingsButton.AsRect().Box(Vector2.one, new Vector2(SettingsSize, SettingsSize), new Vector2(-SideMargin, -26));
@@ -786,10 +787,53 @@ namespace NuggetCreek.Game
             }
         }
 
+        /// <summary>
+        /// The claim bar under the guild badge: how close a new claim is to paying off (design
+        /// doc 5.0.5). A tap on it reaches the badge above, which opens the Guild where the claim
+        /// is staked; the badge stays the one control, so the bar can be thinner than a tap target.
+        /// </summary>
+        void BuildClaimBar(Transform root)
+        {
+            claimBar = Ui.Panel("ClaimBar", root, Palette.Text);
+            claimBar.raycastTarget = false;
+            claimBar.rectTransform.Box(new Vector2(0, 1), new Vector2(ClaimBarWidth, ClaimBarHeight), new Vector2(14, -26 - 150 - SideGap));
+            Float(claimBar);
+            Image fill = Ui.Panel("Fill", claimBar.transform, Palette.Button);
+            fill.raycastTarget = false;
+            claimFill = fill.rectTransform;
+            claimFill.Place(Vector2.zero, new Vector2(0, 1), new Vector2(5, 5), new Vector2(0, -5));
+            claimLabel = Ui.Label("Label", claimBar.transform, "", 24, TextAnchor.MiddleCenter, Palette.TextLight, FontStyle.Bold);
+            claimLabel.rectTransform.Place(Vector2.zero, Vector2.one, new Vector2(4, 0), new Vector2(-4, 0));
+            claimLabel.resizeTextForBestFit = true;
+            claimLabel.resizeTextMinSize = 14;
+            claimLabel.resizeTextMaxSize = 24;
+            Outlined(claimLabel);
+            claimBar.SetActive(false);
+            claimHit = Ui.Image("ClaimHit", guildButton.transform, Color.clear);
+            claimHit.rectTransform.Place(Vector2.zero, new Vector2(1, 0), new Vector2(0, -SideGap - ClaimBarHeight), Vector2.zero);
+        }
+
+        void RefreshClaimBar()
+        {
+            bool show = session.IsUnlocked(Feature.Guild) && !motherLode.IsActive;
+            claimBar.SetActive(show);
+            claimHit.SetActive(show);
+            if (!show)
+                return;
+            double progress = session.ClaimProgress;
+            claimFill.gameObject.SetActive(progress > 0.005);
+            claimFill.anchorMax = new Vector2(Mathf.Max(0.12f, (float)progress), 1);
+            claimFill.offsetMax = new Vector2(-5 * (float)progress, -5);
+            bool ready = session.RebirthSuggested;
+            claimLabel.SetText(ready ? "New claim!" : $"Claim {Mathf.FloorToInt((float)progress * 100)}%");
+            float bob = ready ? UI.Motion.Bob(Time.unscaledTime) : 1;
+            claimBar.transform.localScale = new Vector3(bob, bob, 1);
+        }
+
         void BuildSideColumns(Transform root)
         {
-            // Left: a new crew candidate on top, then the crew's faces.
-            crewColumn = Column("CrewColumn", root, new Vector2(0, 1), new Vector2(SideMargin, -196), TextAnchor.UpperLeft);
+            // Left, under the claim bar: a new crew candidate on top, then the crew's faces.
+            crewColumn = Column("CrewColumn", root, new Vector2(0, 1), new Vector2(SideMargin, -26 - 150 - 2 * SideGap - ClaimBarHeight), TextAnchor.UpperLeft);
             crewChip = SquareButton("CrewChip", crewColumn, Art.Icon("plus"), Palette.GemButton, () => candidateModal.Open(), out crewChipLabel);
             crewChip.SetActive(false);
 
@@ -1006,7 +1050,7 @@ namespace NuggetCreek.Game
             collectionLabel.SetText($"{session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
             SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", "Red Gulch");
-            claimChip.SetActive(session.RebirthSuggested && !guild.IsOpen && !motherLode.IsActive);
+            RefreshClaimBar();
 
             float now = Time.realtimeSinceStartup;
             if (ads.IsLoaded)
