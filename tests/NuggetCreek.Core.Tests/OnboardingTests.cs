@@ -149,10 +149,69 @@ namespace NuggetCreek.Core.Tests
             Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.AmosForHire));
             session.MarkSeen(PeteLine.AmosForHire);
             session.BuyAmosLevel();
+            Assert.That(session.NextPeteLine(), Is.Null, "the next claim is not affordable yet");
+            session.Progress.Dollars = 1e6;
             Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.MapOpen));
             session.MarkSeen(PeteLine.MapOpen);
             session.Progress.ChestsWaiting = 1;
             Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstChest));
+        }
+
+        [Test]
+        public void TheFirstUpgradeLessonWaitsUntilTheShovelIsAffordable()
+        {
+            GameSession session = NewSession(new PlayerProgress { ManualCollected = 15 });
+            Assert.That(session.IsUnlocked(Feature.Upgrades), Is.True);
+            Assert.That(session.NextPeteLine(), Is.Null);
+            session.Progress.Dollars = session.UpgradeCost(0).Value;
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.UpgradesOpen));
+        }
+
+        [Test]
+        public void TheChestLessonWaitsForTheChestOnTheWater()
+        {
+            var progress = new PlayerProgress { ManualCollected = 200, AmosLevel = 1, ChestsDue = 1, PeteSeen = 1 << (int)PeteLine.MapOpen };
+            GameSession session = NewSession(progress);
+            Assert.That(session.NextPeteLine(), Is.Null, "due, but not floating yet");
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Chest));
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstChest));
+        }
+
+        [Test]
+        public void TheBossLessonFollowsTheFirstBossOnly()
+        {
+            var progress = new PlayerProgress { ManualCollected = 5000, AmosLevel = 3, RegionsUnlocked = 4, BestRegionsUnlocked = 4, ChestsOpened = 3 };
+            progress.UpgradeLevels[0] = 5;
+            GameSession session = NewSession(progress);
+            Assert.That(session.NextPeteLine(), Is.Null);
+            progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
+            Assert.That(session.BossesBeaten, Is.EqualTo(1));
+            Assert.That(session.FirstBeatenBoss, Is.EqualTo(0));
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstBoss));
+
+            // A save already past its second boss has missed the moment.
+            progress.NuggetCatches[GameCatalog.BossNugget(1)] = 1;
+            Assert.That(session.NextPeteLine(), Is.Null);
+        }
+
+        [Test]
+        public void TheClaimLessonComesWithTheFirstSuggestedClaim()
+        {
+            var progress = new PlayerProgress
+            {
+                TotalEarned = 2e13, AmosLevel = 1, ManualCollected = 5000, ChestsOpened = 3, PeteSeen = 1 << (int)PeteLine.GuildOpen,
+            };
+            progress.UpgradeLevels[0] = 5;
+            progress.RegionsUnlocked = progress.BestRegionsUnlocked = config.RegionCount;
+            progress.RegionIndex = config.RegionCount - 1;
+            progress.TierIndex = config.TierCount - 1;
+            GameSession session = NewSession(progress);
+            Assert.That(session.RebirthSuggested, Is.True);
+            Assert.That(session.ClaimProgress, Is.EqualTo(1));
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.ClaimReady));
+
+            progress.Rebirths = 1;
+            Assert.That(session.NextPeteLine(), Is.Null, "only before the first claim");
         }
 
         [Test]

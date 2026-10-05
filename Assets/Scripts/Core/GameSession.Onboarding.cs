@@ -13,8 +13,10 @@ namespace NuggetCreek.Core
     }
 
     /// <summary>
-    /// Old Pete's one-time lines (design doc 9.1). Earlier members win when two are due;
-    /// the return gift comes first because it belongs to the moment it is given.
+    /// Old Pete's one-time lessons (design doc 9.1), scripted in <see cref="Lessons"/>. Earlier
+    /// members win when two are due; the return gift comes first because it belongs to the
+    /// moment it is given. Saved as bits of <see cref="PlayerProgress.PeteSeen"/>: new members
+    /// go at the end.
     /// </summary>
     public enum PeteLine
     {
@@ -29,9 +31,11 @@ namespace NuggetCreek.Core
         DailyOpen,
         GuildOpen,
         FirstBoulder,
+        FirstBoss,
+        ClaimReady,
     }
 
-    /// <summary>Onboarding (design doc 9, 9.1, 10): feature locks, Old Pete, the free first hire and the return gift.</summary>
+    /// <summary>Onboarding (design doc 9, 9.1, 10): feature locks, Old Pete's lessons, the free first hire and the return gift.</summary>
     public sealed partial class GameSession
     {
         /// <summary>Development only: opens every feature and silences Pete. Not saved.</summary>
@@ -54,7 +58,9 @@ namespace NuggetCreek.Core
                         || (Progress.FirstDay > 0 && Progress.CurrentDay > Progress.FirstDay)
                         || Progress.LastStreakClaimDay >= 0;
                 case Feature.Guild:
-                    return Progress.BestRegionsUnlocked >= Config.GuildUnlockRegions || Progress.Rebirths > 0 || Progress.GuildLevel > 0;
+                    // A suggested claim is staked in the Guild, so it opens then at the latest.
+                    return Progress.BestRegionsUnlocked >= Config.GuildUnlockRegions || Progress.Rebirths > 0 || Progress.GuildLevel > 0
+                        || RebirthSuggested;
                 default:
                     return true;
             }
@@ -82,7 +88,7 @@ namespace NuggetCreek.Core
 
         public bool HasSeen(PeteLine line) => (Progress.PeteSeen & (1 << (int)line)) != 0;
 
-        /// <summary>Records a shown line; Pete's lines are the tutorial steps in analytics (tutorial_step).</summary>
+        /// <summary>Records a finished lesson; Pete's lessons are the tutorial steps in analytics (tutorial_step).</summary>
         public void MarkSeen(PeteLine line)
         {
             if (HasSeen(line))
@@ -93,7 +99,10 @@ namespace NuggetCreek.Core
             Emit("tutorial_step", ("step", (int)line), ("step_name", EventValues.Snake(line.ToString())));
         }
 
-        /// <summary>The first unseen line whose moment is now; a line whose moment has passed never shows.</summary>
+        /// <summary>
+        /// The first unseen lesson whose moment is now; a lesson whose moment has passed never
+        /// shows. A lesson that has started plays to its end even if its moment passes meanwhile.
+        /// </summary>
         public PeteLine? NextPeteLine()
         {
             if (IntroSkipped)
@@ -113,13 +122,13 @@ namespace NuggetCreek.Core
                 case PeteLine.FirstDust:
                     return Progress.ManualCollected >= 5 && Progress.ManualCollected < Config.UpgradesUnlockCollected;
                 case PeteLine.UpgradesOpen:
-                    return IsUnlocked(Feature.Upgrades) && !AnyUpgradeBought && Progress.AmosLevel == 0;
+                    return IsUnlocked(Feature.Upgrades) && !AnyUpgradeBought && Progress.AmosLevel == 0 && CanAfford(UpgradeCost(0));
                 case PeteLine.AmosForHire:
                     return Progress.AmosLevel == 0 && CanAfford(AmosNextCost);
                 case PeteLine.FirstChest:
-                    return (HasChest || Progress.ChestsDue > 0) && Progress.ChestsOpened == 0;
+                    return (HasChest || FloaterOnWater == FloaterKind.Chest) && Progress.ChestsOpened == 0;
                 case PeteLine.MapOpen:
-                    return IsUnlocked(Feature.Map) && Progress.BestRegionsUnlocked == 1;
+                    return IsUnlocked(Feature.Map) && Progress.BestRegionsUnlocked == 1 && CanAfford(NextRegionCost);
                 case PeteLine.FreeHire:
                     return HasCandidates && FreeHireReady;
                 case PeteLine.DailyOpen:
@@ -128,6 +137,10 @@ namespace NuggetCreek.Core
                     return IsUnlocked(Feature.Guild) && Progress.GuildLevel == 0 && Progress.Rebirths == 0;
                 case PeteLine.FirstBoulder:
                     return FloaterOnWater == FloaterKind.Boulder || FloaterOnWater == FloaterKind.Boss;
+                case PeteLine.FirstBoss:
+                    return BossesBeaten == 1;
+                case PeteLine.ClaimReady:
+                    return Progress.Rebirths == 0 && RebirthSuggested;
                 case PeteLine.WelcomeBack:
                     return Progress.ReturnGiftGiven;
                 default:

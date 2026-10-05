@@ -295,7 +295,11 @@ namespace NuggetCreek.Core.Tests
             GameSession session = NewSession(new PlayerProgress { PeteSeen = ~(1 << (int)PeteLine.FirstChest) });
             Assert.That(session.NextPeteLine(), Is.Null);
             session.Progress.ChestsDue = 1;
+            Assert.That(session.NextPeteLine(), Is.Null, "Pete points at the chest once it floats");
+            Assert.That(session.LaunchFloater(), Is.EqualTo(FloaterKind.Chest));
             Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstChest));
+            session.CatchFloater();
+            Assert.That(session.NextPeteLine(), Is.EqualTo(PeteLine.FirstChest), "and at the tray until it is opened");
         }
 
         [Test]

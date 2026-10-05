@@ -611,6 +611,31 @@ namespace NuggetCreek.Core
 
         public bool IsBossBeaten(int regionIndex) => Progress.NuggetCatches[GameCatalog.BossNugget(regionIndex)] > 0;
 
+        /// <summary>Creeks whose boss has been beaten at least once.</summary>
+        public int BossesBeaten
+        {
+            get
+            {
+                int beaten = 0;
+                for (int r = 0; r < Config.RegionCount; r++)
+                    if (HasBoss(r) && IsBossBeaten(r))
+                        beaten++;
+                return beaten;
+            }
+        }
+
+        /// <summary>The creek of the first beaten boss in creek order, or -1.</summary>
+        public int FirstBeatenBoss
+        {
+            get
+            {
+                for (int r = 0; r < Config.RegionCount; r++)
+                    if (HasBoss(r) && IsBossBeaten(r))
+                        return r;
+                return -1;
+            }
+        }
+
         /// <summary>Starts a Mother Lode at once for Gems; null when the player cannot pay.</summary>
         public MotherLodeRun SummonMotherLode()
         {
