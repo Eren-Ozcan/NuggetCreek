@@ -175,7 +175,9 @@ namespace NuggetCreek.Balance
                 session.TickCandidates(Step);
                 session.TickShop(Step);
                 if (caught == FloaterKind.Boulder)
-                    Dollars("Mother Lode", RunMotherLode);
+                    Dollars("Mother Lode", () => RunMotherLode(session.StartMotherLode()));
+                else if (caught == FloaterKind.Boss)
+                    Dollars("Mother Lode", () => RunMotherLode(session.StartBossFight(session.CaughtBoss)));
                 Dollars("chests", Chests);
                 Dollars("crates", Crates);
                 Spend();
@@ -289,9 +291,10 @@ namespace NuggetCreek.Balance
                 session.CatchNugget(session.RollNuggetType(rng.NextDouble()));
         }
 
-        void RunMotherLode()
+        void RunMotherLode(MotherLodeRun run)
         {
-            MotherLodeRun run = session.StartMotherLode();
+            if (run == null)
+                return;
             double hitEvery = 1 / profile.LodeHitsPerSecond;
             double sinceHit = 0;
             while (!run.IsOver)
@@ -332,7 +335,7 @@ namespace NuggetCreek.Balance
 
         /// <summary>
         /// A floater on the water is caught or missed at once; the crossing time is not modelled.
-        /// Returns the caught one, so a caught boulder starts the Mother Lode.
+        /// Returns the caught one, so a caught boulder starts the Mother Lode or the boss fight.
         /// </summary>
         FloaterKind? Floaters()
         {
