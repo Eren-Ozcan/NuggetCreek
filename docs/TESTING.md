@@ -24,8 +24,9 @@ tiers or Amos levels than this build or its Remote Config has, unknown daily job
 ## PlayMode tests
 
 `GreyboxSmokeTests` press the real buttons of the code-built UI through each feature: the
-age screen, onboarding locks, Amos, tiers, crew, Mother Lode, chests, rebirth, daily,
-shop, offline return, interstitial timing, settings and data deletion, save reload. On the
+age screen, onboarding locks, Amos, tiers, crew, Mother Lode, chests, better gear swapping in,
+rebirth through its claim card, daily, shop, offline return, interstitial timing, settings and
+data deletion, save reload. On the
 main screen: gold enters at the top and drifts down only in the water lanes beside the
 dredge, never on a bank or under the hull; every dredge tier shows (one screenshot each),
 a tier bought behind the Upgrades panel waits for it to close, then arrives with its flash
