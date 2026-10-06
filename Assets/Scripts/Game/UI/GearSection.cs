@@ -24,6 +24,7 @@ namespace NuggetCreek.Game.UI
             public Button Right;
             public Text RightLabel;
             public IconBesideText PriceIcon;
+            public Image Badge;
             public Action Refresh;
         }
 
@@ -31,6 +32,7 @@ namespace NuggetCreek.Game.UI
         readonly Transform list;
         readonly Action purchased;
         readonly List<Row> rows = new List<Row>();
+        readonly Dictionary<int, Row> gearRows = new Dictionary<int, Row>();
         readonly List<GameObject> parts = new List<GameObject>();
         Text slotsLabel;
         bool? shownUnlocked;
@@ -80,6 +82,9 @@ namespace NuggetCreek.Game.UI
                 row.Refresh();
         }
 
+        /// <summary>A gear piece's row in the list; null for an unknown index.</summary>
+        public RectTransform RowOf(int index) => gearRows.TryGetValue(index, out Row row) ? row.Root : null;
+
         public bool AnythingAffordable()
         {
             if (!session.GearUnlocked)
@@ -106,6 +111,8 @@ namespace NuggetCreek.Game.UI
         {
             GearDefinition gear = GameCatalog.Gear[index];
             Row row = NewRow(gear.Id, Art.Gear(gear.Id), "", () => ToggleWear(index), "", () => Buy(session.LevelUpGear(index)));
+            gearRows[index] = row;
+            row.Badge = Ui.Badge(row.Left);
             row.Refresh = () =>
             {
                 int level = session.GearLevel(index);
@@ -116,24 +123,20 @@ namespace NuggetCreek.Game.UI
                 string now = Effects.PerLevel(gear.Stat, gear.PerLevel * level);
                 row.Detail.SetText($"{gear.Rarity}  -  {now}");
                 bool worn = session.IsEquipped(index);
-                SetButton(row.Left, row.LeftLabel, worn ? "Take off" : "Wear", worn || HasFreeSlot());
+                // With every slot full, gear that outranks a worn piece swaps in for it.
+                bool swaps = !worn && session.GearSlotToReplace(index) >= 0;
+                SetButton(row.Left, row.LeftLabel, worn ? "Take off" : swaps ? "Swap in" : "Wear", worn || swaps || session.HasFreeGearSlot);
+                row.Badge.SetActive(session.Progress.GearNotice == index);
                 int? cost = session.GearLevelUpCost(index);
                 SetButton(row.Right, row.RightLabel, cost.HasValue ? cost.Value.ToString() : "MAX", session.CanAffordGems(cost));
                 row.PriceIcon.SetActive(cost.HasValue);
             };
         }
 
-        bool HasFreeSlot()
-        {
-            for (int slot = 0; slot < session.Economy.Config.GearSlotCount; slot++)
-                if (session.IsGearSlotUnlocked(slot) && session.GearInSlot(slot) < 0)
-                    return true;
-            return false;
-        }
-
         void ToggleWear(int index)
         {
-            if (session.IsEquipped(index) ? session.Unequip(index) : session.Equip(index))
+            bool changed = session.IsEquipped(index) ? session.Unequip(index) : session.Equip(index) || session.SwapGear(index);
+            if (changed)
                 purchased();
         }
 

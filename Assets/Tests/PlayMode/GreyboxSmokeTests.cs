@@ -283,6 +283,44 @@ namespace NuggetCreek.PlayModeTests
         }
 
         [UnityTest]
+        public IEnumerator BetterGearSwapsInFromTheUpgradesPanel()
+        {
+            GameSession session = RobustnessTests.Session();
+            session.Progress.ManualCollected = 100;
+            int gloves = GearIndex("leather_gloves");
+            int pick = GearIndex("hickory_pick");
+            session.GrantGearCard(gloves);
+            session.GrantGearCard(pick);
+            Assert.That(session.Progress.GearNotice, Is.EqualTo(pick), "a Rare with the only slot full is pointed out");
+            yield return null;
+            Assert.That(Find("UpgradesButton").transform.Find("Badge").gameObject.activeSelf, Is.True);
+
+            Click("UpgradesButton");
+            yield return null;
+            Transform wear = Find("hickory_pick").transform.Find("Left");
+            Assert.That(wear.Find("Label").GetComponent<Text>().text, Is.EqualTo("Swap in"));
+            Assert.That(wear.Find("Badge").gameObject.activeSelf, Is.True);
+            yield return Shot("6b_gear_swap");
+
+            wear.GetComponent<Button>().onClick.Invoke();
+            yield return null;
+            Assert.That(session.IsEquipped(pick), Is.True);
+            Assert.That(session.IsEquipped(gloves), Is.False);
+            Assert.That(wear.Find("Label").GetComponent<Text>().text, Is.EqualTo("Take off"));
+            Assert.That(wear.Find("Badge").gameObject.activeSelf, Is.False);
+            Assert.That(Find("leather_gloves").transform.Find("Left/Label").GetComponent<Text>().text, Is.EqualTo("Wear"),
+                "a Common never swaps out a Rare");
+        }
+
+        static int GearIndex(string id)
+        {
+            for (int i = 0; i < GameCatalog.Gear.Count; i++)
+                if (GameCatalog.Gear[i].Id == id)
+                    return i;
+            throw new ArgumentException(id);
+        }
+
+        [UnityTest]
         public IEnumerator FirstChestOpensAtOnceAndGivesWornGear()
         {
             Assert.That(IsActive("Tray0"), Is.False);

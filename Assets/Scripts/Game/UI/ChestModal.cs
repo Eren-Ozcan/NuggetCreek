@@ -26,6 +26,8 @@ namespace NuggetCreek.Game.UI
         readonly Button open;
         readonly Button doubleButton;
         readonly Button collect;
+        readonly Button swap;
+        readonly Text swapLabel;
         readonly Image picture;
         readonly CanvasGroup rewardGroup;
         readonly Sprite closedSprite = Art.Get("Chests/creek_closed");
@@ -33,6 +35,7 @@ namespace NuggetCreek.Game.UI
         readonly Sprite openSprite = Art.Get("Chests/creek_open");
         ChestReward shown;
         float openedAt;
+        bool swapOffered;
 
         public bool IsOpen => root.gameObject.activeSelf;
 
@@ -44,7 +47,7 @@ namespace NuggetCreek.Game.UI
             this.ads = ads;
             root = Ui.Image("ChestModal", canvas, Palette.Dim).rectTransform.Fill();
             RectTransform card = Ui.Panel("Card", root, Palette.Panel).rectTransform
-                .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1240));
+                .Box(new Vector2(0.5f, 0.5f), new Vector2(940, 1380));
 
             Text title = Ui.Title("Title", card, "CREEK CHEST", 56);
             title.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(0, -130), new Vector2(0, -30));
@@ -73,6 +76,9 @@ namespace NuggetCreek.Game.UI
             doubleButton.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(40, 170), new Vector2(-40, 290));
             collect = Ui.Button("ChestCollect", card, "Collect", Palette.ButtonAlt, Close, out _, 40);
             collect.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(40, 40), new Vector2(-40, 150));
+            // New gear that outranks a worn piece while every slot is full can swap in from here.
+            swap = Ui.Button("ChestSwap", card, "", Palette.Button, Swap, out swapLabel, 36);
+            swap.AsRect().Place(Vector2.zero, new Vector2(1, 0), new Vector2(40, 305), new Vector2(-40, 425));
 
             Close();
         }
@@ -111,9 +117,11 @@ namespace NuggetCreek.Game.UI
                 doubleButton.SetActive(!shown.Doubled);
                 if (doubleButton.interactable != ads.IsLoaded)
                     doubleButton.interactable = ads.IsLoaded;
+                RefreshSwap();
                 collect.SetActive(true);
                 return;
             }
+            swap.SetActive(false);
 
             reward.SetText("");
             doubleButton.SetActive(false);
@@ -159,6 +167,28 @@ namespace NuggetCreek.Game.UI
             picture.rectTransform.localRotation = Quaternion.Euler(0, 0, degrees);
         }
 
+        void RefreshSwap()
+        {
+            swap.SetActive(swapOffered);
+            if (!swapOffered)
+                return;
+            int index = shown.Card.Index;
+            bool worn = session.IsEquipped(index);
+            int slot = session.GearSlotToReplace(index);
+            swapLabel.SetText(worn ? $"Wearing {GameCatalog.Gear[index].Name}"
+                : slot >= 0 ? $"Wear instead of {GameCatalog.Gear[session.GearInSlot(slot)].Name}" : "Wear it from Upgrades");
+            bool can = !worn && slot >= 0;
+            if (swap.interactable != can)
+                swap.interactable = can;
+        }
+
+        void Swap()
+        {
+            if (shown != null && session.SwapGear(shown.Card.Index))
+                Sound.Play(Sfx.Upgrade);
+            Refresh();
+        }
+
         /// <summary>Player-facing line for one gear card.</summary>
         public static string CardText(GearCard card)
         {
@@ -180,6 +210,7 @@ namespace NuggetCreek.Game.UI
         {
             shown = session.ClaimChest();
             openedAt = Time.unscaledTime;
+            swapOffered = shown != null && shown.Card.IsNew && session.GearSlotToReplace(shown.Card.Index) >= 0;
             if (shown != null)
                 Sound.Play(Sfx.Chest);
             Refresh();

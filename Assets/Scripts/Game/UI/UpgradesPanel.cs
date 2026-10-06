@@ -27,6 +27,7 @@ namespace NuggetCreek.Game.UI
         readonly List<Row> rows = new List<Row>();
         readonly Row[] upgradeRows = new Row[GameCatalog.Upgrades.Count];
         Row amosRow;
+        bool gearNoticeShown;
         Text crewHint;
         readonly GearSection gear;
 
@@ -77,15 +78,21 @@ namespace NuggetCreek.Game.UI
         {
             root.SetActive(true);
             Refresh();
+            gearNoticeShown = false;
             if (focusAmos)
             {
                 Canvas.ForceUpdateCanvases();
                 list.GetComponentInParent<ScrollRect>().verticalNormalizedPosition = 0;
                 amosRow.Root.GetComponent<Image>().color = Palette.Highlight;
+                return;
             }
-            else
+            amosRow.Root.GetComponent<Image>().color = Palette.Row;
+            // Better gear that came in with every slot full: the list opens on its row.
+            RectTransform noticed = gear.RowOf(session.Progress.GearNotice);
+            if (noticed != null)
             {
-                amosRow.Root.GetComponent<Image>().color = Palette.Row;
+                Ui.ScrollIntoView(noticed);
+                gearNoticeShown = true;
             }
         }
 
@@ -93,6 +100,10 @@ namespace NuggetCreek.Game.UI
         {
             bool wasOpen = IsOpen;
             root.SetActive(false);
+            // Seen once is enough; the row's button still says "Swap in".
+            if (wasOpen && gearNoticeShown)
+                session.DismissGearNotice();
+            gearNoticeShown = false;
             if (wasOpen)
                 Closed?.Invoke();
         }

@@ -1057,7 +1057,7 @@ namespace NuggetCreek.Game
             RefreshCrewColumn();
             RefreshGoal();
 
-            bool upgradeBadge = upgrades.AnythingAffordable();
+            bool upgradeBadge = upgrades.AnythingAffordable() || session.Progress.GearNotice >= 0;
             bool mapBadge = session.CanAfford(session.NextRegionCost);
             SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, "Upgrades", "Swipe 15 by hand", upgradeBadge);
             RefreshQuickBuy();
