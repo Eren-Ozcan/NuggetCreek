@@ -1283,14 +1283,21 @@ namespace NuggetCreek.Game
 
         static string GoalText(GoalDefinition goal)
         {
+            int n = goal.Target;
+            string more = goal.Relative ? " more" : "";
             switch (goal.Kind)
             {
-                case GoalKind.ManualCollected: return $"swipe up {goal.Target} Gold Dust by hand";
-                case GoalKind.UpgradeLevels: return $"buy {goal.Target} upgrade levels";
-                case GoalKind.AmosLevel: return goal.Target == 1 ? "hire Amos" : $"train Amos to Lv {goal.Target}";
-                case GoalKind.RegionsUnlocked: return $"reach {GameCatalog.RegionNames[goal.Target - 1]}";
-                case GoalKind.SluiceTier: return $"build Sluice Tier {goal.Target}";
-                case GoalKind.CrewHired: return goal.Target == 1 ? "hire a crew member" : $"hire {goal.Target} crew";
+                case GoalKind.ManualCollected: return $"swipe up {n}{more} Gold Dust by hand";
+                case GoalKind.UpgradeLevels: return $"buy {n} upgrade levels";
+                case GoalKind.AmosLevel: return n == 1 ? "hire Amos" : $"train Amos to Lv {n}";
+                case GoalKind.RegionsUnlocked: return $"reach {GameCatalog.RegionNames[Mathf.Min(n, GameCatalog.RegionNames.Count) - 1]}";
+                case GoalKind.SluiceTier: return $"build Sluice Tier {n}";
+                case GoalKind.CrewHired: return n == 1 ? "hire a crew member" : n >= GameCatalog.Crew.Count ? "hire the whole crew" : $"hire {n} crew";
+                case GoalKind.ChestsOpened: return n == 1 && !goal.Relative ? "open a chest" : $"open {n}{more} chests";
+                case GoalKind.Stars: return $"collect {n} Nugget stars";
+                case GoalKind.Claims: return n == 1 ? "stake a new claim" : $"stake {n} new claims";
+                case GoalKind.BossesBeaten: return n == 1 ? "beat a creek boss" : $"beat {n} creek bosses";
+                case GoalKind.MotherLodes: return $"crack {n}{more} boulders";
                 default: return goal.Kind.ToString();
             }
         }
