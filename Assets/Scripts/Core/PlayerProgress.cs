@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace NuggetCreek.Core
 {
@@ -119,6 +120,11 @@ namespace NuggetCreek.Core
 
         /// <summary>Trusted UTC second the income boost ends.</summary>
         public double BoostEndUtc;
+
+        /// <summary>Boosts waiting for the running one to end, strongest first; each runs its seconds in turn.</summary>
+        public double[] QueuedBoostMultipliers = new double[0];
+
+        public double[] QueuedBoostSeconds = new double[0];
 
         // --- Onboarding (design doc 9.1) ---
 
@@ -322,6 +328,7 @@ namespace NuggetCreek.Core
             RescueStreakIndex = Math.Max(-1, Math.Min(RescueStreakIndex, 29));
             AdWashes = Math.Max(0, AdWashes);
             BoostMultiplier = Math.Max(1, BoostMultiplier);
+            NormalizeBoostQueue();
             GuildLevel = Math.Max(0, GuildLevel);
             GuildXp = Math.Max(0, GuildXp);
             Rebirths = Math.Max(0, Rebirths);
@@ -378,6 +385,31 @@ namespace NuggetCreek.Core
                 AgeBand = AgeBand.Unknown;
             if (Vibration < VibrationMode.Off || Vibration > VibrationMode.All)
                 Vibration = VibrationMode.All;
+        }
+
+        /// <summary>Drops broken entries, so each queued boost has a multiplier above 1 and some time.</summary>
+        void NormalizeBoostQueue()
+        {
+            if (QueuedBoostMultipliers == null || QueuedBoostSeconds == null || QueuedBoostMultipliers.Length != QueuedBoostSeconds.Length)
+            {
+                QueuedBoostMultipliers = new double[0];
+                QueuedBoostSeconds = new double[0];
+                return;
+            }
+            var multipliers = new List<double>();
+            var seconds = new List<double>();
+            for (int i = 0; i < QueuedBoostMultipliers.Length; i++)
+            {
+                double m = QueuedBoostMultipliers[i];
+                double s = QueuedBoostSeconds[i];
+                if (m > 1 && s > 0 && !double.IsInfinity(m) && !double.IsInfinity(s))
+                {
+                    multipliers.Add(m);
+                    seconds.Add(s);
+                }
+            }
+            QueuedBoostMultipliers = multipliers.ToArray();
+            QueuedBoostSeconds = seconds.ToArray();
         }
 
         /// <summary>Four slots, each holding owned gear at most once.</summary>

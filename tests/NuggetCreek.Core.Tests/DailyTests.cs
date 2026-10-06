@@ -198,21 +198,80 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void StrongerBoostWinsAndTheSameOneAddsTime()
+        public void StrongerBoostRunsFirstAndTheWeakerWaitsWithItsTime()
         {
             GameSession session = NewSession();
             session.ApplyBoost(2, 1800);
             Assert.That(session.BoostMultiplier, Is.EqualTo(2));
             session.ApplyBoost(2, 1800);
-            Assert.That(session.BoostSecondsLeft, Is.EqualTo(3600).Within(1e-6));
+            Assert.That(session.BoostSecondsLeft, Is.EqualTo(3600).Within(1e-6), "the same multiplier adds its time");
+            session.NowUtc = Start + 600;
             session.ApplyBoost(3, 600);
             Assert.That(session.BoostMultiplier, Is.EqualTo(3));
             Assert.That(session.BoostSecondsLeft, Is.EqualTo(600).Within(1e-6));
-            session.ApplyBoost(2, 7200);
+            Assert.That(session.QueuedBoosts, Is.EqualTo(1), "the x2 keeps its 50 minutes");
+            session.ApplyBoost(1.5, 900);
             Assert.That(session.BoostMultiplier, Is.EqualTo(3), "a weaker boost does not replace a stronger one");
+            Assert.That(session.QueuedBoosts, Is.EqualTo(2));
 
-            session.NowUtc = Start + 601;
+            session.NowUtc = Start + 1201;
+            Assert.That(session.BoostMultiplier, Is.EqualTo(2), "the x2 picks up where it stopped");
+            Assert.That(session.BoostSecondsLeft, Is.EqualTo(3000 - 1).Within(1e-6));
+            session.NowUtc = Start + 1200 + 3000 + 1;
+            Assert.That(session.BoostMultiplier, Is.EqualTo(1.5), "then the x1.5");
+            session.NowUtc = Start + 1200 + 3000 + 900 + 1;
             Assert.That(session.BoostMultiplier, Is.EqualTo(1));
+            Assert.That(session.QueuedBoosts, Is.Zero);
+        }
+
+        [Test]
+        public void ANewBoostAfterTheQueueRanOutStartsNow()
+        {
+            GameSession session = NewSession();
+            session.ApplyBoost(3, 600);
+            session.ApplyBoost(2, 600);
+            session.NowUtc = Start + 5000;
+            session.ApplyBoost(2, 600);
+            Assert.That(session.BoostMultiplier, Is.EqualTo(2));
+            Assert.That(session.BoostSecondsLeft, Is.EqualTo(600).Within(1e-6));
+            Assert.That(session.Progress.QueuedBoostMultipliers, Is.Empty);
+        }
+
+        [Test]
+        public void OfflinePaysQueuedBoostsInTurn()
+        {
+            var progress = new PlayerProgress { ManualCollected = 100, AmosLevel = 4 }; // 2 h cap
+            GameSession session = NewSession(progress);
+            session.ApplyBoost(3, 1800); // Start .. +30 min at x3
+            session.ApplyBoost(2, 1800); // then +30 .. +60 min at x2
+            BigNumber rate = session.OfflineRate;
+
+            var clock = new OfflineClockInput
+            {
+                LastSeenUtc = Start, TrustedNowUtc = Start + 2 * 3600,
+                LastDeviceUtc = Start, DeviceNowUtc = Start + 2 * 3600,
+                LastMonotonicSeconds = 0, MonotonicNowSeconds = 2 * 3600, SameBoot = true,
+            };
+            OfflineResult result = session.EvaluateOffline(clock);
+            // 2 h at the base rate, plus 2 x 30 min on top for the x3 and 1 x 30 min for the x2.
+            Assert.That(result.Amount.ToDouble(), Is.EqualTo(rate.ToDouble() * (2 * 3600 + 3 * 1800)).Within(rate.ToDouble() * 1e-6));
+        }
+
+        [Test]
+        public void NormalizeDropsBrokenQueuedBoosts()
+        {
+            var progress = new PlayerProgress
+            {
+                QueuedBoostMultipliers = new[] { 2.0, 0.5, 3 },
+                QueuedBoostSeconds = new[] { 60.0, 60, -1 },
+            };
+            progress.Normalize();
+            Assert.That(progress.QueuedBoostMultipliers, Is.EqualTo(new[] { 2.0 }));
+            Assert.That(progress.QueuedBoostSeconds, Is.EqualTo(new[] { 60.0 }));
+
+            progress.QueuedBoostSeconds = null;
+            progress.Normalize();
+            Assert.That(progress.QueuedBoostMultipliers, Is.Empty);
         }
 
         [Test]

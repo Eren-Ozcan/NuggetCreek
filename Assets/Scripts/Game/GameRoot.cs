@@ -1042,8 +1042,9 @@ namespace NuggetCreek.Game
             PlayerProgress progress = session.Progress;
             dollarsLabel.SetText(NumberFormat.Dollars(progress.Dollars));
             string idle = session.IdleActive ? $"Amos +{NumberFormat.DollarsPerSecond(session.IdleRate)}" : "No crew yet";
+            string queued = session.QueuedBoosts > 0 ? $" (+{session.QueuedBoosts} next)" : "";
             string boost = session.BoostMultiplier > 1
-                ? $"  |  x{session.BoostMultiplier:0} {CandidateModal.Clock(session.BoostSecondsLeft)}" : "";
+                ? $"  |  x{session.BoostMultiplier:0.#} {CandidateModal.Clock(session.BoostSecondsLeft)}{queued}" : "";
             string goldWash = progress.GoldWashSecondsLeft > 0
                 ? $"  |  Gold Wash {CandidateModal.Clock(progress.GoldWashSecondsLeft)}" : "";
             statusLabel.SetText($"{session.RegionName}  |  {idle}{boost}{goldWash}");

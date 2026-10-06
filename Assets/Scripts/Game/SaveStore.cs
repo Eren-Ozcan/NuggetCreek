@@ -69,6 +69,8 @@ namespace NuggetCreek.Game
             public int adWashes;
             public double boostMultiplier;
             public double boostEndUtc;
+            public double[] queuedBoostMultipliers;
+            public double[] queuedBoostSeconds;
             public int peteSeen;
             public bool freeHireUsed;
             public bool returnGiftGiven;
@@ -213,6 +215,8 @@ namespace NuggetCreek.Game
                 AdWashes = data.adWashes,
                 BoostMultiplier = data.boostMultiplier,
                 BoostEndUtc = data.boostEndUtc,
+                QueuedBoostMultipliers = data.queuedBoostMultipliers,
+                QueuedBoostSeconds = data.queuedBoostSeconds,
                 PeteSeen = data.peteSeen,
                 FreeHireUsed = data.freeHireUsed,
                 ReturnGiftGiven = data.returnGiftGiven,
@@ -323,6 +327,8 @@ namespace NuggetCreek.Game
                 adWashes = progress.AdWashes,
                 boostMultiplier = progress.BoostMultiplier,
                 boostEndUtc = progress.BoostEndUtc,
+                queuedBoostMultipliers = progress.QueuedBoostMultipliers,
+                queuedBoostSeconds = progress.QueuedBoostSeconds,
                 peteSeen = progress.PeteSeen,
                 freeHireUsed = progress.FreeHireUsed,
                 returnGiftGiven = progress.ReturnGiftGiven,

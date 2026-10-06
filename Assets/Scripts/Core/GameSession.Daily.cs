@@ -224,42 +224,124 @@ namespace NuggetCreek.Core
 
         // --- Income boost (real time) ---
 
-        public double BoostMultiplier =>
-            NowUtc.HasValue && NowUtc.Value < Progress.BoostEndUtc ? Math.Max(1, Progress.BoostMultiplier) : 1;
+        public double BoostMultiplier => NowUtc.HasValue ? BoostAt(NowUtc.Value).Multiplier : 1;
 
-        public double BoostSecondsLeft =>
-            BoostMultiplier > 1 ? Progress.BoostEndUtc - NowUtc.Value : 0;
+        public double BoostSecondsLeft => BoostMultiplier > 1 ? BoostAt(NowUtc.Value).End - NowUtc.Value : 0;
 
-        /// <summary>The stronger boost wins; the same multiplier adds its time.</summary>
+        /// <summary>Boosts waiting for the running one to end.</summary>
+        public int QueuedBoosts => NowUtc.HasValue ? Progress.QueuedBoostMultipliers.Length - BoostAt(NowUtc.Value).Index : 0;
+
+        /// <summary>
+        /// The boost running at a moment: the current one until its end, then each queued one
+        /// for its seconds in turn. Index counts the queued boosts already started.
+        /// </summary>
+        (double Multiplier, double End, int Index) BoostAt(double utc)
+        {
+            double end = Progress.BoostEndUtc;
+            if (utc < end)
+                return (Math.Max(1, Progress.BoostMultiplier), end, 0);
+            double[] multipliers = Progress.QueuedBoostMultipliers;
+            for (int i = 0; i < multipliers.Length; i++)
+            {
+                end += Progress.QueuedBoostSeconds[i];
+                if (utc < end)
+                    return (multipliers[i], end, i + 1);
+            }
+            return (1, end, multipliers.Length);
+        }
+
+        /// <summary>
+        /// No boost is ever lost: the stronger one runs now and the weaker waits its turn with
+        /// its time intact; the same multiplier adds its time.
+        /// </summary>
         public void ApplyBoost(double multiplier, double seconds)
         {
             if (!NowUtc.HasValue || multiplier <= 1 || seconds <= 0)
                 return;
             double now = NowUtc.Value;
+            SettleBoosts(now);
             double current = BoostMultiplier;
-            if (multiplier < current)
-                return;
-            if (multiplier == current)
+            if (current <= 1)
+            {
+                Progress.BoostMultiplier = multiplier;
+                Progress.BoostEndUtc = now + seconds;
+            }
+            else if (multiplier == current)
             {
                 Progress.BoostEndUtc += seconds;
-                return;
             }
-            Progress.BoostMultiplier = multiplier;
-            Progress.BoostEndUtc = now + seconds;
+            else if (multiplier > current)
+            {
+                QueueBoost(current, Progress.BoostEndUtc - now);
+                Progress.BoostMultiplier = multiplier;
+                Progress.BoostEndUtc = now + seconds;
+            }
+            else
+            {
+                QueueBoost(multiplier, seconds);
+            }
+        }
+
+        /// <summary>Moves queued boosts whose turn has come into the running slot, keeping their start times.</summary>
+        void SettleBoosts(double now)
+        {
+            while (now >= Progress.BoostEndUtc && Progress.QueuedBoostMultipliers.Length > 0)
+            {
+                Progress.BoostMultiplier = Progress.QueuedBoostMultipliers[0];
+                Progress.BoostEndUtc += Progress.QueuedBoostSeconds[0];
+                Progress.QueuedBoostMultipliers = WithoutFirst(Progress.QueuedBoostMultipliers);
+                Progress.QueuedBoostSeconds = WithoutFirst(Progress.QueuedBoostSeconds);
+            }
+        }
+
+        static double[] WithoutFirst(double[] values)
+        {
+            var rest = new double[values.Length - 1];
+            Array.Copy(values, 1, rest, 0, rest.Length);
+            return rest;
+        }
+
+        /// <summary>Adds a boost to the queue, strongest first; a multiplier already waiting gets the time.</summary>
+        void QueueBoost(double multiplier, double seconds)
+        {
+            var multipliers = new List<double>(Progress.QueuedBoostMultipliers);
+            var times = new List<double>(Progress.QueuedBoostSeconds);
+            int at = multipliers.IndexOf(multiplier);
+            if (at >= 0)
+            {
+                times[at] += seconds;
+            }
+            else
+            {
+                at = multipliers.FindIndex(m => m < multiplier);
+                if (at < 0)
+                    at = multipliers.Count;
+                multipliers.Insert(at, multiplier);
+                times.Insert(at, seconds);
+            }
+            Progress.QueuedBoostMultipliers = multipliers.ToArray();
+            Progress.QueuedBoostSeconds = times.ToArray();
         }
 
         /// <summary>Prestige multiplier times the running boosts: applies to swipe, idle, chests and events.</summary>
         public double IncomeMultiplier => PrestigeMultiplier * BoostMultiplier * GoldWashMultiplier;
 
-        /// <summary>Extra offline Dollars for the part of an absence a boost covered.</summary>
+        /// <summary>Extra offline Dollars for the parts of an absence the running and queued boosts covered.</summary>
         BigNumber OfflineBoostBonus(double leftUtc, double creditedSeconds)
         {
-            if (Progress.BoostMultiplier <= 1 || creditedSeconds <= 0)
+            if (creditedSeconds <= 0)
                 return BigNumber.Zero;
-            double covered = Math.Min(Progress.BoostEndUtc, leftUtc + creditedSeconds) - leftUtc;
-            if (covered <= 0)
-                return BigNumber.Zero;
-            return OfflineRate * (covered * (Progress.BoostMultiplier - 1));
+            double to = leftUtc + creditedSeconds;
+            double end = Progress.BoostEndUtc;
+            // Boost-seconds above x1: the running boost, then the queue in turn.
+            double extra = Math.Max(0, Math.Min(end, to) - leftUtc) * (Math.Max(1, Progress.BoostMultiplier) - 1);
+            for (int i = 0; i < Progress.QueuedBoostMultipliers.Length; i++)
+            {
+                double start = end;
+                end += Progress.QueuedBoostSeconds[i];
+                extra += Math.Max(0, Math.Min(end, to) - Math.Max(start, leftUtc)) * (Progress.QueuedBoostMultipliers[i] - 1);
+            }
+            return extra > 0 ? OfflineRate * extra : BigNumber.Zero;
         }
 
         // --- Gear boxes granted as rewards ---
