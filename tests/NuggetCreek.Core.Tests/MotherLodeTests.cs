@@ -98,14 +98,44 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void APauseDropsTheComboButKeepsThePeak()
+        public void APauseLetsTheComboFallAStepAtATimeButKeepsThePeak()
         {
             var run = new MotherLodeRun(config, 1);
+            HitTimes(run, 24);
+            Assert.That(run.Combo, Is.EqualTo(7));
+            run.Tick(0.9);
+            Assert.That(run.Combo, Is.EqualTo(7), "a second's grace");
+            run.Tick(0.2);
+            Assert.That(run.Combo, Is.EqualTo(6), "then one step");
+            run.Tick(0.5);
+            Assert.That(run.Combo, Is.EqualTo(5), "and one more every half second");
+            run.Tick(10);
+            Assert.That(run.Combo, Is.EqualTo(1));
+            Assert.That(run.PeakCombo, Is.EqualTo(7));
+        }
+
+        [Test]
+        public void HittingAgainStopsTheFallAndBuildsFromTheStepLeft()
+        {
+            var run = new MotherLodeRun(config, 1);
+            HitTimes(run, 24);
+            run.Tick(1.1);
+            Assert.That(run.Combo, Is.EqualTo(6));
+            run.Hit();
+            run.Tick(0.9);
+            Assert.That(run.Combo, Is.EqualTo(6), "a hit restarts the grace");
+            HitTimes(run, 3);
+            Assert.That(run.Combo, Is.EqualTo(7), "four hits for the next step, counted after the pause");
+        }
+
+        [Test]
+        public void NoDecayDropsStraightToOne()
+        {
+            config.MotherLodeComboDecaySeconds = 0;
+            var run = new MotherLodeRun(config, 1);
             HitTimes(run, 12);
-            Assert.That(run.Combo, Is.EqualTo(4));
             run.Tick(1.1);
             Assert.That(run.Combo, Is.EqualTo(1));
-            Assert.That(run.PeakCombo, Is.EqualTo(4));
         }
 
         [Test]

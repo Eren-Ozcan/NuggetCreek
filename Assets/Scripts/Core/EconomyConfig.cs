@@ -59,8 +59,14 @@ namespace NuggetCreek.Core
 
         public int MotherLodeMaxCombo = 10;
 
-        /// <summary>A pause longer than this drops the combo back to x1.</summary>
+        /// <summary>A pause longer than this drops the combo one step.</summary>
         public double MotherLodeComboHoldSeconds = 1.0;
+
+        /// <summary>
+        /// While the pause goes on, the combo drops one more step this often, so a slip costs
+        /// a step or two, not the whole combo. Zero drops it straight back to x1.
+        /// </summary>
+        public double MotherLodeComboDecaySeconds = 0.5;
 
         /// <summary>Reward in seconds of current income at combo x1 and at the max combo.</summary>
         public double MotherLodeRewardMinSeconds = 60;

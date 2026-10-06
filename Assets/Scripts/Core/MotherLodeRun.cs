@@ -4,8 +4,8 @@ namespace NuggetCreek.Core
 {
     /// <summary>
     /// One Mother Lode (design doc 3.4): 20 seconds of swiping at a vein. Every few hits
-    /// raise the combo from x1 toward x10; a pause drops it back to x1. The payout uses
-    /// the highest combo reached and the income captured when the event started.
+    /// raise the combo from x1 toward x10; a pause lets it fall back a step at a time. The
+    /// payout uses the highest combo reached and the income captured when the event started.
     /// </summary>
     public sealed class MotherLodeRun
     {
@@ -13,6 +13,7 @@ namespace NuggetCreek.Core
         readonly int maxCombo;
         int hitsTowardNext;
         double sinceHit;
+        double nextDrop;
 
         public BigNumber IncomePerSecond { get; }
         public double SecondsLeft { get; private set; }
@@ -52,6 +53,7 @@ namespace NuggetCreek.Core
             this.maxCombo = maxCombo > 0 ? maxCombo : config.MotherLodeMaxCombo;
             IncomePerSecond = incomePerSecond;
             SecondsLeft = config.MotherLodeDurationSeconds;
+            nextDrop = config.MotherLodeComboHoldSeconds;
         }
 
         /// <summary>Turns the run into a boss fight.</summary>
@@ -68,10 +70,18 @@ namespace NuggetCreek.Core
                 return;
             SecondsLeft = Math.Max(0, SecondsLeft - deltaSeconds);
             sinceHit += deltaSeconds;
-            if (sinceHit > config.MotherLodeComboHoldSeconds)
+            if (sinceHit <= config.MotherLodeComboHoldSeconds)
+                return;
+            hitsTowardNext = 0;
+            while (Combo > 1 && sinceHit > nextDrop)
             {
-                Combo = 1;
-                hitsTowardNext = 0;
+                if (config.MotherLodeComboDecaySeconds <= 0)
+                {
+                    Combo = 1;
+                    break;
+                }
+                Combo--;
+                nextDrop += config.MotherLodeComboDecaySeconds;
             }
         }
 
@@ -81,6 +91,7 @@ namespace NuggetCreek.Core
                 return;
             Hits++;
             sinceHit = 0;
+            nextDrop = config.MotherLodeComboHoldSeconds;
             if (Combo < maxCombo && ++hitsTowardNext >= config.MotherLodeHitsPerCombo)
             {
                 hitsTowardNext = 0;
