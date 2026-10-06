@@ -53,6 +53,17 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
+        public void TheShopUnlockCreekIsARemoteConfigTest()
+        {
+            // The A/B test of design doc 13.2: the shop at Willow Bend (about minute 5, the
+            // earliest the no-IAP-in-the-first-5-minutes rule allows) against Pine Hollow.
+            RemoteConfig.Apply(config, new[] { new System.Collections.Generic.KeyValuePair<string, string>("shop_unlock_regions", "2") });
+            Assert.That(config.ShopUnlockRegions, Is.EqualTo(2));
+            Assert.That(NewSession().IsUnlocked(Feature.Shop), Is.False);
+            Assert.That(NewSession(new PlayerProgress { RegionsUnlocked = 2, BestRegionsUnlocked = 2 }).IsUnlocked(Feature.Shop), Is.True);
+        }
+
+        [Test]
         public void DailyOpensOnTheSecondGameDayOrAfterAnHour()
         {
             GameSession session = NewSession();

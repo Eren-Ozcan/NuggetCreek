@@ -1062,10 +1062,11 @@ namespace NuggetCreek.Game
             SetLock(upgradesButton, upgradesLabel, Feature.Upgrades, "Upgrades", "Swipe 15 by hand", upgradeBadge);
             RefreshQuickBuy();
             SetLock(mapButton, mapLabel, Feature.Map, "Map", "Hire Amos", mapBadge);
-            SetLock(shopButton, shopLabel, Feature.Shop, "Shop", "Pine Hollow", shop.HasTimedOffer());
+            // The unlock creek is a Remote Config A/B test (shop_unlock_regions, design doc 13.2).
+            SetLock(shopButton, shopLabel, Feature.Shop, "Shop", UnlockCreekName(session.Economy.Config.ShopUnlockRegions), shop.HasTimedOffer());
             collectionLabel.SetText($"{session.TotalStars}/{session.MaxStars}");
             collectionLabel.transform.parent.gameObject.SetActive(!motherLode.IsActive);
-            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", "Red Gulch");
+            SetLock(guildButton, guildLabel, Feature.Guild, $"Guild Lv {session.GuildLevel}", UnlockCreekName(session.Economy.Config.GuildUnlockRegions));
             RefreshClaimBar();
 
             float now = Time.realtimeSinceStartup;
@@ -1080,7 +1081,10 @@ namespace NuggetCreek.Game
             tray.Refresh(motherLode.IsActive);
         }
 
-        /// <summary>A locked button stays visible and says what opens it (design doc 9.1, 12.2).</summary>
+        /// <summary>The creek whose opening unlocks a feature that needs this many creeks.</summary>
+        static string UnlockCreekName(int regions) =>
+            GameCatalog.RegionNames[Mathf.Clamp(regions, 1, GameCatalog.RegionNames.Count) - 1];
+
         void QuickBuy()
         {
             if (session.QuickBuy())
@@ -1118,6 +1122,7 @@ namespace NuggetCreek.Game
                 quickBuyButton.interactable = true;
         }
 
+        /// <summary>A locked button stays visible and says what opens it (design doc 9.1, 12.2).</summary>
         void SetLock(Button button, Text label, Feature feature, string open, string locked, bool badge = false)
         {
             bool unlocked = session.IsUnlocked(feature);
