@@ -1230,8 +1230,8 @@ namespace NuggetCreek.Game
         void ShowLodeHaul(MotherLodeRun run, BigNumber reward)
         {
             creek.FlyReward("+" + NumberFormat.Dollars(reward), Palette.Gold, creek.ToCreek(Center(dollarsLabel)));
-            string gems = "+" + Effects.Gems(session.Economy.Config.MotherLodeGemReward);
-            creek.FlyReward(gems, Palette.Gem, creek.ToCreek(Center(gemsLabel)), 0.25f);
+            if (run.GemsPaid > 0)
+                creek.FlyReward("+" + Effects.Gems(run.GemsPaid), Palette.Gem, creek.ToCreek(Center(gemsLabel)), 0.25f);
             if (run.DroppedNugget >= 0)
                 creek.ShowBanner($"NEW BOSS NUGGET!  {GameCatalog.Nuggets[run.DroppedNugget].Name}");
             else if (run.IsBossFight)

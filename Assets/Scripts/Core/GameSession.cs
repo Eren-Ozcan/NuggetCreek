@@ -658,7 +658,7 @@ namespace NuggetCreek.Core
             BigNumber reward = MotherLodeReward(run);
             Earn(reward, IncomeSource.Event);
             CountJob(DailyJobKind.MotherLodes);
-            EarnGems(Config.MotherLodeGemReward, "mother_lode");
+            PayMotherLodeGems(run);
             DropBossNugget(run);
             Emit("mother_lode",
                 ("trigger", run.Summoned ? "gem" : "natural"),
@@ -666,6 +666,21 @@ namespace NuggetCreek.Core
                 ("taps", run.Hits),
                 ("peak_combo", run.PeakCombo));
             return reward;
+        }
+
+        /// <summary>The first Mother Lode and every MotherLodeGemEvery-th after it pay Gems; a beaten boss pays more.</summary>
+        void PayMotherLodeGems(MotherLodeRun run)
+        {
+            Progress.MotherLodesFinished++;
+            int every = Math.Max(1, Config.MotherLodeGemEvery);
+            int gems = (Progress.MotherLodesFinished - 1) % every == 0 ? Config.MotherLodeGemReward : 0;
+            EarnGems(gems, "mother_lode");
+            if (run.BossBeaten)
+            {
+                EarnGems(Config.BossGemReward, "boss");
+                gems += Config.BossGemReward;
+            }
+            run.GemsPaid = Math.Max(0, gems);
         }
 
         /// <summary>A beaten boss drops its nugget; a plain run re-drops the current creek's at 25%.</summary>

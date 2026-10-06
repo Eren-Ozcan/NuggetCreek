@@ -73,8 +73,16 @@ namespace NuggetCreek.Core
 
         public double MotherLodeRewardMaxSeconds = 90;
 
-        /// <summary>Gems per finished Mother Lode (5.0.6 budgets ~5 a day).</summary>
-        public int MotherLodeGemReward = 1;
+        /// <summary>
+        /// Every MotherLodeGemEvery-th finished Mother Lode pays MotherLodeGemReward Gems: the
+        /// same ~5 a day as one Gem each (5.0.6), in drops worth noticing.
+        /// </summary>
+        public int MotherLodeGemEvery = 3;
+
+        public int MotherLodeGemReward = 3;
+
+        /// <summary>Gems for beating a creek's boss, on top of the Mother Lode count.</summary>
+        public int BossGemReward = 5;
 
         /// <summary>Gem price to call a Mother Lode at once (8.2c).</summary>
         public int MotherLodeSummonGems = 5;

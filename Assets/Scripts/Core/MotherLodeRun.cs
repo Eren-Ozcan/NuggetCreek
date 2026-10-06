@@ -42,6 +42,9 @@ namespace NuggetCreek.Core
         /// <summary>Boss nugget this run dropped once paid; -1 for none.</summary>
         public int DroppedNugget { get; internal set; } = -1;
 
+        /// <summary>Gems this run paid once finished; often none (see EconomyConfig.MotherLodeGemEvery).</summary>
+        public int GemsPaid { get; internal set; }
+
         public bool IsOver => SecondsLeft <= 0;
 
         public int MaxCombo => maxCombo;

@@ -209,7 +209,7 @@ namespace NuggetCreek.PlayModeTests
             }
             Assert.That(IsActive("Reward"), Is.True, "no dialog: the haul flies to its counters");
             yield return Shot("9_mother_lode_haul");
-            Assert.That(Label("Gems").text, Is.EqualTo("1"));
+            Assert.That(Label("Gems").text, Is.EqualTo("3"), "the first Mother Lode pays its Gems");
             Assert.That(Label("Dollars").text, Is.Not.EqualTo("$0"));
         }
 

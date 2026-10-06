@@ -170,7 +170,7 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void FinishPaysDollarsAndOneGemOnce()
+        public void FinishPaysDollarsAndTheFirstOnePaysGemsOnce()
         {
             GameSession session = NewSession(new PlayerProgress { AmosLevel = 1 });
             BigNumber income = session.IncomePerSecond;
@@ -181,9 +181,46 @@ namespace NuggetCreek.Core.Tests
 
             Assert.That(paid.ToDouble(), Is.EqualTo(income.ToDouble() * 90).Within(income.ToDouble() * 1e-9));
             Assert.That(session.Progress.Dollars, Is.EqualTo(paid));
-            Assert.That(session.Progress.Gems, Is.EqualTo(1));
+            Assert.That(session.Progress.Gems, Is.EqualTo(3));
+            Assert.That(run.GemsPaid, Is.EqualTo(3));
             Assert.That(session.FinishMotherLode(run).IsZero, Is.True, "a run pays only once");
-            Assert.That(session.Progress.Gems, Is.EqualTo(1));
+            Assert.That(session.Progress.Gems, Is.EqualTo(3));
+            Assert.That(session.Progress.MotherLodesFinished, Is.EqualTo(1));
+        }
+
+        [Test]
+        public void EveryThirdMotherLodePaysThreeGemsSoTheDailyTotalStays()
+        {
+            GameSession session = NewSession(new PlayerProgress { AmosLevel = 1 });
+            var paid = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < 7; i++)
+            {
+                MotherLodeRun run = session.StartMotherLode();
+                session.FinishMotherLode(run);
+                paid.Add(run.GemsPaid);
+            }
+            Assert.That(paid, Is.EqualTo(new[] { 3, 0, 0, 3, 0, 0, 3 }));
+            Assert.That(session.Progress.Gems, Is.EqualTo(9));
+        }
+
+        [Test]
+        public void ABeatenBossPaysItsOwnGems()
+        {
+            // The second Mother Lode, so only the boss pays.
+            GameSession session = NewSession(new PlayerProgress { AmosLevel = 1, MotherLodesFinished = 1 });
+            MotherLodeRun run = session.StartBossFight(0);
+            while (!run.BossBeaten)
+                run.Hit();
+            session.FinishMotherLode(run);
+            Assert.That(run.GemsPaid, Is.EqualTo(config.BossGemReward));
+            Assert.That(session.Progress.Gems, Is.EqualTo(config.BossGemReward));
+
+            GameSession other = NewSession(new PlayerProgress { AmosLevel = 1, MotherLodesFinished = 1 });
+            MotherLodeRun escaped = other.StartBossFight(1);
+            escaped.Tick(30);
+            other.FinishMotherLode(escaped);
+            Assert.That(escaped.BossBeaten, Is.False);
+            Assert.That(escaped.GemsPaid, Is.Zero, "an escaped boss pays no Gems of its own");
         }
 
         [Test]

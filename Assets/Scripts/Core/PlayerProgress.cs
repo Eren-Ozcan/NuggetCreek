@@ -234,6 +234,9 @@ namespace NuggetCreek.Core
         /// <summary>Play seconds since the last Mother Lode.</summary>
         public double SecondsSinceMotherLode;
 
+        /// <summary>Mother Lodes finished, lifetime; sets which ones pay Gems.</summary>
+        public int MotherLodesFinished;
+
         /// <summary>Creeks whose boss has floated in during this claim (bit r = creek r); a rebirth clears it.</summary>
         public int BossesMet;
 
@@ -366,6 +369,7 @@ namespace NuggetCreek.Core
             CollectedSinceMotherLode = Math.Max(0, CollectedSinceMotherLode);
             CatchesTowardBoss = Math.Max(0, CatchesTowardBoss);
             SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
+            MotherLodesFinished = Math.Max(0, MotherLodesFinished);
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, Math.Min(RegionsUnlocked, GameCatalog.RegionNames.Count));
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
