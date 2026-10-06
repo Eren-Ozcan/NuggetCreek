@@ -235,7 +235,8 @@ namespace NuggetCreek.PlayModeTests
             yield return Shot("t14_stake_claim");
             Click("Rebirth");
             yield return WaitForLine(steps[3].Line);
-            Click("Rebirth");
+            yield return Shot("t15_claim_card");
+            Click("ClaimConfirmYes");
             yield return WaitForLine(steps[4].Line);
             Tap();
             yield return WaitFor(() => !IsActive("Tutorial"), 2);

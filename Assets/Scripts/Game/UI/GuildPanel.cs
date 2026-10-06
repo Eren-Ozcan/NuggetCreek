@@ -10,6 +10,8 @@ namespace NuggetCreek.Game.UI
     /// <summary>
     /// Full-screen Prospectors' Guild (design doc 6.5, 6.6, 12.1 screen 7): stake a new claim
     /// (rebirth), the Guild level with its rewarded-ad XP and milestones, and the perk tree.
+    /// A claim is staked from a card that shows the income before and after, and what comes
+    /// along and what starts over.
     /// </summary>
     public sealed class GuildPanel
     {
@@ -46,12 +48,24 @@ namespace NuggetCreek.Game.UI
         readonly Color checkOn;
         readonly Text pointsText;
         readonly List<PerkRow> perkRows = new List<PerkRow>();
-        bool confirming;
+        readonly RectTransform confirm;
+        readonly RectTransform confirmCard;
+        readonly Text confirmIncome;
+        readonly Text confirmXp;
 
         public bool IsOpen => root.gameObject.activeSelf;
 
+        /// <summary>The claim card is up over the Guild.</summary>
+        public bool ConfirmOpen => confirm.gameObject.activeSelf;
+
         /// <summary>"Stake a new claim", for Pete to point at.</summary>
         public Button ClaimButton => rebirth;
+
+        /// <summary>The claim card's "Stake claim" button.</summary>
+        public Button ConfirmButton { get; }
+
+        /// <summary>The claim card, for Pete to frame.</summary>
+        public RectTransform ConfirmCard => confirmCard;
 
         /// <summary>Raised after a new claim was staked.</summary>
         public event Action Reborn;
@@ -109,17 +123,50 @@ namespace NuggetCreek.Game.UI
             Button reset = Ui.Button("ResetPerks", list, "Reset perks (free)", Palette.ButtonAlt, () => session.ResetPerks(), out _, 36);
             Ui.PreferredHeight(reset, Ui.TapHeight);
 
+            // The claim card, over the whole panel.
+            confirm = Ui.Image("ClaimConfirm", root, Palette.Dim).rectTransform.Fill();
+            confirmCard = Ui.Panel("Card", confirm, Palette.Panel).rectTransform.Box(new Vector2(0.5f, 0.5f), new Vector2(920, 980));
+            Text heading = Ui.Title("Title", confirmCard, "STAKE A NEW CLAIM?", 50);
+            heading.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -140), new Vector2(-40, -40));
+            heading.resizeTextForBestFit = true;
+            heading.resizeTextMinSize = 32;
+            heading.resizeTextMaxSize = 50;
+            confirmIncome = Ui.Label("Income", confirmCard, "", 52, TextAnchor.MiddleCenter, Palette.GoldText, FontStyle.Bold);
+            confirmIncome.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -260), new Vector2(-40, -150));
+            confirmXp = Ui.Label("Xp", confirmCard, "", 32, TextAnchor.MiddleCenter, Palette.TextMuted);
+            confirmXp.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(40, -320), new Vector2(-40, -260));
+            ClaimList(confirmCard, "COMES ALONG", "Gems, crew and Amos, gear, Nuggets and their stars, the Guild and its perks", -350, Palette.Text);
+            ClaimList(confirmCard, "STARTS OVER", "Dollars, creeks (back to Nugget Creek), sluice tier and upgrades", -570, Palette.Text);
+            ConfirmButton = Ui.Button("ClaimConfirmYes", confirmCard, "Stake claim", Palette.Button, StakeClaim, out _, 42);
+            ConfirmButton.AsRect().Place(new Vector2(0.5f, 0), new Vector2(1, 0), new Vector2(10, 40), new Vector2(-40, 40 + Ui.TapHeight));
+            Button notYet = Ui.Button("ClaimConfirmNo", confirmCard, "Not yet", Palette.ButtonAlt, CloseConfirm, out _, 40);
+            notYet.AsRect().Place(Vector2.zero, new Vector2(0.5f, 0), new Vector2(40, 40), new Vector2(-10, 40 + Ui.TapHeight));
+            confirm.SetActive(false);
+
             Close();
+        }
+
+        static void ClaimList(RectTransform card, string title, string items, float top, Color color)
+        {
+            Text heading = Ui.Label(title, card, title, 34, TextAnchor.LowerLeft, Palette.TextMuted, FontStyle.Bold);
+            heading.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(60, top - 60), new Vector2(-60, top));
+            Text body = Ui.Label(title + "Items", card, items, 36, TextAnchor.UpperLeft, color);
+            body.rectTransform.Place(new Vector2(0, 1), Vector2.one, new Vector2(60, top - 210), new Vector2(-60, top - 70));
+            body.resizeTextForBestFit = true;
+            body.resizeTextMinSize = 26;
+            body.resizeTextMaxSize = 36;
         }
 
         public void Open()
         {
-            confirming = false;
+            confirm.SetActive(false);
             root.SetActive(true);
             Refresh();
         }
 
         public void Close() => root.SetActive(false);
+
+        void CloseConfirm() => confirm.SetActive(false);
 
         public void Refresh()
         {
@@ -139,9 +186,7 @@ namespace NuggetCreek.Game.UI
             text.Append("Starts over at Nugget Creek: Dollars, sluice tier, upgrades and creeks reset.\n");
             text.Append("Kept: crew, Amos, Gems, gear, Nuggets, the Guild.");
             claimText.SetText(text.ToString());
-            string label = !session.CanRebirth ? "Earn more to stake a claim"
-                : confirming ? "Tap again to confirm" : "Stake a new claim";
-            rebirthLabel.SetText(label);
+            rebirthLabel.SetText(session.CanRebirth ? "Stake a new claim" : "Earn more to stake a claim");
             if (rebirth.interactable != session.CanRebirth)
                 rebirth.interactable = session.CanRebirth;
         }
@@ -208,13 +253,16 @@ namespace NuggetCreek.Game.UI
 
         void OnRebirth()
         {
-            if (!confirming)
-            {
-                confirming = true;
-                Refresh();
+            if (!session.CanRebirth)
                 return;
-            }
-            confirming = false;
+            confirmIncome.SetText($"Income x{session.PrestigeMultiplier:0.00}  ->  x{session.PrestigeMultiplierAfterRebirth:0.00}");
+            confirmXp.SetText($"+{session.ClaimXp} Prospecting XP");
+            confirm.SetActive(true);
+        }
+
+        void StakeClaim()
+        {
+            confirm.SetActive(false);
             if (!session.Rebirth())
                 return;
             Close();

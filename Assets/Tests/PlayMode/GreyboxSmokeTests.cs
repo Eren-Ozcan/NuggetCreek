@@ -404,8 +404,16 @@ namespace NuggetCreek.PlayModeTests
 
             Click("Rebirth");
             yield return null;
-            Assert.That(LabelIn("Rebirth", "Label").text, Is.EqualTo("Tap again to confirm"));
+            Assert.That(IsActive("ClaimConfirm"), Is.True, "a card shows what the claim keeps and resets");
+            StringAssert.StartsWith("Income x1.00  ->  x", Label("Income").text);
+            yield return Shot("14b_claim_card");
+            Click("ClaimConfirmNo");
+            yield return null;
+            Assert.That(IsActive("ClaimConfirm"), Is.False);
+            Assert.That(IsActive("Guild"), Is.True, "not yet keeps the Guild open");
             Click("Rebirth");
+            yield return null;
+            Click("ClaimConfirmYes");
             yield return null;
 
             Assert.That(IsActive("Guild"), Is.False);

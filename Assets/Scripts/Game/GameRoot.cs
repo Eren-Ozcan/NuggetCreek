@@ -1204,7 +1204,9 @@ namespace NuggetCreek.Game
                     badge.Pointer = claimBar.rectTransform;
                     return badge;
                 case Cue.StakeClaim:
-                    return guild.IsOpen ? Shown(guild.ClaimButton) : null;
+                    return guild.IsOpen && !guild.ConfirmOpen ? Shown(guild.ClaimButton) : null;
+                case Cue.ConfirmClaim:
+                    return guild.ConfirmOpen ? CueTarget.Of(guild.ConfirmButton, guild.ConfirmCard) : null;
                 default:
                     return null;
             }

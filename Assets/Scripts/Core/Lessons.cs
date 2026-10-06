@@ -41,6 +41,7 @@ namespace NuggetCreek.Core
         ClaimBar,
         /// <summary>"Stake a new claim" in the Guild panel.</summary>
         StakeClaim,
+        ConfirmClaim,
     }
 
     /// <summary>What ends a tutorial step.</summary>
@@ -161,7 +162,7 @@ namespace NuggetCreek.Core
                 new LessonStep("Creek's slowing down, kid. Upstream costs more than it pays.", PetePose.Wow, Until.Tap),
                 new LessonStep("Your claim bar is full. Time to start fresh.", PetePose.Point, Until.Press, Cue.ClaimBar),
                 new LessonStep("Back to Nugget Creek, richer for it. Crew, gear and Gems come along.", PetePose.Point, Until.Press, Cue.StakeClaim),
-                new LessonStep("Sure? Tap it again.", PetePose.Talk, Until.Press, Cue.StakeClaim),
+                new LessonStep("Here's what comes along and what starts over. Stake it, kid.", PetePose.Point, Until.Press, Cue.ConfirmClaim),
                 new LessonStep("Every dollar pays more now. Watch it add up.", PetePose.Laugh, Until.Tap),
             },
         };
