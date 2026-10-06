@@ -237,6 +237,7 @@ if (args.Contains("--offline"))
             if (verbose)
             {
                 Console.WriteLine();
+                Console.WriteLine("Goals claimed (index: day): " + string.Join(", ", reports[0].GoalDays.Select((d, i) => $"{i}: {d:0.0}")));
                 foreach (string line in reports[0].DayLines)
                     Console.WriteLine("  " + line);
             }

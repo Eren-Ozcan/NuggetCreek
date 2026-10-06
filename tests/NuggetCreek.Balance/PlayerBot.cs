@@ -49,6 +49,8 @@ namespace NuggetCreek.Balance
         /// <summary>Rebirths done when each boss was first beaten.</summary>
         public int[] BossRebirths;
         public readonly List<double> RebirthDays = new List<double>();
+        /// <summary>Day each progress goal was claimed, in chain order.</summary>
+        public readonly List<double> GoalDays = new List<double>();
         public readonly Dictionary<string, long> GemsBySource = new Dictionary<string, long>();
         public readonly Dictionary<string, long> GemsBySpend = new Dictionary<string, long>();
         public readonly List<string> DayLines = new List<string>();
@@ -181,6 +183,8 @@ namespace NuggetCreek.Balance
                 Dollars("chests", Chests);
                 Dollars("crates", Crates);
                 Spend();
+                if (session.IsCurrentGoalComplete)
+                    report.GoalDays.Add(DayOf(now));
                 Gems("goal", () => session.ClaimGoal());
                 if (WantsRebirth())
                 {
@@ -462,7 +466,8 @@ namespace NuggetCreek.Balance
             rebirthsAtDayStart = p.Rebirths;
             return $"day {day + 1,2}: creek {p.RegionIndex + 1} (best {p.BestRegionsUnlocked}), tier {p.TierIndex + 1}, " +
                    $"Amos L{p.AmosLevel} cap {session.OfflineCapSeconds / 3600:0.#}h, crew {session.CrewHiredCount}, rebirths {p.Rebirths}, Guild {p.GuildLevel}, " +
-                   $"x{session.PrestigeMultiplier:0.00}, {NumberFormat.Dollars(p.Dollars)}, {p.Gems} Gems{vsModel}";
+                   $"x{session.PrestigeMultiplier:0.00}, {NumberFormat.Dollars(p.Dollars)}, {p.Gems} Gems, bosses {session.BossesBeaten}, " +
+                   $"stars {session.TotalStars}, chests {p.ChestsOpened}, by hand {p.ManualCollected}, goal {p.GoalIndex}{vsModel}";
         }
     }
 }
