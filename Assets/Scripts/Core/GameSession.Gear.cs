@@ -85,12 +85,69 @@ namespace NuggetCreek.Core
                 if (IsGearSlotUnlocked(slot) && Progress.GearSlots[slot] < 0)
                 {
                     Progress.GearSlots[slot] = index;
+                    if (Progress.GearNotice == index)
+                        Progress.GearNotice = -1;
                     RebuildStats();
                     return true;
                 }
             }
             return false;
         }
+
+        public bool HasFreeGearSlot
+        {
+            get
+            {
+                for (int slot = 0; slot < Progress.GearSlots.Length; slot++)
+                    if (IsGearSlotUnlocked(slot) && Progress.GearSlots[slot] < 0)
+                        return true;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// The slot this owned, unworn gear would take with every slot full: the one holding
+        /// the lowest-rarity worn piece below it (the lower level on a tie); -1 when it
+        /// outranks nothing worn or a slot is free.
+        /// </summary>
+        public int GearSlotToReplace(int index)
+        {
+            if (!OwnsGear(index) || IsEquipped(index) || HasFreeGearSlot)
+                return -1;
+            Rarity rarity = GameCatalog.Gear[index].Rarity;
+            int best = -1;
+            for (int slot = 0; slot < Progress.GearSlots.Length; slot++)
+            {
+                int worn = Progress.GearSlots[slot];
+                if (!IsGearSlotUnlocked(slot) || worn < 0 || GameCatalog.Gear[worn].Rarity >= rarity)
+                    continue;
+                if (best < 0 || Weaker(worn, Progress.GearSlots[best]))
+                    best = slot;
+            }
+            return best;
+        }
+
+        bool Weaker(int gear, int than)
+        {
+            Rarity a = GameCatalog.Gear[gear].Rarity, b = GameCatalog.Gear[than].Rarity;
+            return a != b ? a < b : Progress.GearLevels[gear] < Progress.GearLevels[than];
+        }
+
+        /// <summary>Wears this gear in place of the piece <see cref="GearSlotToReplace"/> picks.</summary>
+        public bool SwapGear(int index)
+        {
+            int slot = GearSlotToReplace(index);
+            if (slot < 0)
+                return false;
+            Progress.GearSlots[slot] = index;
+            if (Progress.GearNotice == index)
+                Progress.GearNotice = -1;
+            RebuildStats();
+            return true;
+        }
+
+        /// <summary>The player has seen the gear list; the notice of a better piece goes.</summary>
+        public void DismissGearNotice() => Progress.GearNotice = -1;
 
         public bool Unequip(int index)
         {
@@ -141,7 +198,11 @@ namespace NuggetCreek.Core
 
         // --- Cards ---
 
-        /// <summary>New gear arrives at level 1 and is worn if a slot is free; a duplicate adds a level.</summary>
+        /// <summary>
+        /// New gear arrives at level 1 and is worn if a slot is free; with every slot full, gear
+        /// that outranks a worn piece is pointed out (<see cref="PlayerProgress.GearNotice"/>).
+        /// A duplicate adds a level.
+        /// </summary>
         /// <param name="source">gear_card's source: chest, gear_box, streak or pack.</param>
         public GearCard GrantGearCard(int index, string source = "other")
         {
@@ -152,7 +213,11 @@ namespace NuggetCreek.Core
             {
                 Progress.GearLevels[index] = 1;
                 if (!Equip(index))
+                {
                     RebuildStats();
+                    if (GearSlotToReplace(index) >= 0)
+                        Progress.GearNotice = index;
+                }
                 return new GearCard(index, true, false, 0);
             }
             if (level < GameCatalog.GearMaxLevel)

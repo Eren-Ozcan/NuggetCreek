@@ -146,6 +146,52 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
+        public void BetterGearWithEverySlotFullIsPointedOutAndCanSwapIn()
+        {
+            GameSession session = NewSession();
+            int gloves = GearIndex("leather_gloves");
+            int cup = GearIndex("tin_cup");
+            int pick = GearIndex("hickory_pick");
+            session.GrantGearCard(gloves);
+            session.GrantGearCard(cup);
+            Assert.That(session.Progress.GearNotice, Is.EqualTo(-1), "a Common does not outrank the worn Common");
+            Assert.That(session.GearSlotToReplace(cup), Is.EqualTo(-1));
+
+            session.GrantGearCard(pick);
+            Assert.That(session.IsEquipped(pick), Is.False);
+            Assert.That(session.Progress.GearNotice, Is.EqualTo(pick));
+            Assert.That(session.GearSlotToReplace(pick), Is.EqualTo(0));
+
+            Assert.That(session.SwapGear(pick), Is.True);
+            Assert.That(session.IsEquipped(pick), Is.True);
+            Assert.That(session.IsEquipped(gloves), Is.False);
+            Assert.That(session.Stats[Stat.ActiveIncome], Is.EqualTo(0));
+            Assert.That(session.Progress.GearNotice, Is.EqualTo(-1));
+            Assert.That(session.SwapGear(gloves), Is.False, "a Common never pushes out a Rare");
+        }
+
+        [Test]
+        public void SwapTakesTheWeakestSlotAndTheNoticeCanBeDismissed()
+        {
+            var progress = new PlayerProgress { RegionsUnlocked = 5 };
+            GameSession session = NewSession(progress);
+            int gloves = GearIndex("leather_gloves");
+            int cup = GearIndex("tin_cup");
+            int hat = GearIndex("prospectors_hat");
+            session.GrantGearCard(gloves);
+            session.GrantGearCard(cup);
+            session.GrantGearCard(cup); // cup level 2, gloves level 1
+            Assert.That(session.IsEquipped(gloves) && session.IsEquipped(cup), Is.True);
+
+            session.GrantGearCard(hat);
+            Assert.That(session.Progress.GearNotice, Is.EqualTo(hat));
+            Assert.That(session.GearSlotToReplace(hat), Is.EqualTo(System.Array.IndexOf(progress.GearSlots, gloves)), "the lower level goes on a tie");
+            session.DismissGearNotice();
+            Assert.That(session.Progress.GearNotice, Is.EqualTo(-1));
+            Assert.That(session.IsEquipped(hat), Is.False, "dismissing changes nothing worn");
+        }
+
+        [Test]
         public void NormalizeDropsUnownedAndDuplicateSlots()
         {
             var progress = new PlayerProgress { GearSlots = new[] { 3, 3, 5 } };

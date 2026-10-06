@@ -51,6 +51,9 @@ namespace NuggetCreek.Core
 
         public bool ThirdGearSlotBought;
 
+        /// <summary>New gear that outranks a worn piece while every slot is full; -1 when there is none to point out.</summary>
+        public int GearNotice = -1;
+
         /// <summary>Set by the IAP pack (phase 3); the greybox keeps it locked.</summary>
         public bool FourthGearSlotOwned;
 
@@ -315,6 +318,8 @@ namespace NuggetCreek.Core
             for (int i = 0; i < GearLevels.Length; i++)
                 GearLevels[i] = Math.Max(0, Math.Min(GearLevels[i], GameCatalog.GearMaxLevel));
             NormalizeGearSlots();
+            if (GearNotice < 0 || GearNotice >= GearLevels.Length || GearLevels[GearNotice] == 0)
+                GearNotice = -1;
             if (PerkRanks == null)
                 PerkRanks = new int[GameCatalog.Perks.Count];
             else if (PerkRanks.Length != GameCatalog.Perks.Count)

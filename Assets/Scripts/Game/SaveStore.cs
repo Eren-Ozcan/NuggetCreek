@@ -110,6 +110,7 @@ namespace NuggetCreek.Game
             public int motherLodesFinished;
             public int veinLevel;
             public int veinStreak;
+            public int gearNotice = -1;
             public int bossesMet;
             public int catchesTowardBoss;
             public double lastSeenUtc;
@@ -258,6 +259,7 @@ namespace NuggetCreek.Game
                 MotherLodesFinished = data.motherLodesFinished,
                 VeinLevel = data.veinLevel,
                 VeinStreak = data.veinStreak,
+                GearNotice = data.gearNotice,
                 BossesMet = data.bossesMet,
                 CatchesTowardBoss = data.catchesTowardBoss,
                 LastSeenUtc = data.lastSeenUtc,
@@ -372,6 +374,7 @@ namespace NuggetCreek.Game
                 motherLodesFinished = progress.MotherLodesFinished,
                 veinLevel = progress.VeinLevel,
                 veinStreak = progress.VeinStreak,
+                gearNotice = progress.GearNotice,
                 bossesMet = progress.BossesMet,
                 catchesTowardBoss = progress.CatchesTowardBoss,
                 lastSeenUtc = progress.LastSeenUtc,
