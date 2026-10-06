@@ -110,7 +110,9 @@ namespace NuggetCreek.Game
             public int motherLodesFinished;
             public int veinLevel;
             public int veinStreak;
+            // Saves from before these fields have no gear notice and no endless goal running.
             public int gearNotice = -1;
+            public long goalBase = -1;
             public int bossesMet;
             public int catchesTowardBoss;
             public double lastSeenUtc;
@@ -260,6 +262,7 @@ namespace NuggetCreek.Game
                 VeinLevel = data.veinLevel,
                 VeinStreak = data.veinStreak,
                 GearNotice = data.gearNotice,
+                GoalBase = data.goalBase,
                 BossesMet = data.bossesMet,
                 CatchesTowardBoss = data.catchesTowardBoss,
                 LastSeenUtc = data.lastSeenUtc,
@@ -375,6 +378,7 @@ namespace NuggetCreek.Game
                 veinLevel = progress.VeinLevel,
                 veinStreak = progress.VeinStreak,
                 gearNotice = progress.GearNotice,
+                goalBase = progress.GoalBase,
                 bossesMet = progress.BossesMet,
                 catchesTowardBoss = progress.CatchesTowardBoss,
                 lastSeenUtc = progress.LastSeenUtc,

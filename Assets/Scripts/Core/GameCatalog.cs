@@ -118,6 +118,13 @@ namespace NuggetCreek.Core
         RegionsUnlocked,
         SluiceTier,
         CrewHired,
+        ChestsOpened,
+        /// <summary>Stars in the Nugget collection.</summary>
+        Stars,
+        /// <summary>New claims staked (rebirths).</summary>
+        Claims,
+        BossesBeaten,
+        MotherLodes,
     }
 
     /// <summary>One step of the progress goal chain; its Gem reward lives in <see cref="EconomyConfig.GoalGemRewards"/>.</summary>
@@ -126,10 +133,14 @@ namespace NuggetCreek.Core
         public readonly GoalKind Kind;
         public readonly int Target;
 
-        public GoalDefinition(GoalKind kind, int target)
+        /// <summary>Counts from the moment the goal started (the endless goals), not from the start of the game.</summary>
+        public readonly bool Relative;
+
+        public GoalDefinition(GoalKind kind, int target, bool relative = false)
         {
             Kind = kind;
             Target = target;
+            Relative = relative;
         }
     }
 
@@ -310,8 +321,10 @@ namespace NuggetCreek.Core
         /// <summary>
         /// Progress goals, one active at a time (design doc 9, 12.1 screen 5). The first one is
         /// the onboarding card and counts manual catches only; later ones walk the player
-        /// through each creek, tier and the first crew hires. Creek goals sit on the odd creeks,
-        /// the points of the old 10-creek curve, so their timing did not move with 20 creeks.
+        /// through the creeks (in the current claim), the tiers and the crew, and point at each
+        /// system as it opens: chests, the collection, new claims and the bosses. The chain runs
+        /// to Last Chance Lode (about day 190), then <see cref="EndlessGoals"/> take over. The
+        /// day notes are when the balance bot's target player gets there.
         /// </summary>
         public static readonly IReadOnlyList<GoalDefinition> Goals = new[]
         {
@@ -321,9 +334,12 @@ namespace NuggetCreek.Core
             new GoalDefinition(GoalKind.RegionsUnlocked, 3),
             new GoalDefinition(GoalKind.SluiceTier, 2),
             new GoalDefinition(GoalKind.ManualCollected, 300),
+            new GoalDefinition(GoalKind.ChestsOpened, 3),
             new GoalDefinition(GoalKind.UpgradeLevels, 12),
             new GoalDefinition(GoalKind.AmosLevel, 3),
             new GoalDefinition(GoalKind.RegionsUnlocked, 5),
+            // Day 1.
+            new GoalDefinition(GoalKind.Stars, 15),
             new GoalDefinition(GoalKind.CrewHired, 1),
             new GoalDefinition(GoalKind.SluiceTier, 3),
             new GoalDefinition(GoalKind.UpgradeLevels, 25),
@@ -331,12 +347,69 @@ namespace NuggetCreek.Core
             new GoalDefinition(GoalKind.RegionsUnlocked, 7),
             new GoalDefinition(GoalKind.ManualCollected, 3000),
             new GoalDefinition(GoalKind.CrewHired, 2),
+            new GoalDefinition(GoalKind.ChestsOpened, 10),
             new GoalDefinition(GoalKind.SluiceTier, 4),
             new GoalDefinition(GoalKind.UpgradeLevels, 40),
+            new GoalDefinition(GoalKind.Stars, 25),
+            // The first claim, about day 6, and the boss it lets the player beat.
+            new GoalDefinition(GoalKind.Claims, 1),
+            new GoalDefinition(GoalKind.BossesBeaten, 2),
             new GoalDefinition(GoalKind.RegionsUnlocked, 9),
             new GoalDefinition(GoalKind.CrewHired, 3),
             new GoalDefinition(GoalKind.SluiceTier, 5),
+            new GoalDefinition(GoalKind.ChestsOpened, 25),
+            new GoalDefinition(GoalKind.Claims, 2),
+            new GoalDefinition(GoalKind.BossesBeaten, 3),
+            new GoalDefinition(GoalKind.Stars, 40),
+            // Deep Canyon, day 20.
             new GoalDefinition(GoalKind.RegionsUnlocked, 11),
+            new GoalDefinition(GoalKind.SluiceTier, 6),
+            new GoalDefinition(GoalKind.CrewHired, 6),
+            new GoalDefinition(GoalKind.Claims, 4),
+            new GoalDefinition(GoalKind.BossesBeaten, 5),
+            new GoalDefinition(GoalKind.Stars, 50),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 12),
+            new GoalDefinition(GoalKind.ChestsOpened, 75),
+            new GoalDefinition(GoalKind.CrewHired, 10),
+            // Quartz Flats, day 40, and on: every creek, with a claim, boss or stars between.
+            new GoalDefinition(GoalKind.RegionsUnlocked, 13),
+            new GoalDefinition(GoalKind.SluiceTier, 7),
+            new GoalDefinition(GoalKind.Claims, 5),
+            new GoalDefinition(GoalKind.BossesBeaten, 6),
+            new GoalDefinition(GoalKind.Stars, 60),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 14),
+            new GoalDefinition(GoalKind.Claims, 6),
+            new GoalDefinition(GoalKind.BossesBeaten, 7),
+            new GoalDefinition(GoalKind.Stars, 65),
+            // Glacier Run, day 70.
+            new GoalDefinition(GoalKind.RegionsUnlocked, 15),
+            new GoalDefinition(GoalKind.SluiceTier, 8),
+            new GoalDefinition(GoalKind.CrewHired, 15),
+            new GoalDefinition(GoalKind.Claims, 7),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 16),
+            new GoalDefinition(GoalKind.Stars, 72),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 17),
+            new GoalDefinition(GoalKind.Claims, 8),
+            new GoalDefinition(GoalKind.BossesBeaten, 9),
+            new GoalDefinition(GoalKind.SluiceTier, 9),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 18),
+            new GoalDefinition(GoalKind.BossesBeaten, 10),
+            new GoalDefinition(GoalKind.Stars, 80),
+            new GoalDefinition(GoalKind.Claims, 9),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 19),
+            new GoalDefinition(GoalKind.SluiceTier, 10),
+            new GoalDefinition(GoalKind.RegionsUnlocked, 20),
+        };
+
+        /// <summary>
+        /// After the chain the goals go round these for good, each counted from when it
+        /// starts: a day or two of play apiece late in the game.
+        /// </summary>
+        public static readonly IReadOnlyList<GoalDefinition> EndlessGoals = new[]
+        {
+            new GoalDefinition(GoalKind.ManualCollected, 3000, true),
+            new GoalDefinition(GoalKind.ChestsOpened, 5, true),
+            new GoalDefinition(GoalKind.MotherLodes, 10, true),
         };
 
         /// <summary>Adds owned upgrade levels to a sheet. levels[i] belongs to Upgrades[i].</summary>

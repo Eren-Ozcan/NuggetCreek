@@ -234,6 +234,9 @@ namespace NuggetCreek.Core
         /// <summary>Index of the active goal in <see cref="GameCatalog.Goals"/>; Count once all are claimed.</summary>
         public int GoalIndex;
 
+        /// <summary>An endless goal's counter when it started (design doc 12.1 screen 5); -1 until one starts.</summary>
+        public long GoalBase = -1;
+
         /// <summary>Seconds of play with the game open, lifetime; gates the first Mother Lode.</summary>
         public double PlaySeconds;
 
@@ -389,7 +392,8 @@ namespace NuggetCreek.Core
             MotherLodesFinished = Math.Max(0, MotherLodesFinished);
             VeinLevel = Math.Max(0, VeinLevel);
             VeinStreak = Math.Max(0, VeinStreak);
-            GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
+            // Past the chain the endless goals go on, so there is no upper bound to speak of.
+            GoalIndex = Math.Max(0, Math.Min(GoalIndex, 1_000_000));
             RegionsUnlocked = Math.Max(1, Math.Min(RegionsUnlocked, GameCatalog.RegionNames.Count));
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));
             BestRegionsUnlocked = Math.Max(RegionsUnlocked, Math.Min(BestRegionsUnlocked, GameCatalog.RegionNames.Count));

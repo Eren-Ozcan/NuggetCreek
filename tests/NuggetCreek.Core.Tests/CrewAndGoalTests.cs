@@ -241,23 +241,82 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
-        public void ChainEndsWithNoGoal()
+        public void TheChainRunsToTheLastCreekTierAndCrewMember()
         {
-            var progress = new PlayerProgress { GoalIndex = GameCatalog.Goals.Count };
+            int Max(GoalKind kind) => GameCatalog.Goals.Where(g => g.Kind == kind).Max(g => g.Target);
+            Assert.That(Max(GoalKind.RegionsUnlocked), Is.EqualTo(config.RegionCount));
+            Assert.That(Max(GoalKind.SluiceTier), Is.EqualTo(config.TierCount));
+            Assert.That(Max(GoalKind.CrewHired), Is.EqualTo(GameCatalog.Crew.Count));
+            foreach (GoalKind kind in new[] { GoalKind.ChestsOpened, GoalKind.Stars, GoalKind.Claims, GoalKind.BossesBeaten })
+                Assert.That(GameCatalog.Goals.Any(g => g.Kind == kind), kind.ToString());
+            Assert.That(Max(GoalKind.Stars), Is.LessThanOrEqualTo(GameCatalog.Nuggets.Count * 3));
+        }
+
+        [Test]
+        public void EachKindOnlyClimbsAlongTheChain()
+        {
+            // A target at or below an earlier one of the same kind would pay twice for one step.
+            var last = new System.Collections.Generic.Dictionary<GoalKind, int>();
+            foreach (GoalDefinition goal in GameCatalog.Goals)
+            {
+                if (last.TryGetValue(goal.Kind, out int before))
+                    Assert.That(goal.Target, Is.GreaterThan(before), goal.Kind.ToString());
+                last[goal.Kind] = goal.Target;
+            }
+        }
+
+        [Test]
+        public void SystemGoalsCountChestsStarsClaimsAndBosses()
+        {
+            var progress = new PlayerProgress { ChestsOpened = 4, Rebirths = 2 };
+            progress.NuggetCatches[GameCatalog.BossNugget(0)] = 1;
+            progress.NuggetCatches[GameCatalog.BossNugget(1)] = 1;
+            GameSession session = NewSession(progress: progress);
+            Assert.That(session.GoalProgress(new GoalDefinition(GoalKind.ChestsOpened, 3)), Is.EqualTo(4));
+            Assert.That(session.GoalProgress(new GoalDefinition(GoalKind.Claims, 1)), Is.EqualTo(2));
+            Assert.That(session.GoalProgress(new GoalDefinition(GoalKind.BossesBeaten, 2)), Is.EqualTo(2));
+            Assert.That(session.GoalProgress(new GoalDefinition(GoalKind.Stars, 15)), Is.EqualTo(session.TotalStars));
+        }
+
+        [Test]
+        public void AfterTheChainEndlessGoalsCountFromTheirStart()
+        {
+            var progress = new PlayerProgress { GoalIndex = GameCatalog.Goals.Count, ManualCollected = 50_000, ChestsOpened = 40 };
             GameSession session = NewSession(progress: progress);
 
-            Assert.That(session.CurrentGoal, Is.Null);
+            GoalDefinition first = session.CurrentGoal;
+            Assert.That(first.Kind, Is.EqualTo(GoalKind.ManualCollected));
+            Assert.That(first.Relative, Is.True);
+            Assert.That(session.GoalProgress(first), Is.Zero, "the 50,000 caught before do not count");
+            Assert.That(session.CurrentGoalReward, Is.EqualTo(config.GoalEndlessGems));
+
+            progress.ManualCollected += first.Target;
+            Assert.That(session.ClaimGoal(), Is.True);
+            Assert.That(session.Progress.Gems, Is.EqualTo(config.GoalEndlessGems));
+
+            Assert.That(session.CurrentGoal.Kind, Is.EqualTo(GoalKind.ChestsOpened));
+            Assert.That(session.Progress.GoalBase, Is.EqualTo(40));
+            progress.ChestsOpened += session.CurrentGoal.Target;
+            Assert.That(session.ClaimGoal(), Is.True);
+            Assert.That(session.CurrentGoal.Kind, Is.EqualTo(GoalKind.MotherLodes));
+
+            progress.MotherLodesFinished += session.CurrentGoal.Target;
+            Assert.That(session.ClaimGoal(), Is.True);
+            Assert.That(session.CurrentGoal.Kind, Is.EqualTo(GoalKind.ManualCollected), "round again");
             Assert.That(session.IsCurrentGoalComplete, Is.False);
-            Assert.That(session.ClaimGoal(), Is.False);
         }
 
         [Test]
         public void GoalChainStaysWithinTheGemBudget()
         {
-            // Design doc 5.0.6 budgets 8 Gems a day from progress goals. The chain runs to
-            // Deep Canyon (day 20), front-loaded so the first hires on day 2 are affordable.
+            // Design doc 5.0.6 budgets 8 Gems a day from progress goals. The goals the target
+            // player reaches in the first month (through Echo Gorge, day 28) pay 5-8 a day;
+            // the long tail after it pays far less a day.
+            int firstMonth = GameCatalog.Goals.Select((g, i) => (g, i))
+                .TakeWhile(p => !(p.g.Kind == GoalKind.RegionsUnlocked && p.g.Target > 12)).Sum(p => config.GoalGemRewards[p.i]);
+            Assert.That(firstMonth, Is.InRange(150, 240));
             int total = config.GoalGemRewards.Sum();
-            Assert.That(total, Is.InRange(80, 160));
+            Assert.That(total - firstMonth, Is.LessThan(160 * 3), "under 3 a day from day 30 to 190");
         }
 
         // --- Save shape ---
@@ -277,7 +336,7 @@ namespace NuggetCreek.Core.Tests
 
             Assert.That(progress.CrewLevels.Length, Is.EqualTo(GameCatalog.Crew.Count));
             Assert.That(progress.CrewCandidates, Is.EqualTo(new[] { 0 }));
-            Assert.That(progress.GoalIndex, Is.EqualTo(GameCatalog.Goals.Count));
+            Assert.That(progress.GoalIndex, Is.EqualTo(1000), "endless goals go past the chain");
             Assert.That(progress.Gems, Is.Zero);
         }
 

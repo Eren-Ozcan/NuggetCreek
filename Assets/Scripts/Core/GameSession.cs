@@ -51,6 +51,7 @@ namespace NuggetCreek.Core
             offline = new OfflineEarnings(economy.Config);
             this.random = random ?? new Random();
             RebuildStats();
+            StartGoal();
         }
 
         EconomyConfig Config => Economy.Config;
@@ -863,16 +864,35 @@ namespace NuggetCreek.Core
 
         // --- Progress goals ---
 
-        /// <summary>The active goal, or null once the chain is done.</summary>
-        public GoalDefinition CurrentGoal =>
-            Progress.GoalIndex < GameCatalog.Goals.Count ? GameCatalog.Goals[Progress.GoalIndex] : null;
+        /// <summary>The active goal: the chain in order, then the endless goals round and round.</summary>
+        public GoalDefinition CurrentGoal
+        {
+            get
+            {
+                int index = Progress.GoalIndex;
+                if (index < GameCatalog.Goals.Count)
+                    return GameCatalog.Goals[index];
+                var endless = GameCatalog.EndlessGoals;
+                return endless[(index - GameCatalog.Goals.Count) % endless.Count];
+            }
+        }
+
+        public bool InEndlessGoals => Progress.GoalIndex >= GameCatalog.Goals.Count;
 
         public int CurrentGoalReward =>
-            Progress.GoalIndex < Config.GoalGemRewards.Length ? Config.GoalGemRewards[Progress.GoalIndex] : 0;
+            InEndlessGoals ? Config.GoalEndlessGems
+            : Progress.GoalIndex < Config.GoalGemRewards.Length ? Config.GoalGemRewards[Progress.GoalIndex] : 0;
 
+        /// <summary>Where a goal stands; an endless goal counts from the moment it started.</summary>
         public long GoalProgress(GoalDefinition goal)
         {
-            switch (goal.Kind)
+            long count = GoalCounter(goal.Kind);
+            return goal.Relative ? Math.Max(0, count - Math.Max(0, Progress.GoalBase)) : count;
+        }
+
+        long GoalCounter(GoalKind kind)
+        {
+            switch (kind)
             {
                 case GoalKind.ManualCollected: return Progress.ManualCollected;
                 case GoalKind.UpgradeLevels:
@@ -884,8 +904,20 @@ namespace NuggetCreek.Core
                 case GoalKind.RegionsUnlocked: return Progress.RegionsUnlocked;
                 case GoalKind.SluiceTier: return Progress.TierIndex + 1;
                 case GoalKind.CrewHired: return CrewHiredCount;
-                default: throw new ArgumentOutOfRangeException(nameof(goal));
+                case GoalKind.ChestsOpened: return Progress.ChestsOpened;
+                case GoalKind.Stars: return TotalStars;
+                case GoalKind.Claims: return Progress.Rebirths;
+                case GoalKind.BossesBeaten: return BossesBeaten;
+                case GoalKind.MotherLodes: return Progress.MotherLodesFinished;
+                default: throw new ArgumentOutOfRangeException(nameof(kind));
             }
+        }
+
+        /// <summary>An endless goal counts from now: its base is the counter as it stands.</summary>
+        void StartGoal()
+        {
+            if (InEndlessGoals && Progress.GoalBase < 0)
+                Progress.GoalBase = GoalCounter(CurrentGoal.Kind);
         }
 
         public bool IsCurrentGoalComplete
@@ -905,6 +937,8 @@ namespace NuggetCreek.Core
             int reward = CurrentGoalReward;
             EarnGems(reward, "goal");
             Progress.GoalIndex++;
+            Progress.GoalBase = -1;
+            StartGoal();
             Emit("goal_complete", ("goal_n", Progress.GoalIndex), ("gems", reward));
             return true;
         }

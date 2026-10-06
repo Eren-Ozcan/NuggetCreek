@@ -443,8 +443,22 @@ namespace NuggetCreek.Core
 
         // --- Progress goals (5.0.6: ~8 Gems a day) ---
 
-        /// <summary>Gem reward per goal, indexed like <see cref="GameCatalog.Goals"/>.</summary>
-        public int[] GoalGemRewards = { 10, 3, 5, 5, 3, 3, 3, 3, 5, 5, 3, 3, 3, 5, 5, 5, 3, 3, 5, 5, 3, 10 };
+        /// <summary>
+        /// Gem reward per goal, indexed like <see cref="GameCatalog.Goals"/>: about 7 a day over
+        /// the first month, bigger and rarer after it.
+        /// </summary>
+        public int[] GoalGemRewards =
+        {
+            10, 3, 5, 5, 3, 3, 5, 3, 3, 5,
+            5, 5, 3, 3, 3, 5, 5, 5, 5, 3, 3, 5,
+            10, 5, 5, 5, 3, 5, 5, 5, 5,
+            10, 5, 5, 10, 10, 5, 10, 5, 5,
+            10, 5, 10, 10, 5, 10, 10, 10, 5,
+            15, 10, 15, 10, 10, 10, 15, 10, 15, 10, 15, 15, 10, 10, 15, 15, 25,
+        };
+
+        /// <summary>Gem reward of each endless goal after the chain.</summary>
+        public int GoalEndlessGems = 5;
 
         // --- Offline return (3.3.2, 13.1) ---
 
