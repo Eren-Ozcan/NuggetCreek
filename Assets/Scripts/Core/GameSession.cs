@@ -197,11 +197,23 @@ namespace NuggetCreek.Core
 
         // --- Vein (3.1.1): manual catches in a row raise a manual value bonus ---
 
-        /// <summary>Current vein level; resets when a collectible is lost. Not saved.</summary>
-        public int VeinLevel { get; private set; }
+        /// <summary>
+        /// Current vein level; resets when a collectible is lost or the player stays away
+        /// longer than VeinKeepAwaySeconds. Saved, so a call or the app closing in the
+        /// background does not cost it.
+        /// </summary>
+        public int VeinLevel
+        {
+            get => Progress.VeinLevel;
+            private set => Progress.VeinLevel = value;
+        }
 
         /// <summary>Manual catches toward the next vein level.</summary>
-        public int VeinStreak { get; private set; }
+        public int VeinStreak
+        {
+            get => Progress.VeinStreak;
+            private set => Progress.VeinStreak = value;
+        }
 
         public int VeinMaxLevel => Economy.VeinMaxLevel(Stats);
 
@@ -218,6 +230,20 @@ namespace NuggetCreek.Core
             VeinLevel = 0;
             VeinStreak = 0;
             return broke;
+        }
+
+        /// <summary>
+        /// Ends the vein after a return from longer than VeinKeepAwaySeconds, or when the
+        /// absence could not be measured; a short one keeps it.
+        /// </summary>
+        public void SettleVein(OfflineResult result)
+        {
+            bool measured = result.Status == OfflineStatus.Credited || result.Status == OfflineStatus.PendingTrustedTime;
+            if (!measured || result.ElapsedSeconds > Config.VeinKeepAwaySeconds)
+            {
+                VeinLevel = 0;
+                VeinStreak = 0;
+            }
         }
 
         void AdvanceVein()

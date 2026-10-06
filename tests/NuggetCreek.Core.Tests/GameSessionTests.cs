@@ -122,6 +122,32 @@ namespace NuggetCreek.Core.Tests
         }
 
         [Test]
+        public void TheVeinIsSavedAndSurvivesOnlyAShortAbsence()
+        {
+            var progress = new PlayerProgress();
+            var session = new GameSession(economy, progress);
+            session.Stats.Add(Stat.VeinMaxLevel, 2);
+            for (int i = 0; i < 25; i++)
+                session.Collect(CollectibleKind.GoldDust, false);
+            Assert.That(progress.VeinLevel, Is.EqualTo(1));
+            Assert.That(progress.VeinStreak, Is.EqualTo(5));
+
+            // The app was killed in the background: a fresh session on the same save.
+            var back = new GameSession(economy, progress);
+            back.SettleVein(new OfflineResult(OfflineStatus.Credited, 45, 45, BigNumber.Zero, false));
+            Assert.That(back.VeinLevel, Is.EqualTo(1), "45 s away keeps the vein");
+            Assert.That(back.VeinStreak, Is.EqualTo(5));
+
+            back.SettleVein(new OfflineResult(OfflineStatus.PendingTrustedTime, config.VeinKeepAwaySeconds + 1, 0, BigNumber.Zero, false));
+            Assert.That(back.VeinLevel, Is.Zero, "a longer absence ends it");
+            Assert.That(back.VeinStreak, Is.Zero);
+
+            progress.VeinLevel = 1;
+            back.SettleVein(new OfflineResult(OfflineStatus.RejectedClockTamper, 5, 0, BigNumber.Zero, false));
+            Assert.That(back.VeinLevel, Is.Zero, "an absence that cannot be measured ends it too");
+        }
+
+        [Test]
         public void AverageCatchTimesSpawnRateMatchesActiveRate()
         {
             var progress = new PlayerProgress { RegionIndex = 2, RegionsUnlocked = 3, TierIndex = 2 };

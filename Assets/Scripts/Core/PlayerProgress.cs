@@ -243,6 +243,11 @@ namespace NuggetCreek.Core
         /// <summary>Mother Lodes finished, lifetime; sets which ones pay Gems.</summary>
         public int MotherLodesFinished;
 
+        /// <summary>The vein (3.1.1): level and manual catches toward the next one.</summary>
+        public int VeinLevel;
+
+        public int VeinStreak;
+
         /// <summary>Creeks whose boss has floated in during this claim (bit r = creek r); a rebirth clears it.</summary>
         public int BossesMet;
 
@@ -377,6 +382,8 @@ namespace NuggetCreek.Core
             CatchesTowardBoss = Math.Max(0, CatchesTowardBoss);
             SecondsSinceMotherLode = Math.Max(0, SecondsSinceMotherLode);
             MotherLodesFinished = Math.Max(0, MotherLodesFinished);
+            VeinLevel = Math.Max(0, VeinLevel);
+            VeinStreak = Math.Max(0, VeinStreak);
             GoalIndex = Math.Max(0, Math.Min(GoalIndex, GameCatalog.Goals.Count));
             RegionsUnlocked = Math.Max(1, Math.Min(RegionsUnlocked, GameCatalog.RegionNames.Count));
             RegionIndex = Math.Max(0, Math.Min(RegionIndex, RegionsUnlocked - 1));

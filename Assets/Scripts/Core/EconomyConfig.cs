@@ -119,6 +119,9 @@ namespace NuggetCreek.Core
         /// <summary>Manual catch bonus per vein level.</summary>
         public double VeinValuePerLevel = 0.10;
 
+        /// <summary>A return after a longer absence ends the vein; a call or a quick look away keeps it.</summary>
+        public double VeinKeepAwaySeconds = 60;
+
         // --- Nugget collection (3.1.2) ---
 
         /// <summary>Nugget roll: the creek's own Common. In the first creek it also takes the

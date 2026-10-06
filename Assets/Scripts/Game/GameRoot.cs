@@ -457,6 +457,7 @@ namespace NuggetCreek.Game
             // Trusted time that arrives later is projected back to the moment of return.
             OfflineClockInput input = clock.ReturnInput(session.Progress, returnDeviceUtc, returnMonotonic);
             OfflineResult result = session.EvaluateOffline(input);
+            session.SettleVein(result);
             switch (result.Status)
             {
                 case OfflineStatus.Credited:
